@@ -15,6 +15,7 @@ using HAMMOR.Infrastructure.Memory;
 using HAMMOR.Infrastructure.Persistence;
 using HAMMOR.Infrastructure.Status;
 using HAMMOR.Core.Storage;
+using HAMMOR.Core.Tools.Filesystem;
 using HAMMOR.Infrastructure.Tools;
 using HAMMOR.Infrastructure.Voice;
 using Microsoft.Extensions.DependencyInjection;
@@ -107,6 +108,10 @@ public static class InfrastructureServiceCollectionExtensions
 
         registry.Register(new SaveMemoryTool(memoryStore));
         registry.Register(new SearchMemoryTool(memoryStore));
+        registry.Register(new ListDirectoryTool());
+        registry.Register(new ReadFileTool());
+        registry.Register(new WriteFileTool());
+        registry.Register(new DeleteFileTool());
 
         return registry;
     }
