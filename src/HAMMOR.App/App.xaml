@@ -1,0 +1,27 @@
+<Application x:Class="HAMMOR.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:converters="clr-namespace:HAMMOR.App.Converters">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- WPF-UI Fluent base. Theme is re-applied at startup from
+                     configuration via ApplicationThemeManager. -->
+                <ui:ThemesDictionary Theme="Dark" />
+                <ui:ControlsDictionary />
+
+                <!-- HAMMOR tokens come last so they can reference theme brushes. -->
+                <ResourceDictionary Source="pack://application:,,,/Themes/Tokens.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <converters:ProviderStateToBrushConverter x:Key="ProviderStateToBrush" />
+            <converters:ProviderStateToTextConverter x:Key="ProviderStateToText" />
+            <converters:BooleanToBrushConverter x:Key="BooleanToBrush" />
+            <converters:BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+            <converters:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
+            <converters:TaskStateToBrushConverter x:Key="TaskStateToBrush" />
+            <converters:EnumToLocalizedTextConverter x:Key="EnumToLocalizedText" />
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

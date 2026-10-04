@@ -1,0 +1,494 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Activity.Description" xml:space="preserve">
+    <value>سجل تدقيق للتصاريح وتشغيل الأدوات وأخطاء المزودين.</value>
+  </data>
+  <data name="Activity.Empty" xml:space="preserve">
+    <value>لا يوجد نشاط مسجَّل بعد.</value>
+  </data>
+  <data name="Activity.Outcome.Allowed" xml:space="preserve">
+    <value>مسموح</value>
+  </data>
+  <data name="Activity.Outcome.Denied" xml:space="preserve">
+    <value>مرفوض</value>
+  </data>
+  <data name="Activity.Outcome.Failed" xml:space="preserve">
+    <value>فشل</value>
+  </data>
+  <data name="Activity.Outcome.Information" xml:space="preserve">
+    <value>معلومة</value>
+  </data>
+  <data name="Activity.Outcome.Succeeded" xml:space="preserve">
+    <value>نجح</value>
+  </data>
+  <data name="Activity.Title" xml:space="preserve">
+    <value>النشاط</value>
+  </data>
+  <data name="App.Tagline" xml:space="preserve">
+    <value>مساعد ذكي شخصي</value>
+  </data>
+  <data name="App.Title" xml:space="preserve">
+    <value>هامور</value>
+  </data>
+  <data name="Chat.Clear" xml:space="preserve">
+    <value>مسح المحادثة</value>
+  </data>
+  <data name="Chat.EmptyBody" xml:space="preserve">
+    <value>اكتب رسالة في الأسفل. يرد هامور باللغة التي تكتب بها.</value>
+  </data>
+  <data name="Chat.EmptyTitle" xml:space="preserve">
+    <value>ابدأ محادثة</value>
+  </data>
+  <data name="Chat.InputPlaceholder" xml:space="preserve">
+    <value>اسأل هامور عن أي شيء…</value>
+  </data>
+  <data name="Chat.Send" xml:space="preserve">
+    <value>إرسال</value>
+  </data>
+  <data name="Chat.Speak" xml:space="preserve">
+    <value>نطق الرد</value>
+  </data>
+  <data name="Chat.StopSpeaking" xml:space="preserve">
+    <value>إيقاف النطق</value>
+  </data>
+  <data name="Chat.Title" xml:space="preserve">
+    <value>المحادثة</value>
+  </data>
+  <data name="Chat.VoiceInputUnavailable" xml:space="preserve">
+    <value>الإدخال الصوتي غير متاح: لم يتم تنفيذ تحويل الكلام إلى نص بعد.</value>
+  </data>
+  <data name="Chat.Working" xml:space="preserve">
+    <value>هامور يعمل…</value>
+  </data>
+  <data name="Chat.You" xml:space="preserve">
+    <value>أنت</value>
+  </data>
+  <data name="Common.Browse" xml:space="preserve">
+    <value>استعراض…</value>
+  </data>
+  <data name="Common.Cancel" xml:space="preserve">
+    <value>إلغاء</value>
+  </data>
+  <data name="Common.Close" xml:space="preserve">
+    <value>إغلاق</value>
+  </data>
+  <data name="Common.Copy" xml:space="preserve">
+    <value>نسخ</value>
+  </data>
+  <data name="Common.Error" xml:space="preserve">
+    <value>حدث خطأ ما</value>
+  </data>
+  <data name="Common.NotConfigured" xml:space="preserve">
+    <value>غير مُهيَّأ</value>
+  </data>
+  <data name="Common.NotImplemented" xml:space="preserve">
+    <value>غير مُنفَّذ</value>
+  </data>
+  <data name="Common.Ok" xml:space="preserve">
+    <value>موافق</value>
+  </data>
+  <data name="Confirm.Allow" xml:space="preserve">
+    <value>السماح</value>
+  </data>
+  <data name="Confirm.Deny" xml:space="preserve">
+    <value>رفض</value>
+  </data>
+  <data name="Confirm.Details" xml:space="preserve">
+    <value>الوسائط</value>
+  </data>
+  <data name="Confirm.Permission" xml:space="preserve">
+    <value>مستوى الإذن</value>
+  </data>
+  <data name="Confirm.Title" xml:space="preserve">
+    <value>مطلوب إذن</value>
+  </data>
+  <data name="Confirm.Tool" xml:space="preserve">
+    <value>الأداة</value>
+  </data>
+  <data name="Memory.Empty" xml:space="preserve">
+    <value>لا توجد مدخلات ذاكرة بعد.</value>
+  </data>
+  <data name="Memory.NoResults" xml:space="preserve">
+    <value>لا توجد نتائج مطابقة.</value>
+  </data>
+  <data name="Memory.OpenFolder" xml:space="preserve">
+    <value>فتح مجلد الذاكرة</value>
+  </data>
+  <data name="Memory.Search" xml:space="preserve">
+    <value>بحث</value>
+  </data>
+  <data name="Memory.SearchPlaceholder" xml:space="preserve">
+    <value>ابحث في الذاكرة…</value>
+  </data>
+  <data name="Memory.SemanticUnavailable" xml:space="preserve">
+    <value>البحث الدلالي غير مُنفَّذ. هذا بحث بالكلمات المفتاحية.</value>
+  </data>
+  <data name="Memory.Title" xml:space="preserve">
+    <value>الذاكرة</value>
+  </data>
+  <data name="Nav.Activity" xml:space="preserve">
+    <value>النشاط</value>
+  </data>
+  <data name="Nav.Chat" xml:space="preserve">
+    <value>المحادثة</value>
+  </data>
+  <data name="Nav.Memory" xml:space="preserve">
+    <value>الذاكرة</value>
+  </data>
+  <data name="Nav.Projects" xml:space="preserve">
+    <value>المشاريع</value>
+  </data>
+  <data name="Nav.Settings" xml:space="preserve">
+    <value>الإعدادات</value>
+  </data>
+  <data name="Nav.Tasks" xml:space="preserve">
+    <value>المهام</value>
+  </data>
+  <data name="Permission.Destructive" xml:space="preserve">
+    <value>مدمّر</value>
+  </data>
+  <data name="Permission.Execute" xml:space="preserve">
+    <value>تنفيذ</value>
+  </data>
+  <data name="Permission.Read" xml:space="preserve">
+    <value>قراءة</value>
+  </data>
+  <data name="Permission.Write" xml:space="preserve">
+    <value>كتابة</value>
+  </data>
+  <data name="Projects.Add" xml:space="preserve">
+    <value>إضافة مشروع</value>
+  </data>
+  <data name="Projects.Empty" xml:space="preserve">
+    <value>لا توجد مشاريع بعد.</value>
+  </data>
+  <data name="Projects.NotImplemented" xml:space="preserve">
+    <value>لم يتم تنفيذ إنشاء المشاريع وفحص git بعد. مخزن المشاريع ونموذج البيانات موجودان ويُستخدمان لتحديد نطاق الذاكرة والمهام.</value>
+  </data>
+  <data name="Projects.Title" xml:space="preserve">
+    <value>المشاريع</value>
+  </data>
+  <data name="Settings.Ai" xml:space="preserve">
+    <value>مزود الذكاء الاصطناعي</value>
+  </data>
+  <data name="Settings.Ai.ApiKey" xml:space="preserve">
+    <value>مفتاح واجهة Anthropic</value>
+  </data>
+  <data name="Settings.Ai.Effort" xml:space="preserve">
+    <value>مستوى التفكير</value>
+  </data>
+  <data name="Settings.Ai.MaxTokens" xml:space="preserve">
+    <value>الحد الأقصى لرموز الإخراج</value>
+  </data>
+  <data name="Settings.Ai.Model" xml:space="preserve">
+    <value>النموذج</value>
+  </data>
+  <data name="Settings.Ai.Provider" xml:space="preserve">
+    <value>المزود الأساسي</value>
+  </data>
+  <data name="Settings.ApiKeyNotStored" xml:space="preserve">
+    <value>لا يوجد مفتاح مخزَّن.</value>
+  </data>
+  <data name="Settings.ApiKeyPlaceholder" xml:space="preserve">
+    <value>الصق مفتاحًا لاستبدال المخزَّن</value>
+  </data>
+  <data name="Settings.ApiKeyStored" xml:space="preserve">
+    <value>تم تخزين مفتاح.</value>
+  </data>
+  <data name="Settings.ClearKey" xml:space="preserve">
+    <value>إزالة المفتاح</value>
+  </data>
+  <data name="Settings.ConfigFile" xml:space="preserve">
+    <value>ملف الإعدادات</value>
+  </data>
+  <data name="Settings.General" xml:space="preserve">
+    <value>عام</value>
+  </data>
+  <data name="Settings.Language" xml:space="preserve">
+    <value>اللغة</value>
+  </data>
+  <data name="Settings.LanguageDescription" xml:space="preserve">
+    <value>يتم تطبيق التغييرات فورًا بدون إعادة تشغيل.</value>
+  </data>
+  <data name="Settings.LaunchOnStartup" xml:space="preserve">
+    <value>تشغيل هامور مع بدء ويندوز</value>
+  </data>
+  <data name="Settings.Memory" xml:space="preserve">
+    <value>الذاكرة</value>
+  </data>
+  <data name="Settings.Memory.IndexOnStartup" xml:space="preserve">
+    <value>فهرسة ذاكرة ماركداون عند البدء</value>
+  </data>
+  <data name="Settings.Memory.Location" xml:space="preserve">
+    <value>موقع التخزين</value>
+  </data>
+  <data name="Settings.Memory.Reindex" xml:space="preserve">
+    <value>إعادة الفهرسة الآن</value>
+  </data>
+  <data name="Settings.Save" xml:space="preserve">
+    <value>حفظ التغييرات</value>
+  </data>
+  <data name="Settings.SaveKey" xml:space="preserve">
+    <value>حفظ المفتاح</value>
+  </data>
+  <data name="Settings.Saved" xml:space="preserve">
+    <value>تم حفظ الإعدادات.</value>
+  </data>
+  <data name="Settings.SecretsNote" xml:space="preserve">
+    <value>تُشفَّر المفاتيح باستخدام Windows DPAPI لحسابك. ولا تُكتب أبدًا في ملف الإعدادات أو في السجلات.</value>
+  </data>
+  <data name="Settings.Security" xml:space="preserve">
+    <value>الأمان</value>
+  </data>
+  <data name="Settings.Security.AlwaysConfirmDestructive" xml:space="preserve">
+    <value>تأكيد الإجراءات المدمّرة دائمًا</value>
+  </data>
+  <data name="Settings.Security.AutoApprove" xml:space="preserve">
+    <value>الموافقة التلقائية على الأدوات حتى</value>
+  </data>
+  <data name="Settings.Security.AutoApproveDescription" xml:space="preserve">
+    <value>الأدوات الأعلى من هذا المستوى تطلب الإذن دائمًا قبل التشغيل.</value>
+  </data>
+  <data name="Settings.Security.DestructiveLocked" xml:space="preserve">
+    <value>تتطلب الإجراءات المدمّرة تأكيدًا دائمًا ولا يمكن الموافقة عليها تلقائيًا.</value>
+  </data>
+  <data name="Settings.StartMinimised" xml:space="preserve">
+    <value>البدء مصغرًا في شريط المهام</value>
+  </data>
+  <data name="Settings.TestConnection" xml:space="preserve">
+    <value>اختبار الاتصال</value>
+  </data>
+  <data name="Settings.Theme" xml:space="preserve">
+    <value>المظهر</value>
+  </data>
+  <data name="Settings.Theme.Dark" xml:space="preserve">
+    <value>داكن</value>
+  </data>
+  <data name="Settings.Theme.Light" xml:space="preserve">
+    <value>فاتح</value>
+  </data>
+  <data name="Settings.Theme.System" xml:space="preserve">
+    <value>حسب إعداد النظام</value>
+  </data>
+  <data name="Settings.Title" xml:space="preserve">
+    <value>الإعدادات</value>
+  </data>
+  <data name="Settings.Voice" xml:space="preserve">
+    <value>الصوت</value>
+  </data>
+  <data name="Settings.Voice.ApiKey" xml:space="preserve">
+    <value>مفتاح واجهة ElevenLabs</value>
+  </data>
+  <data name="Settings.Voice.InputDevice" xml:space="preserve">
+    <value>جهاز الإدخال</value>
+  </data>
+  <data name="Settings.Voice.NoStreaming" xml:space="preserve">
+    <value>يقوم هذا المزود بتحميل الرد بالكامل قبل التشغيل. البث المباشر غير مُنفَّذ.</value>
+  </data>
+  <data name="Settings.Voice.OutputDevice" xml:space="preserve">
+    <value>جهاز الإخراج</value>
+  </data>
+  <data name="Settings.Voice.SpeakAutomatically" xml:space="preserve">
+    <value>نطق الردود تلقائيًا</value>
+  </data>
+  <data name="Settings.Voice.SttProvider" xml:space="preserve">
+    <value>مزود تحويل الكلام إلى نص</value>
+  </data>
+  <data name="Settings.Voice.SystemDefault" xml:space="preserve">
+    <value>افتراضي النظام</value>
+  </data>
+  <data name="Settings.Voice.TestPhrase" xml:space="preserve">
+    <value>هامور جاهز.</value>
+  </data>
+  <data name="Settings.Voice.TestSpeech" xml:space="preserve">
+    <value>اختبار النطق</value>
+  </data>
+  <data name="Settings.Voice.TtsProvider" xml:space="preserve">
+    <value>مزود تحويل النص إلى كلام</value>
+  </data>
+  <data name="Settings.Voice.VoiceId" xml:space="preserve">
+    <value>معرّف صوت ElevenLabs</value>
+  </data>
+  <data name="Settings.Voice.VoiceIdDescription" xml:space="preserve">
+    <value>الصوت الذي يتحدث به هامور. يمكن تغييره من هنا، وهو غير مثبّت في الكود.</value>
+  </data>
+  <data name="Settings.Voice.Volume" xml:space="preserve">
+    <value>مستوى الصوت</value>
+  </data>
+  <data name="Setup.AiStep" xml:space="preserve">
+    <value>ربط كلود</value>
+  </data>
+  <data name="Setup.Back" xml:space="preserve">
+    <value>رجوع</value>
+  </data>
+  <data name="Setup.ChooseLanguage" xml:space="preserve">
+    <value>اختر لغتك</value>
+  </data>
+  <data name="Setup.ClaudeCodeDetected" xml:space="preserve">
+    <value>تم العثور على Claude Code CLI</value>
+  </data>
+  <data name="Setup.ClaudeCodeNotDetected" xml:space="preserve">
+    <value>لم يتم العثور على Claude Code CLI</value>
+  </data>
+  <data name="Setup.Finish" xml:space="preserve">
+    <value>إكمال الإعداد</value>
+  </data>
+  <data name="Setup.MemoryStep" xml:space="preserve">
+    <value>اختر مكان تخزين البيانات</value>
+  </data>
+  <data name="Setup.Next" xml:space="preserve">
+    <value>التالي</value>
+  </data>
+  <data name="Setup.OptionalNote" xml:space="preserve">
+    <value>يمكنك تخطي أي شيء هنا وإعداده لاحقًا من الإعدادات.</value>
+  </data>
+  <data name="Setup.ReadyMessage" xml:space="preserve">
+    <value>هامور جاهز.</value>
+  </data>
+  <data name="Setup.ReadyTitle" xml:space="preserve">
+    <value>تم الإعداد</value>
+  </data>
+  <data name="Setup.Skip" xml:space="preserve">
+    <value>تخطَّ الآن</value>
+  </data>
+  <data name="Setup.Step" xml:space="preserve">
+    <value>خطوة</value>
+  </data>
+  <data name="Setup.Title" xml:space="preserve">
+    <value>مرحبًا بك في هامور</value>
+  </data>
+  <data name="Setup.VoiceStep" xml:space="preserve">
+    <value>إعداد الصوت</value>
+  </data>
+  <data name="Status.Available" xml:space="preserve">
+    <value>متاح</value>
+  </data>
+  <data name="Status.BackgroundTasks" xml:space="preserve">
+    <value>المهام الخلفية</value>
+  </data>
+  <data name="Status.Busy" xml:space="preserve">
+    <value>مشغول</value>
+  </data>
+  <data name="Status.Claude" xml:space="preserve">
+    <value>كلود</value>
+  </data>
+  <data name="Status.Connected" xml:space="preserve">
+    <value>متصل</value>
+  </data>
+  <data name="Status.ElevenLabs" xml:space="preserve">
+    <value>إيليفن لابس</value>
+  </data>
+  <data name="Status.Error" xml:space="preserve">
+    <value>خطأ</value>
+  </data>
+  <data name="Status.Microphone" xml:space="preserve">
+    <value>الميكروفون</value>
+  </data>
+  <data name="Status.Ready" xml:space="preserve">
+    <value>جاهز</value>
+  </data>
+  <data name="Status.Refresh" xml:space="preserve">
+    <value>تحديث الحالة</value>
+  </data>
+  <data name="Status.Speaker" xml:space="preserve">
+    <value>مكبر الصوت</value>
+  </data>
+  <data name="Status.SpeechToText" xml:space="preserve">
+    <value>تحويل الكلام إلى نص</value>
+  </data>
+  <data name="Status.Unavailable" xml:space="preserve">
+    <value>غير متاح</value>
+  </data>
+  <data name="Tasks.Empty" xml:space="preserve">
+    <value>لا توجد مهام بعد.</value>
+  </data>
+  <data name="Tasks.SchedulerNote" xml:space="preserve">
+    <value>لم يتم تنفيذ الجدولة الخلفية وإعادة المحاولة بعد. المهام المسجلة هنا تُحفظ ويتم تسويتها بعد أي تعطّل، لكن لا شيء يُشغّلها تلقائيًا.</value>
+  </data>
+  <data name="Tasks.State.Cancelled" xml:space="preserve">
+    <value>ملغاة</value>
+  </data>
+  <data name="Tasks.State.Completed" xml:space="preserve">
+    <value>مكتملة</value>
+  </data>
+  <data name="Tasks.State.Failed" xml:space="preserve">
+    <value>فاشلة</value>
+  </data>
+  <data name="Tasks.State.Pending" xml:space="preserve">
+    <value>قيد الانتظار</value>
+  </data>
+  <data name="Tasks.State.Running" xml:space="preserve">
+    <value>قيد التنفيذ</value>
+  </data>
+  <data name="Tasks.Title" xml:space="preserve">
+    <value>المهام</value>
+  </data>
+  <data name="Tray.Exit" xml:space="preserve">
+    <value>إنهاء</value>
+  </data>
+  <data name="Tray.NotImplemented" xml:space="preserve">
+    <value>لم يتم تنفيذ شريط المهام والاختصار العام ونافذة الإدخال السريع بعد.</value>
+  </data>
+  <data name="Tray.Open" xml:space="preserve">
+    <value>فتح هامور</value>
+  </data>
+</root>

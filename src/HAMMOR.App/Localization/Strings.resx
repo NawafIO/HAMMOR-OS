@@ -1,0 +1,494 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Activity.Description" xml:space="preserve">
+    <value>Audit trail of authorisations, tool runs and provider errors.</value>
+  </data>
+  <data name="Activity.Empty" xml:space="preserve">
+    <value>No recorded activity yet.</value>
+  </data>
+  <data name="Activity.Outcome.Allowed" xml:space="preserve">
+    <value>Allowed</value>
+  </data>
+  <data name="Activity.Outcome.Denied" xml:space="preserve">
+    <value>Denied</value>
+  </data>
+  <data name="Activity.Outcome.Failed" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="Activity.Outcome.Information" xml:space="preserve">
+    <value>Information</value>
+  </data>
+  <data name="Activity.Outcome.Succeeded" xml:space="preserve">
+    <value>Succeeded</value>
+  </data>
+  <data name="Activity.Title" xml:space="preserve">
+    <value>Activity</value>
+  </data>
+  <data name="App.Tagline" xml:space="preserve">
+    <value>Personal AI assistant</value>
+  </data>
+  <data name="App.Title" xml:space="preserve">
+    <value>HAMMOR</value>
+  </data>
+  <data name="Chat.Clear" xml:space="preserve">
+    <value>Clear conversation</value>
+  </data>
+  <data name="Chat.EmptyBody" xml:space="preserve">
+    <value>Type a message below. HAMMOR replies in the language you write in.</value>
+  </data>
+  <data name="Chat.EmptyTitle" xml:space="preserve">
+    <value>Start a conversation</value>
+  </data>
+  <data name="Chat.InputPlaceholder" xml:space="preserve">
+    <value>Ask HAMMOR anything…</value>
+  </data>
+  <data name="Chat.Send" xml:space="preserve">
+    <value>Send</value>
+  </data>
+  <data name="Chat.Speak" xml:space="preserve">
+    <value>Speak reply</value>
+  </data>
+  <data name="Chat.StopSpeaking" xml:space="preserve">
+    <value>Stop speaking</value>
+  </data>
+  <data name="Chat.Title" xml:space="preserve">
+    <value>Chat</value>
+  </data>
+  <data name="Chat.VoiceInputUnavailable" xml:space="preserve">
+    <value>Voice input is not available: speech-to-text is not implemented yet.</value>
+  </data>
+  <data name="Chat.Working" xml:space="preserve">
+    <value>HAMMOR is working…</value>
+  </data>
+  <data name="Chat.You" xml:space="preserve">
+    <value>You</value>
+  </data>
+  <data name="Common.Browse" xml:space="preserve">
+    <value>Browse…</value>
+  </data>
+  <data name="Common.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Common.Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Common.Copy" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="Common.Error" xml:space="preserve">
+    <value>Something went wrong</value>
+  </data>
+  <data name="Common.NotConfigured" xml:space="preserve">
+    <value>Not Configured</value>
+  </data>
+  <data name="Common.NotImplemented" xml:space="preserve">
+    <value>Not Implemented</value>
+  </data>
+  <data name="Common.Ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="Confirm.Allow" xml:space="preserve">
+    <value>Allow</value>
+  </data>
+  <data name="Confirm.Deny" xml:space="preserve">
+    <value>Deny</value>
+  </data>
+  <data name="Confirm.Details" xml:space="preserve">
+    <value>Arguments</value>
+  </data>
+  <data name="Confirm.Permission" xml:space="preserve">
+    <value>Permission level</value>
+  </data>
+  <data name="Confirm.Title" xml:space="preserve">
+    <value>Permission required</value>
+  </data>
+  <data name="Confirm.Tool" xml:space="preserve">
+    <value>Tool</value>
+  </data>
+  <data name="Memory.Empty" xml:space="preserve">
+    <value>No memory entries yet.</value>
+  </data>
+  <data name="Memory.NoResults" xml:space="preserve">
+    <value>Nothing matched your search.</value>
+  </data>
+  <data name="Memory.OpenFolder" xml:space="preserve">
+    <value>Open memory folder</value>
+  </data>
+  <data name="Memory.Search" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="Memory.SearchPlaceholder" xml:space="preserve">
+    <value>Search memory…</value>
+  </data>
+  <data name="Memory.SemanticUnavailable" xml:space="preserve">
+    <value>Semantic search is not implemented. This searches by keyword.</value>
+  </data>
+  <data name="Memory.Title" xml:space="preserve">
+    <value>Memory</value>
+  </data>
+  <data name="Nav.Activity" xml:space="preserve">
+    <value>Activity</value>
+  </data>
+  <data name="Nav.Chat" xml:space="preserve">
+    <value>Chat</value>
+  </data>
+  <data name="Nav.Memory" xml:space="preserve">
+    <value>Memory</value>
+  </data>
+  <data name="Nav.Projects" xml:space="preserve">
+    <value>Projects</value>
+  </data>
+  <data name="Nav.Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Nav.Tasks" xml:space="preserve">
+    <value>Tasks</value>
+  </data>
+  <data name="Permission.Destructive" xml:space="preserve">
+    <value>Destructive</value>
+  </data>
+  <data name="Permission.Execute" xml:space="preserve">
+    <value>Execute</value>
+  </data>
+  <data name="Permission.Read" xml:space="preserve">
+    <value>Read</value>
+  </data>
+  <data name="Permission.Write" xml:space="preserve">
+    <value>Write</value>
+  </data>
+  <data name="Projects.Add" xml:space="preserve">
+    <value>Add project</value>
+  </data>
+  <data name="Projects.Empty" xml:space="preserve">
+    <value>No projects yet.</value>
+  </data>
+  <data name="Projects.NotImplemented" xml:space="preserve">
+    <value>Project creation and git inspection are not implemented yet. The project store and data model exist and are used to scope memory and tasks.</value>
+  </data>
+  <data name="Projects.Title" xml:space="preserve">
+    <value>Projects</value>
+  </data>
+  <data name="Settings.Ai" xml:space="preserve">
+    <value>AI provider</value>
+  </data>
+  <data name="Settings.Ai.ApiKey" xml:space="preserve">
+    <value>Anthropic API key</value>
+  </data>
+  <data name="Settings.Ai.Effort" xml:space="preserve">
+    <value>Reasoning effort</value>
+  </data>
+  <data name="Settings.Ai.MaxTokens" xml:space="preserve">
+    <value>Maximum output tokens</value>
+  </data>
+  <data name="Settings.Ai.Model" xml:space="preserve">
+    <value>Model</value>
+  </data>
+  <data name="Settings.Ai.Provider" xml:space="preserve">
+    <value>Primary provider</value>
+  </data>
+  <data name="Settings.ApiKeyNotStored" xml:space="preserve">
+    <value>No key stored.</value>
+  </data>
+  <data name="Settings.ApiKeyPlaceholder" xml:space="preserve">
+    <value>Paste a key to replace the stored one</value>
+  </data>
+  <data name="Settings.ApiKeyStored" xml:space="preserve">
+    <value>A key is stored.</value>
+  </data>
+  <data name="Settings.ClearKey" xml:space="preserve">
+    <value>Remove key</value>
+  </data>
+  <data name="Settings.ConfigFile" xml:space="preserve">
+    <value>Configuration file</value>
+  </data>
+  <data name="Settings.General" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="Settings.Language" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Settings.LanguageDescription" xml:space="preserve">
+    <value>Changes apply immediately, with no restart.</value>
+  </data>
+  <data name="Settings.LaunchOnStartup" xml:space="preserve">
+    <value>Launch HAMMOR when Windows starts</value>
+  </data>
+  <data name="Settings.Memory" xml:space="preserve">
+    <value>Memory</value>
+  </data>
+  <data name="Settings.Memory.IndexOnStartup" xml:space="preserve">
+    <value>Index markdown memory on startup</value>
+  </data>
+  <data name="Settings.Memory.Location" xml:space="preserve">
+    <value>Storage location</value>
+  </data>
+  <data name="Settings.Memory.Reindex" xml:space="preserve">
+    <value>Re-index now</value>
+  </data>
+  <data name="Settings.Save" xml:space="preserve">
+    <value>Save changes</value>
+  </data>
+  <data name="Settings.SaveKey" xml:space="preserve">
+    <value>Save key</value>
+  </data>
+  <data name="Settings.Saved" xml:space="preserve">
+    <value>Settings saved.</value>
+  </data>
+  <data name="Settings.SecretsNote" xml:space="preserve">
+    <value>Keys are encrypted with Windows DPAPI for your user account. They are never written to the configuration file or to logs.</value>
+  </data>
+  <data name="Settings.Security" xml:space="preserve">
+    <value>Security</value>
+  </data>
+  <data name="Settings.Security.AlwaysConfirmDestructive" xml:space="preserve">
+    <value>Always confirm destructive actions</value>
+  </data>
+  <data name="Settings.Security.AutoApprove" xml:space="preserve">
+    <value>Auto-approve tools up to</value>
+  </data>
+  <data name="Settings.Security.AutoApproveDescription" xml:space="preserve">
+    <value>Tools above this level always ask before running.</value>
+  </data>
+  <data name="Settings.Security.DestructiveLocked" xml:space="preserve">
+    <value>Destructive actions always require confirmation and cannot be auto-approved.</value>
+  </data>
+  <data name="Settings.StartMinimised" xml:space="preserve">
+    <value>Start minimised to the system tray</value>
+  </data>
+  <data name="Settings.TestConnection" xml:space="preserve">
+    <value>Test connection</value>
+  </data>
+  <data name="Settings.Theme" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="Settings.Theme.Dark" xml:space="preserve">
+    <value>Dark</value>
+  </data>
+  <data name="Settings.Theme.Light" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="Settings.Theme.System" xml:space="preserve">
+    <value>Use system setting</value>
+  </data>
+  <data name="Settings.Title" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Settings.Voice" xml:space="preserve">
+    <value>Voice</value>
+  </data>
+  <data name="Settings.Voice.ApiKey" xml:space="preserve">
+    <value>ElevenLabs API key</value>
+  </data>
+  <data name="Settings.Voice.InputDevice" xml:space="preserve">
+    <value>Input device</value>
+  </data>
+  <data name="Settings.Voice.NoStreaming" xml:space="preserve">
+    <value>This provider buffers the full reply before playback. Streaming is not implemented.</value>
+  </data>
+  <data name="Settings.Voice.OutputDevice" xml:space="preserve">
+    <value>Output device</value>
+  </data>
+  <data name="Settings.Voice.SpeakAutomatically" xml:space="preserve">
+    <value>Speak replies automatically</value>
+  </data>
+  <data name="Settings.Voice.SttProvider" xml:space="preserve">
+    <value>Speech-to-text provider</value>
+  </data>
+  <data name="Settings.Voice.SystemDefault" xml:space="preserve">
+    <value>System default</value>
+  </data>
+  <data name="Settings.Voice.TestPhrase" xml:space="preserve">
+    <value>HAMMOR is ready.</value>
+  </data>
+  <data name="Settings.Voice.TestSpeech" xml:space="preserve">
+    <value>Test speech</value>
+  </data>
+  <data name="Settings.Voice.TtsProvider" xml:space="preserve">
+    <value>Text-to-speech provider</value>
+  </data>
+  <data name="Settings.Voice.VoiceId" xml:space="preserve">
+    <value>ElevenLabs voice ID</value>
+  </data>
+  <data name="Settings.Voice.VoiceIdDescription" xml:space="preserve">
+    <value>The voice HAMMOR speaks with. Change it here; it is not fixed in code.</value>
+  </data>
+  <data name="Settings.Voice.Volume" xml:space="preserve">
+    <value>Output volume</value>
+  </data>
+  <data name="Setup.AiStep" xml:space="preserve">
+    <value>Connect Claude</value>
+  </data>
+  <data name="Setup.Back" xml:space="preserve">
+    <value>Back</value>
+  </data>
+  <data name="Setup.ChooseLanguage" xml:space="preserve">
+    <value>Choose your language</value>
+  </data>
+  <data name="Setup.ClaudeCodeDetected" xml:space="preserve">
+    <value>Claude Code CLI detected</value>
+  </data>
+  <data name="Setup.ClaudeCodeNotDetected" xml:space="preserve">
+    <value>Claude Code CLI not found</value>
+  </data>
+  <data name="Setup.Finish" xml:space="preserve">
+    <value>Finish setup</value>
+  </data>
+  <data name="Setup.MemoryStep" xml:space="preserve">
+    <value>Choose where data is stored</value>
+  </data>
+  <data name="Setup.Next" xml:space="preserve">
+    <value>Next</value>
+  </data>
+  <data name="Setup.OptionalNote" xml:space="preserve">
+    <value>You can skip anything here and configure it later in Settings.</value>
+  </data>
+  <data name="Setup.ReadyMessage" xml:space="preserve">
+    <value>HAMMOR is ready.</value>
+  </data>
+  <data name="Setup.ReadyTitle" xml:space="preserve">
+    <value>Setup complete</value>
+  </data>
+  <data name="Setup.Skip" xml:space="preserve">
+    <value>Skip for now</value>
+  </data>
+  <data name="Setup.Step" xml:space="preserve">
+    <value>Step</value>
+  </data>
+  <data name="Setup.Title" xml:space="preserve">
+    <value>Welcome to HAMMOR</value>
+  </data>
+  <data name="Setup.VoiceStep" xml:space="preserve">
+    <value>Set up voice</value>
+  </data>
+  <data name="Status.Available" xml:space="preserve">
+    <value>Available</value>
+  </data>
+  <data name="Status.BackgroundTasks" xml:space="preserve">
+    <value>Background tasks</value>
+  </data>
+  <data name="Status.Busy" xml:space="preserve">
+    <value>Busy</value>
+  </data>
+  <data name="Status.Claude" xml:space="preserve">
+    <value>Claude</value>
+  </data>
+  <data name="Status.Connected" xml:space="preserve">
+    <value>Connected</value>
+  </data>
+  <data name="Status.ElevenLabs" xml:space="preserve">
+    <value>ElevenLabs</value>
+  </data>
+  <data name="Status.Error" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="Status.Microphone" xml:space="preserve">
+    <value>Microphone</value>
+  </data>
+  <data name="Status.Ready" xml:space="preserve">
+    <value>Ready</value>
+  </data>
+  <data name="Status.Refresh" xml:space="preserve">
+    <value>Refresh status</value>
+  </data>
+  <data name="Status.Speaker" xml:space="preserve">
+    <value>Speaker</value>
+  </data>
+  <data name="Status.SpeechToText" xml:space="preserve">
+    <value>Speech-to-text</value>
+  </data>
+  <data name="Status.Unavailable" xml:space="preserve">
+    <value>Unavailable</value>
+  </data>
+  <data name="Tasks.Empty" xml:space="preserve">
+    <value>No tasks yet.</value>
+  </data>
+  <data name="Tasks.SchedulerNote" xml:space="preserve">
+    <value>Background scheduling and retry are not implemented yet. Tasks recorded here persist and are reconciled after a crash, but nothing runs them automatically.</value>
+  </data>
+  <data name="Tasks.State.Cancelled" xml:space="preserve">
+    <value>Cancelled</value>
+  </data>
+  <data name="Tasks.State.Completed" xml:space="preserve">
+    <value>Completed</value>
+  </data>
+  <data name="Tasks.State.Failed" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="Tasks.State.Pending" xml:space="preserve">
+    <value>Pending</value>
+  </data>
+  <data name="Tasks.State.Running" xml:space="preserve">
+    <value>Running</value>
+  </data>
+  <data name="Tasks.Title" xml:space="preserve">
+    <value>Tasks</value>
+  </data>
+  <data name="Tray.Exit" xml:space="preserve">
+    <value>Exit</value>
+  </data>
+  <data name="Tray.NotImplemented" xml:space="preserve">
+    <value>System tray, global hotkey and the quick input overlay are not implemented yet.</value>
+  </data>
+  <data name="Tray.Open" xml:space="preserve">
+    <value>Open HAMMOR</value>
+  </data>
+</root>

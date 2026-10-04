@@ -1,0 +1,58 @@
+<Page x:Class="HAMMOR.App.Views.ProjectsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:loc="clr-namespace:HAMMOR.App.Localization"
+      xmlns:projects="clr-namespace:HAMMOR.Core.Projects;assembly=HAMMOR.Core"
+      Title="{loc:Loc Projects.Title}">
+
+    <Grid Margin="{StaticResource PagePadding}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Style="{StaticResource PageTitleText}"
+                   Text="{loc:Loc Projects.Title}" />
+
+        <!-- Honest about what exists: store and model, not yet the workflow. -->
+        <ui:InfoBar Grid.Row="1"
+                    Severity="Informational"
+                    IsOpen="True"
+                    IsClosable="False"
+                    Margin="{StaticResource StackGap}"
+                    Title="{loc:Loc Common.NotImplemented}"
+                    Message="{loc:Loc Projects.NotImplemented}" />
+
+        <Grid Grid.Row="2">
+            <TextBlock Style="{StaticResource SecondaryText}"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       Text="{loc:Loc Projects.Empty}"
+                       Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}" />
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Projects}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type projects:HammorProject}">
+                            <Border Style="{StaticResource SurfaceCard}" Padding="12">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource BodyText}"
+                                               FontWeight="SemiBold"
+                                               Text="{Binding Name}" />
+                                    <TextBlock Style="{StaticResource SecondaryText}"
+                                               Text="{Binding Description}" />
+                                    <TextBlock Style="{StaticResource CaptionText}"
+                                               Margin="0,4,0,0"
+                                               Text="{Binding RootPath}" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+</Page>
