@@ -1,0 +1,57 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{519540E1-A393-4DE1-83E8-9B8A1D73BBDD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HAMMOR.Core", "src\HAMMOR.Core\HAMMOR.Core.csproj", "{54AB028C-74E5-4712-88B7-FAA0CF081441}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HAMMOR.Infrastructure", "src\HAMMOR.Infrastructure\HAMMOR.Infrastructure.csproj", "{2CCCD456-4FE4-4BE4-A9B5-3806017BADC7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HAMMOR.Platform.Windows", "src\HAMMOR.Platform.Windows\HAMMOR.Platform.Windows.csproj", "{8BE6F552-A1D2-4E1F-8235-00FB98A0FA66}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HAMMOR.App", "src\HAMMOR.App\HAMMOR.App.csproj", "{CE74AF4F-B6EB-4174-9C57-14B06F582768}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{6020D4F6-4217-47E7-8DB5-D3B48E7D7A0A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HAMMOR.Core.Tests", "tests\HAMMOR.Core.Tests\HAMMOR.Core.Tests.csproj", "{2FAAD748-881B-45BF-BF2D-FA787DD8ACAB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{54AB028C-74E5-4712-88B7-FAA0CF081441}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{54AB028C-74E5-4712-88B7-FAA0CF081441}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{54AB028C-74E5-4712-88B7-FAA0CF081441}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{54AB028C-74E5-4712-88B7-FAA0CF081441}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2CCCD456-4FE4-4BE4-A9B5-3806017BADC7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2CCCD456-4FE4-4BE4-A9B5-3806017BADC7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2CCCD456-4FE4-4BE4-A9B5-3806017BADC7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2CCCD456-4FE4-4BE4-A9B5-3806017BADC7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8BE6F552-A1D2-4E1F-8235-00FB98A0FA66}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8BE6F552-A1D2-4E1F-8235-00FB98A0FA66}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8BE6F552-A1D2-4E1F-8235-00FB98A0FA66}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8BE6F552-A1D2-4E1F-8235-00FB98A0FA66}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CE74AF4F-B6EB-4174-9C57-14B06F582768}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CE74AF4F-B6EB-4174-9C57-14B06F582768}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CE74AF4F-B6EB-4174-9C57-14B06F582768}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CE74AF4F-B6EB-4174-9C57-14B06F582768}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2FAAD748-881B-45BF-BF2D-FA787DD8ACAB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2FAAD748-881B-45BF-BF2D-FA787DD8ACAB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2FAAD748-881B-45BF-BF2D-FA787DD8ACAB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2FAAD748-881B-45BF-BF2D-FA787DD8ACAB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{54AB028C-74E5-4712-88B7-FAA0CF081441} = {519540E1-A393-4DE1-83E8-9B8A1D73BBDD}
+		{2CCCD456-4FE4-4BE4-A9B5-3806017BADC7} = {519540E1-A393-4DE1-83E8-9B8A1D73BBDD}
+		{8BE6F552-A1D2-4E1F-8235-00FB98A0FA66} = {519540E1-A393-4DE1-83E8-9B8A1D73BBDD}
+		{CE74AF4F-B6EB-4174-9C57-14B06F582768} = {519540E1-A393-4DE1-83E8-9B8A1D73BBDD}
+		{2FAAD748-881B-45BF-BF2D-FA787DD8ACAB} = {6020D4F6-4217-47E7-8DB5-D3B48E7D7A0A}
+	EndGlobalSection
+EndGlobal

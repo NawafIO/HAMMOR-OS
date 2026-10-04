@@ -1,0 +1,55 @@
+# ---- Secrets: keep these first and never relax them ----
+*.secret
+*.secrets
+secrets.json
+appsettings.Secrets.json
+appsettings.*.local.json
+.env
+.env.*
+*.pfx
+*.snk
+# HAMMOR runtime config may contain user paths / provider settings.
+# Secrets themselves live in Windows DPAPI, never in these files, but the
+# local runtime config is still user-specific and must not be committed.
+hammor.config.json
+hammor.local.json
+
+# ---- .NET build output ----
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+artifacts/
+publish/
+*.user
+*.suo
+*.userprefs
+*.binlog
+
+# ---- Test / coverage ----
+TestResults/
+coverage/
+*.coverage
+*.trx
+
+# ---- Tooling ----
+.vs/
+.vscode/
+.idea/
+*.DotSettings.user
+
+# ---- Local data stores (SQLite + logs + generated memory) ----
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+logs/
+*.log
+
+# ---- OS ----
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
