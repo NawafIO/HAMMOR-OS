@@ -181,5 +181,18 @@ public sealed class SecuritySettings
     /// <summary>Retain audit rows for this many days. Zero keeps them forever.</summary>
     public int AuditRetentionDays { get; set; }
 
-    public SecuritySettings Clone() => (SecuritySettings)MemberwiseClone();
+    /// <summary>
+    /// Additional filesystem roots that filesystem tools are allowed to access.
+    /// When null or empty, only <see cref="Storage.HammorPaths.DataRoot"/> (and
+    /// <see cref="MemorySettings.RootPath"/> when set) are approved.
+    /// No hard-coded machine paths — values come from configuration.
+    /// </summary>
+    public List<string> FilesystemAllowedRoots { get; set; } = new();
+
+    public SecuritySettings Clone()
+    {
+        var copy = (SecuritySettings)MemberwiseClone();
+        copy.FilesystemAllowedRoots = new List<string>(FilesystemAllowedRoots);
+        return copy;
+    }
 }

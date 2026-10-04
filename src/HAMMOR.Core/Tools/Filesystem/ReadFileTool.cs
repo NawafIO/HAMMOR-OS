@@ -4,17 +4,22 @@ using System.Text;
 namespace HAMMOR.Core.Tools.Filesystem;
 
 /// <summary>
-/// Reads a bounded window of a text file. Never loads an unbounded file into
-/// memory and never treats opaque binary as text.
+/// Reads a bounded window of a text file. Gated by <see cref="IFilesystemPolicy"/> when supplied.
+/// Never loads an unbounded file into memory and never treats opaque binary as text.
 /// </summary>
 public sealed class ReadFileTool : ITool
 {
-    private const long MaxBytes = 2 * 1024 * 1024; // 2 MiB
+    private const long MaxBytes = 2 * 1024 * 1024;
     private const int DefaultMaxLines = 5000;
     private const int HardMaxLines = 10000;
-
-    // NUL is a strong signal that the file is binary or mixed.
     private const int BinaryScanBytes = 8192;
+
+    private readonly IFilesystemPolicy? _policy;
+
+    public ReadFileTool(IFilesystemPolicy? policy = null)
+    {
+        _policy = policy;
+    }
 
     public string Name => "filesystem.read_file";
 
@@ -107,21 +112,34 @@ public sealed class ReadFileTool : ITool
         }
 
         string fullPath;
-        try
+        if (_policy is not null)
         {
-            fullPath = Path.GetFullPath(rawPath);
+            var pr = _policy.Validate(rawPath);
+            if (!pr.IsAllowed)
+            {
+                return ToolResult.Failure(pr.Error!);
+            }
+
+            fullPath = pr.NormalizedPath;
         }
-        catch (ArgumentException ex)
+        else
         {
-            return ToolResult.Failure($"Invalid path '{rawPath}': {ex.Message}");
-        }
-        catch (PathTooLongException ex)
-        {
-            return ToolResult.Failure($"Path too long '{rawPath}': {ex.Message}");
-        }
-        catch (NotSupportedException ex)
-        {
-            return ToolResult.Failure($"Path not supported '{rawPath}': {ex.Message}");
+            try
+            {
+                fullPath = Path.GetFullPath(rawPath);
+            }
+            catch (ArgumentException ex)
+            {
+                return ToolResult.Failure($"Invalid path '{rawPath}': {ex.Message}");
+            }
+            catch (PathTooLongException ex)
+            {
+                return ToolResult.Failure($"Path too long '{rawPath}': {ex.Message}");
+            }
+            catch (NotSupportedException ex)
+            {
+                return ToolResult.Failure($"Path not supported '{rawPath}': {ex.Message}");
+            }
         }
 
         try
@@ -144,12 +162,10 @@ public sealed class ReadFileTool : ITool
                     + "Use offset/limit to page if the file grows, or choose a smaller file.");
             }
 
-            // Quick binary check before decoding.
             var looksBinary = await LooksBinaryAsync(fullPath, cancellationToken).ConfigureAwait(false);
             if (looksBinary)
             {
-                return ToolResult.Failure(
-                    $"File appears to be binary and cannot be read as text: '{fullPath}'.");
+                return ToolResult.Failure($"File appears to be binary and cannot be read as text: '{fullPath}'.");
             }
 
             var lines = new List<string>(Math.Min(limit, 1024));
@@ -169,7 +185,6 @@ public sealed class ReadFileTool : ITool
 
                     if (lines.Count >= limit)
                     {
-                        // Drain to count remaining without retaining them.
                         truncated = true;
                         totalLines++;
                         while (await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false) is not null)
@@ -268,8 +283,6 @@ public sealed class ReadFileTool : ITool
         }
         catch
         {
-            // If we cannot inspect the file for binary, let the read proceed
-            // and surface a normal I/O failure instead of masking it.
             return false;
         }
     }

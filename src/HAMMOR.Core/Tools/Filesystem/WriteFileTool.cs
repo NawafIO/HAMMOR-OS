@@ -4,13 +4,21 @@ using System.Text;
 namespace HAMMOR.Core.Tools.Filesystem;
 
 /// <summary>
-/// Creates or replaces a text file with bounded content. Uses an atomic
-/// write (temp file + move) so a failure does not leave a half-written file.
+/// Creates or replaces a text file with bounded content. Gated by
+/// <see cref="IFilesystemPolicy"/> when supplied. Uses an atomic write
+/// (temp file + move) so a failure does not leave a half-written file.
 /// </summary>
 public sealed class WriteFileTool : ITool
 {
-    private const int MaxContentChars = 2_000_000; // ~2 MB UTF-8
+    private const int MaxContentChars = 2_000_000;
     private const long MaxContentBytes = 2 * 1024 * 1024;
+
+    private readonly IFilesystemPolicy? _policy;
+
+    public WriteFileTool(IFilesystemPolicy? policy = null)
+    {
+        _policy = policy;
+    }
 
     public string Name => "filesystem.write_file";
 
@@ -50,8 +58,6 @@ public sealed class WriteFileTool : ITool
             return ToolValidationResult.Invalid("'path' contains invalid characters.");
         }
 
-        // Content is required. Distinguish missing (null) from empty — empty is
-        // allowed so the tool can create an empty file.
         if (!invocation.Arguments.ContainsKey("content") || invocation.Arguments["content"] is null)
         {
             return ToolValidationResult.Invalid("'content' is required.");
@@ -98,21 +104,34 @@ public sealed class WriteFileTool : ITool
         }
 
         string fullPath;
-        try
+        if (_policy is not null)
         {
-            fullPath = Path.GetFullPath(rawPath);
+            var pr = _policy.Validate(rawPath);
+            if (!pr.IsAllowed)
+            {
+                return ToolResult.Failure(pr.Error!);
+            }
+
+            fullPath = pr.NormalizedPath;
         }
-        catch (ArgumentException ex)
+        else
         {
-            return ToolResult.Failure($"Invalid path '{rawPath}': {ex.Message}");
-        }
-        catch (PathTooLongException ex)
-        {
-            return ToolResult.Failure($"Path too long '{rawPath}': {ex.Message}");
-        }
-        catch (NotSupportedException ex)
-        {
-            return ToolResult.Failure($"Path not supported '{rawPath}': {ex.Message}");
+            try
+            {
+                fullPath = Path.GetFullPath(rawPath);
+            }
+            catch (ArgumentException ex)
+            {
+                return ToolResult.Failure($"Invalid path '{rawPath}': {ex.Message}");
+            }
+            catch (PathTooLongException ex)
+            {
+                return ToolResult.Failure($"Path too long '{rawPath}': {ex.Message}");
+            }
+            catch (NotSupportedException ex)
+            {
+                return ToolResult.Failure($"Path not supported '{rawPath}': {ex.Message}");
+            }
         }
 
         try
@@ -130,12 +149,9 @@ public sealed class WriteFileTool : ITool
             var directory = Path.GetDirectoryName(fullPath);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
             {
-                // Created only after validation, so an invalid invocation does
-                // not create directories as a side effect.
                 Directory.CreateDirectory(directory);
             }
 
-            // Atomic write: temp file in the same directory, then move.
             var tempPath = Path.Combine(
                 directory ?? Path.GetTempPath(),
                 $".hammor-write-{Guid.NewGuid():N}.tmp");
@@ -145,12 +161,10 @@ public sealed class WriteFileTool : ITool
                 await File.WriteAllTextAsync(tempPath, content, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false), cancellationToken)
                     .ConfigureAwait(false);
 
-                // File.Move with overwrite parameter (.NET 8) is atomic on same volume.
                 File.Move(tempPath, fullPath, overwrite);
             }
             finally
             {
-                // Best-effort cleanup of the temp file if the move failed.
                 try
                 {
                     if (File.Exists(tempPath))
@@ -160,8 +174,6 @@ public sealed class WriteFileTool : ITool
                 }
                 catch
                 {
-                    // Suppress cleanup failures; the main error (if any) is
-                    // already being returned.
                 }
             }
 

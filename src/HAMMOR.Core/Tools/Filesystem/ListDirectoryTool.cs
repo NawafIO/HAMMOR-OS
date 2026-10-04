@@ -5,12 +5,20 @@ namespace HAMMOR.Core.Tools.Filesystem;
 
 /// <summary>
 /// Lists the contents of a directory. Read-only, bounded, and never throws
-/// for expected filesystem conditions.
+/// for expected filesystem conditions. All paths are gated by
+/// <see cref="IFilesystemPolicy"/> when one is supplied.
 /// </summary>
 public sealed class ListDirectoryTool : ITool
 {
     private const int MaxEntries = 5_000;
     private const int MaxDepth = 16;
+
+    private readonly IFilesystemPolicy? _policy;
+
+    public ListDirectoryTool(IFilesystemPolicy? policy = null)
+    {
+        _policy = policy;
+    }
 
     public string Name => "filesystem.list_directory";
 
@@ -77,21 +85,34 @@ public sealed class ListDirectoryTool : ITool
         }
 
         string fullPath;
-        try
+        if (_policy is not null)
         {
-            fullPath = Path.GetFullPath(directoryPath);
+            var policyResult = _policy.Validate(directoryPath);
+            if (!policyResult.IsAllowed)
+            {
+                return Task.FromResult(ToolResult.Failure(policyResult.Error!));
+            }
+
+            fullPath = policyResult.NormalizedPath;
         }
-        catch (ArgumentException ex)
+        else
         {
-            return Task.FromResult(ToolResult.Failure($"Invalid path '{directoryPath}': {ex.Message}"));
-        }
-        catch (PathTooLongException ex)
-        {
-            return Task.FromResult(ToolResult.Failure($"Path too long '{directoryPath}': {ex.Message}"));
-        }
-        catch (NotSupportedException ex)
-        {
-            return Task.FromResult(ToolResult.Failure($"Path not supported '{directoryPath}': {ex.Message}"));
+            try
+            {
+                fullPath = Path.GetFullPath(directoryPath);
+            }
+            catch (ArgumentException ex)
+            {
+                return Task.FromResult(ToolResult.Failure($"Invalid path '{directoryPath}': {ex.Message}"));
+            }
+            catch (PathTooLongException ex)
+            {
+                return Task.FromResult(ToolResult.Failure($"Path too long '{directoryPath}': {ex.Message}"));
+            }
+            catch (NotSupportedException ex)
+            {
+                return Task.FromResult(ToolResult.Failure($"Path not supported '{directoryPath}': {ex.Message}"));
+            }
         }
 
         try
@@ -148,7 +169,6 @@ public sealed class ListDirectoryTool : ITool
         var result = new List<FileSystemInfo>();
         foreach (var info in infos)
         {
-            cancellationCheck();
             result.Add(info);
             if (result.Count >= MaxEntries)
             {
@@ -157,8 +177,6 @@ public sealed class ListDirectoryTool : ITool
         }
 
         return result;
-
-        static void cancellationCheck() { }
     }
 
     private static List<FileSystemInfo> EnumerateRecursive(string root, CancellationToken cancellationToken)
@@ -207,7 +225,6 @@ public sealed class ListDirectoryTool : ITool
                 var isDirectory = (child.Attributes & FileAttributes.Directory) != 0;
                 var isReparse = (child.Attributes & FileAttributes.ReparsePoint) != 0;
 
-                // Never follow reparse points / symlinks recursively.
                 if (isDirectory && !isReparse && depth + 1 <= MaxDepth)
                 {
                     stack.Push((child.FullName, depth + 1));
@@ -233,7 +250,6 @@ public sealed class ListDirectoryTool : ITool
             }
             else if (entry is FileInfo file)
             {
-                // FileInfo may throw for size on some virtual files; guard.
                 string sizeText;
                 try
                 {

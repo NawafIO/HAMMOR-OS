@@ -108,10 +108,21 @@ public static class InfrastructureServiceCollectionExtensions
 
         registry.Register(new SaveMemoryTool(memoryStore));
         registry.Register(new SearchMemoryTool(memoryStore));
-        registry.Register(new ListDirectoryTool());
-        registry.Register(new ReadFileTool());
-        registry.Register(new WriteFileTool());
-        registry.Register(new DeleteFileTool());
+
+        // Filesystem tools are gated by IFilesystemPolicy when available.
+        // Infrastructure is platform-neutral, so it registers a managed
+        // fallback policy; Platform.Windows overrides it with a Windows-aware
+        // one (WindowsPathResolution + same FilesystemPolicy).
+        var policy = services.GetService<IFilesystemPolicy>()
+            ?? new FilesystemPolicy(
+                services.GetRequiredService<IConfigurationStore>(),
+                services.GetRequiredService<HammorPaths>(),
+                services.GetService<IPathResolution>() ?? new ManagedPathResolution());
+
+        registry.Register(new ListDirectoryTool(policy));
+        registry.Register(new ReadFileTool(policy));
+        registry.Register(new WriteFileTool(policy));
+        registry.Register(new DeleteFileTool(policy));
 
         return registry;
     }

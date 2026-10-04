@@ -4,10 +4,18 @@ namespace HAMMOR.Core.Tools.Filesystem;
 
 /// <summary>
 /// Deletes a single file. Declared Destructive so the permission engine always
-/// requires explicit confirmation before it runs.
+/// requires explicit confirmation before it runs. Gated by
+/// <see cref="IFilesystemPolicy"/> when supplied.
 /// </summary>
 public sealed class DeleteFileTool : ITool
 {
+    private readonly IFilesystemPolicy? _policy;
+
+    public DeleteFileTool(IFilesystemPolicy? policy = null)
+    {
+        _policy = policy;
+    }
+
     public string Name => "filesystem.delete_file";
 
     public string Description =>
@@ -58,21 +66,34 @@ public sealed class DeleteFileTool : ITool
         var rawPath = invocation.GetString("path")!;
 
         string fullPath;
-        try
+        if (_policy is not null)
         {
-            fullPath = Path.GetFullPath(rawPath);
+            var pr = _policy.Validate(rawPath);
+            if (!pr.IsAllowed)
+            {
+                return Task.FromResult(ToolResult.Failure(pr.Error!));
+            }
+
+            fullPath = pr.NormalizedPath;
         }
-        catch (ArgumentException ex)
+        else
         {
-            return Task.FromResult(ToolResult.Failure($"Invalid path '{rawPath}': {ex.Message}"));
-        }
-        catch (PathTooLongException ex)
-        {
-            return Task.FromResult(ToolResult.Failure($"Path too long '{rawPath}': {ex.Message}"));
-        }
-        catch (NotSupportedException ex)
-        {
-            return Task.FromResult(ToolResult.Failure($"Path not supported '{rawPath}': {ex.Message}"));
+            try
+            {
+                fullPath = Path.GetFullPath(rawPath);
+            }
+            catch (ArgumentException ex)
+            {
+                return Task.FromResult(ToolResult.Failure($"Invalid path '{rawPath}': {ex.Message}"));
+            }
+            catch (PathTooLongException ex)
+            {
+                return Task.FromResult(ToolResult.Failure($"Path too long '{rawPath}': {ex.Message}"));
+            }
+            catch (NotSupportedException ex)
+            {
+                return Task.FromResult(ToolResult.Failure($"Path not supported '{rawPath}': {ex.Message}"));
+            }
         }
 
         try

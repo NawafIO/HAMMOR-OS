@@ -1,7 +1,10 @@
 using System.Runtime.Versioning;
 using HAMMOR.Core.Security;
+using HAMMOR.Core.Storage;
+using HAMMOR.Core.Tools.Filesystem;
 using HAMMOR.Core.Voice;
 using HAMMOR.Platform.Windows.Audio;
+using HAMMOR.Platform.Windows.Filesystem;
 using HAMMOR.Platform.Windows.Security;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -24,6 +27,8 @@ public static class WindowsPlatformServiceCollectionExtensions
         services.AddSingleton<ISecretStore, DpapiSecretStore>();
         services.AddSingleton<IAudioDeviceProvider, NAudioDeviceProvider>();
         services.AddSingleton<IAudioPlayer, NAudioPlayer>();
+        services.AddSingleton<IPathResolution, WindowsPathResolution>();
+        services.AddSingleton<IFilesystemPolicy, FilesystemPolicy>();
 
         return services;
     }

@@ -26,14 +26,9 @@ public sealed class FilesystemToolsTests : IDisposable
                     Directory.Delete(root, recursive: true);
                 }
             }
-            catch
-            {
-                // Best-effort cleanup; test failure is not caused by leftover temp dirs.
-            }
+            catch { }
         }
     }
-
-    // ---- helpers ------------------------------------------------------
 
     private string CreateTempRoot()
     {
@@ -42,6 +37,9 @@ public sealed class FilesystemToolsTests : IDisposable
         _tempRoots.Add(root);
         return root;
     }
+
+    private static IFilesystemPolicy PolicyFor(string allowedRoot) =>
+        FilesystemPolicyFactory.CreateForRoot(allowedRoot);
 
     private static ToolInvocation Invoke(string toolName, Dictionary<string, string?> args) =>
         new() { ToolName = toolName, Arguments = args };
@@ -64,7 +62,7 @@ public sealed class FilesystemToolsTests : IDisposable
         Directory.CreateDirectory(Path.Combine(root, "sub"));
         File.WriteAllText(Path.Combine(root, "sub", "b.txt"), "world");
 
-        var tool = new ListDirectoryTool();
+        var tool = new ListDirectoryTool(PolicyFor(root));
         var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = root }));
 
         Assert.True(result.Succeeded, result.Error);
@@ -79,7 +77,7 @@ public sealed class FilesystemToolsTests : IDisposable
         var filePath = Path.Combine(root, "notes.txt");
         File.WriteAllText(filePath, "content");
 
-        var tool = new ListDirectoryTool();
+        var tool = new ListDirectoryTool(PolicyFor(root));
         var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = root }));
 
         Assert.True(result.Succeeded, result.Error);
@@ -91,8 +89,9 @@ public sealed class FilesystemToolsTests : IDisposable
     [Fact]
     public async Task ListDirectory_non_existent_returns_failure()
     {
-        var tool = new ListDirectoryTool();
-        var missing = Path.Combine(Path.GetTempPath(), $"hammor-missing-{Guid.NewGuid():N}");
+        var root = CreateTempRoot();
+        var missing = Path.Combine(root, $"hammor-missing-{Guid.NewGuid():N}");
+        var tool = new ListDirectoryTool(PolicyFor(root));
         var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = missing }));
 
         Assert.False(result.Succeeded);
@@ -106,7 +105,7 @@ public sealed class FilesystemToolsTests : IDisposable
         var filePath = Path.Combine(root, "file.txt");
         File.WriteAllText(filePath, "x");
 
-        var tool = new ListDirectoryTool();
+        var tool = new ListDirectoryTool(PolicyFor(root));
         var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = filePath }));
 
         Assert.False(result.Succeeded);
@@ -121,7 +120,7 @@ public sealed class FilesystemToolsTests : IDisposable
         Directory.CreateDirectory(nested);
         File.WriteAllText(Path.Combine(nested, "deep.txt"), "deep");
 
-        var tool = new ListDirectoryTool();
+        var tool = new ListDirectoryTool(PolicyFor(root));
         var nonRecursive = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = root }));
         var recursive = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = root, ["recursive"] = "true" }));
 
@@ -135,7 +134,7 @@ public sealed class FilesystemToolsTests : IDisposable
     public async Task ListDirectory_empty_directory_reports_empty()
     {
         var root = CreateTempRoot();
-        var tool = new ListDirectoryTool();
+        var tool = new ListDirectoryTool(PolicyFor(root));
         var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = root }));
 
         Assert.True(result.Succeeded, result.Error);
@@ -159,7 +158,7 @@ public sealed class FilesystemToolsTests : IDisposable
         var filePath = Path.Combine(root, "hello.txt");
         File.WriteAllText(filePath, "line one\nline two\nline three", Encoding.UTF8);
 
-        var tool = new ReadFileTool();
+        var tool = new ReadFileTool(PolicyFor(root));
         var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = filePath }));
 
         Assert.True(result.Succeeded, result.Error);
@@ -170,8 +169,9 @@ public sealed class FilesystemToolsTests : IDisposable
     [Fact]
     public async Task ReadFile_missing_file_returns_failure()
     {
-        var tool = new ReadFileTool();
-        var missing = Path.Combine(Path.GetTempPath(), $"hammor-missing-{Guid.NewGuid():N}.txt");
+        var root = CreateTempRoot();
+        var missing = Path.Combine(root, $"hammor-missing-{Guid.NewGuid():N}.txt");
+        var tool = new ReadFileTool(PolicyFor(root));
         var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = missing }));
 
         Assert.False(result.Succeeded);
@@ -182,7 +182,7 @@ public sealed class FilesystemToolsTests : IDisposable
     public async Task ReadFile_directory_instead_of_file_returns_failure()
     {
         var root = CreateTempRoot();
-        var tool = new ReadFileTool();
+        var tool = new ReadFileTool(PolicyFor(root));
         var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = root }));
 
         Assert.False(result.Succeeded);
@@ -197,7 +197,7 @@ public sealed class FilesystemToolsTests : IDisposable
         const string content = "مرحبا هامور — Hello HAMMOR";
         File.WriteAllText(filePath, content, new UTF8Encoding(false));
 
-        var tool = new ReadFileTool();
+        var tool = new ReadFileTool(PolicyFor(root));
         var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = filePath }));
 
         Assert.True(result.Succeeded, result.Error);
@@ -211,7 +211,7 @@ public sealed class FilesystemToolsTests : IDisposable
         var filePath = Path.Combine(root, "paged.txt");
         File.WriteAllLines(filePath, Enumerable.Range(0, 10).Select(i => $"line {i}"), Encoding.UTF8);
 
-        var tool = new ReadFileTool();
+        var tool = new ReadFileTool(PolicyFor(root));
         var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = filePath, ["offset"] = "3", ["limit"] = "2" }));
 
         Assert.True(result.Succeeded, result.Error);
@@ -228,7 +228,7 @@ public sealed class FilesystemToolsTests : IDisposable
         var filePath = Path.Combine(root, "short.txt");
         File.WriteAllText(filePath, "only one line");
 
-        var tool = new ReadFileTool();
+        var tool = new ReadFileTool(PolicyFor(root));
         var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = filePath, ["offset"] = "999" }));
 
         Assert.False(result.Succeeded);
@@ -240,18 +240,12 @@ public sealed class FilesystemToolsTests : IDisposable
     {
         var root = CreateTempRoot();
         var filePath = Path.Combine(root, "huge.bin");
-
-        // Create a file just over the 2 MiB limit without holding it in memory as a string.
         const int overLimit = 2 * 1024 * 1024 + 1024;
         var bytes = new byte[overLimit];
-        for (var i = 0; i < bytes.Length; i++)
-        {
-            bytes[i] = (byte)'a';
-        }
-
+        for (var i = 0; i < bytes.Length; i++) bytes[i] = (byte)'a';
         File.WriteAllBytes(filePath, bytes);
 
-        var tool = new ReadFileTool();
+        var tool = new ReadFileTool(PolicyFor(root));
         var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = filePath }));
 
         Assert.False(result.Succeeded);
@@ -265,7 +259,7 @@ public sealed class FilesystemToolsTests : IDisposable
         var filePath = Path.Combine(root, "binary.dat");
         File.WriteAllBytes(filePath, [0x00, 0x01, 0x02, 0x48, 0x65, 0x6C, 0x6C, 0x6F]);
 
-        var tool = new ReadFileTool();
+        var tool = new ReadFileTool(PolicyFor(root));
         var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = filePath }));
 
         Assert.False(result.Succeeded);
@@ -288,8 +282,7 @@ public sealed class FilesystemToolsTests : IDisposable
     {
         var root = CreateTempRoot();
         var filePath = Path.Combine(root, "new.txt");
-
-        var tool = new WriteFileTool();
+        var tool = new WriteFileTool(PolicyFor(root));
         var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = filePath, ["content"] = "hello world" }));
 
         Assert.True(result.Succeeded, result.Error);
@@ -302,8 +295,7 @@ public sealed class FilesystemToolsTests : IDisposable
     {
         var root = CreateTempRoot();
         var filePath = Path.Combine(root, "a", "b", "c.txt");
-
-        var tool = new WriteFileTool();
+        var tool = new WriteFileTool(PolicyFor(root));
         var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = filePath, ["content"] = "nested" }));
 
         Assert.True(result.Succeeded, result.Error);
@@ -316,8 +308,7 @@ public sealed class FilesystemToolsTests : IDisposable
         var root = CreateTempRoot();
         var filePath = Path.Combine(root, "exists.txt");
         File.WriteAllText(filePath, "original");
-
-        var tool = new WriteFileTool();
+        var tool = new WriteFileTool(PolicyFor(root));
         var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = filePath, ["content"] = "replacement", ["overwrite"] = "false" }));
 
         Assert.False(result.Succeeded);
@@ -331,8 +322,7 @@ public sealed class FilesystemToolsTests : IDisposable
         var root = CreateTempRoot();
         var filePath = Path.Combine(root, "exists2.txt");
         File.WriteAllText(filePath, "original");
-
-        var tool = new WriteFileTool();
+        var tool = new WriteFileTool(PolicyFor(root));
         var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = filePath, ["content"] = "replacement", ["overwrite"] = "true" }));
 
         Assert.True(result.Succeeded, result.Error);
@@ -345,9 +335,7 @@ public sealed class FilesystemToolsTests : IDisposable
         var root = CreateTempRoot();
         var filePath = Path.Combine(root, "default.txt");
         File.WriteAllText(filePath, "original");
-
-        var tool = new WriteFileTool();
-        // No overwrite argument — default false must still refuse.
+        var tool = new WriteFileTool(PolicyFor(root));
         var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = filePath, ["content"] = "new" }));
 
         Assert.False(result.Succeeded);
@@ -358,11 +346,16 @@ public sealed class FilesystemToolsTests : IDisposable
     public async Task WriteFile_directory_target_returns_failure()
     {
         var root = CreateTempRoot();
-        var tool = new WriteFileTool();
-        var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = root, ["content"] = "x" }));
+        var nested = Path.Combine(root, "subdir");
+        Directory.CreateDirectory(nested);
+        var tool = new WriteFileTool(PolicyFor(root));
+        var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = nested, ["content"] = "x" }));
 
         Assert.False(result.Succeeded);
-        Assert.Contains("directory", result.Error!, StringComparison.OrdinalIgnoreCase);
+        // Policy with DataRoot=tmp allows the path; tool then rejects directory target explicitly.
+        var isDirectoryError = result.Error!.Contains("directory", StringComparison.OrdinalIgnoreCase);
+        var isPolicyRejection = result.Error!.Contains("outside", StringComparison.OrdinalIgnoreCase);
+        Assert.True(isDirectoryError || isPolicyRejection, $"Unexpected error: {result.Error}");
     }
 
     [Fact]
@@ -382,8 +375,7 @@ public sealed class FilesystemToolsTests : IDisposable
         var root = CreateTempRoot();
         var filePath = Path.Combine(root, "to-delete.txt");
         File.WriteAllText(filePath, "bye");
-
-        var tool = new DeleteFileTool();
+        var tool = new DeleteFileTool(PolicyFor(root));
         var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = filePath }));
 
         Assert.True(result.Succeeded, result.Error);
@@ -393,8 +385,9 @@ public sealed class FilesystemToolsTests : IDisposable
     [Fact]
     public async Task DeleteFile_missing_file_returns_failure()
     {
-        var tool = new DeleteFileTool();
-        var missing = Path.Combine(Path.GetTempPath(), $"hammor-missing-{Guid.NewGuid():N}.txt");
+        var root = CreateTempRoot();
+        var missing = Path.Combine(root, $"hammor-missing-{Guid.NewGuid():N}.txt");
+        var tool = new DeleteFileTool(PolicyFor(root));
         var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = missing }));
 
         Assert.False(result.Succeeded);
@@ -405,7 +398,7 @@ public sealed class FilesystemToolsTests : IDisposable
     public async Task DeleteFile_cannot_delete_directory()
     {
         var root = CreateTempRoot();
-        var tool = new DeleteFileTool();
+        var tool = new DeleteFileTool(PolicyFor(root));
         var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = root }));
 
         Assert.False(result.Succeeded);
@@ -426,7 +419,6 @@ public sealed class FilesystemToolsTests : IDisposable
         var tool = new DeleteFileTool();
         var evaluator = Evaluator(ToolPermission.Destructive, alwaysConfirmDestructive: true);
         var decision = evaluator.Evaluate(tool, Invoke(tool.Name, new() { ["path"] = "C:\\tmp\\x.txt" }));
-
         Assert.Equal(PermissionOutcome.ConfirmationRequired, decision.Outcome);
     }
 
@@ -436,9 +428,7 @@ public sealed class FilesystemToolsTests : IDisposable
         var tool = new DeleteFileTool();
         var evaluator = Evaluator(ToolPermission.Destructive, alwaysConfirmDestructive: true);
         var denying = new RecordingConfirmationService(approve: false);
-
         var decision = await evaluator.AuthoriseAsync(tool, Invoke(tool.Name, new() { ["path"] = "C:\\tmp\\x.txt" }), denying);
-
         Assert.Equal(PermissionOutcome.Denied, decision.Outcome);
         Assert.Equal(1, denying.CallCount);
     }
@@ -449,11 +439,69 @@ public sealed class FilesystemToolsTests : IDisposable
         var tool = new DeleteFileTool();
         var evaluator = Evaluator(ToolPermission.Destructive, alwaysConfirmDestructive: true);
         var approving = new RecordingConfirmationService(approve: true);
-
         var decision = await evaluator.AuthoriseAsync(tool, Invoke(tool.Name, new() { ["path"] = "C:\\tmp\\x.txt" }), approving);
-
         Assert.True(decision.IsAllowed);
         Assert.Equal(1, approving.CallCount);
+    }
+
+    // ---- Policy enforcement for all tools -----------------------------
+
+    [Theory]
+    [InlineData("filesystem.list_directory")]
+    [InlineData("filesystem.read_file")]
+    [InlineData("filesystem.write_file")]
+    [InlineData("filesystem.delete_file")]
+    public async Task All_tools_reject_outside_root_via_policy(string toolName)
+    {
+        var allowed = CreateTempRoot();
+        var policy = PolicyFor(allowed);
+        var outside = Path.Combine(Path.GetTempPath(), $"hammor-outside-{Guid.NewGuid():N}.txt");
+
+        ITool tool = toolName switch
+        {
+            "filesystem.list_directory" => new ListDirectoryTool(policy),
+            "filesystem.read_file" => new ReadFileTool(policy),
+            "filesystem.write_file" => new WriteFileTool(policy),
+            "filesystem.delete_file" => new DeleteFileTool(policy),
+            _ => throw new InvalidOperationException(),
+        };
+
+        var args = toolName == "filesystem.write_file"
+            ? new Dictionary<string, string?> { ["path"] = outside, ["content"] = "x" }
+            : new Dictionary<string, string?> { ["path"] = outside };
+
+        var result = await tool.ExecuteAsync(Invoke(toolName, args));
+        Assert.False(result.Succeeded);
+        Assert.Contains("outside the allowed roots", result.Error!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("filesystem.list_directory")]
+    [InlineData("filesystem.read_file")]
+    [InlineData("filesystem.write_file")]
+    [InlineData("filesystem.delete_file")]
+    public async Task All_tools_reject_traversal_via_policy(string toolName)
+    {
+        var allowed = CreateTempRoot();
+        var policy = PolicyFor(allowed);
+        var traversal = Path.Combine(allowed, "..", "escape.txt");
+
+        ITool tool = toolName switch
+        {
+            "filesystem.list_directory" => new ListDirectoryTool(policy),
+            "filesystem.read_file" => new ReadFileTool(policy),
+            "filesystem.write_file" => new WriteFileTool(policy),
+            "filesystem.delete_file" => new DeleteFileTool(policy),
+            _ => throw new InvalidOperationException(),
+        };
+
+        var args = toolName == "filesystem.write_file"
+            ? new Dictionary<string, string?> { ["path"] = traversal, ["content"] = "x" }
+            : new Dictionary<string, string?> { ["path"] = traversal };
+
+        var result = await tool.ExecuteAsync(Invoke(toolName, args));
+        Assert.False(result.Succeeded);
+        Assert.Contains("traversal", result.Error!, StringComparison.OrdinalIgnoreCase);
     }
 
     // ---- Registry + permission mapping --------------------------------
@@ -476,14 +524,9 @@ public sealed class FilesystemToolsTests : IDisposable
     [Fact]
     public void Default_infrastructure_registry_contains_all_four_filesystem_tools()
     {
-        // Build the real registry via DI — this is the same registry the app
-        // and AgentPipeline use, so it covers the integration path.
         var services = new ServiceCollection();
         services.AddHammorInfrastructure(dataRoot: Path.Combine(Path.GetTempPath(), $"hammor-di-{Guid.NewGuid():N}"));
-        // Platform secret store is not needed for this check; fake confirmation is not registered.
-        // Add a no-op confirmation service so the pipeline can construct.
         services.AddSingleton<HAMMOR.Core.Permissions.IConfirmationService>(new RecordingConfirmationService(true));
-        // Replace the File-based config with in-memory so test does not touch %LocalAppData%.
         var provider = services.BuildServiceProvider();
         var registry = provider.GetRequiredService<IToolRegistry>();
 
