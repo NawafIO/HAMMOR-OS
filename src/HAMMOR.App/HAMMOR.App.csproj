@@ -11,8 +11,6 @@
     <RootNamespace>HAMMOR.App</RootNamespace>
     <AssemblyName>HAMMOR</AssemblyName>
     <UseWPF>true</UseWPF>
-    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
-    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <SatelliteResourceLanguages>en;ar</SatelliteResourceLanguages>
   </PropertyGroup>
 
