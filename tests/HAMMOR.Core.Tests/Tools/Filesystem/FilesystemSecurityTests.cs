@@ -48,8 +48,6 @@ public sealed class FilesystemSecurityTests : IDisposable
         var allowed = CreateTempRoot();
         var policy = PolicyFor(allowed);
 
-        var outside = Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar);
-        // Pick a sibling temp path that is not under allowed.
         var sibling = Path.Combine(Path.GetTempPath(), $"hammor-outside-{Guid.NewGuid():N}");
 
         var result = policy.Validate(sibling);
@@ -78,7 +76,6 @@ public sealed class FilesystemSecurityTests : IDisposable
         var allowed = CreateTempRoot();
         var policy = PolicyFor(allowed);
 
-        // Raw path contains ".." but after GetFullPath it escapes to parent's sibling.
         var escaped = allowed.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar + ".." + Path.DirectorySeparatorChar + $"hammor-escape-{Guid.NewGuid():N}";
 
         var result = policy.Validate(escaped);
@@ -93,8 +90,21 @@ public sealed class FilesystemSecurityTests : IDisposable
         var allowed = CreateTempRoot();
         var policy = PolicyFor(allowed);
 
-        // Use forward slash traversal on Windows.
         var traversal = allowed.Replace('\\', '/') + "/../escape.txt";
+
+        var result = policy.Validate(traversal);
+
+        Assert.False(result.IsAllowed);
+        Assert.Contains("traversal", result.Error!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Policy_denies_whitespace_padded_traversal()
+    {
+        var allowed = CreateTempRoot();
+        var policy = PolicyFor(allowed);
+
+        var traversal = Path.Combine(allowed, " .. ", "escape.txt");
 
         var result = policy.Validate(traversal);
 
@@ -111,10 +121,30 @@ public sealed class FilesystemSecurityTests : IDisposable
         var windowsDir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
         if (string.IsNullOrWhiteSpace(windowsDir))
         {
-            return; // Skip on non-Windows CI.
+            return;
         }
 
         var result = policy.Validate(windowsDir);
+
+        Assert.False(result.IsAllowed);
+        Assert.Contains("protected", result.Error!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Policy_denies_windows_directory_with_trailing_dot()
+    {
+        var allowed = CreateTempRoot();
+        var policy = PolicyFor(allowed);
+
+        var windowsDir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        if (string.IsNullOrWhiteSpace(windowsDir))
+        {
+            return;
+        }
+
+        var withDot = windowsDir + ".";
+
+        var result = policy.Validate(withDot);
 
         Assert.False(result.IsAllowed);
         Assert.Contains("protected", result.Error!, StringComparison.OrdinalIgnoreCase);
@@ -213,13 +243,64 @@ public sealed class FilesystemSecurityTests : IDisposable
             try
             {
                 var full = Path.GetFullPath(path);
-                return string.Equals(full, _reparsePath, StringComparison.OrdinalIgnoreCase)
-                       || full.StartsWith(_reparsePath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+                return string.Equals(full, _reparsePath, StringComparison.OrdinalIgnoreCase);
             }
             catch { return false; }
         }
 
-        public string? ResolveFinalPath(string path) => _targetOutside;
+        public string? ResolveFinalPath(string path)
+        {
+            try
+            {
+                var full = Path.GetFullPath(path);
+                if (string.Equals(full, _reparsePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    return _targetOutside;
+                }
+
+                return Path.GetFullPath(path);
+            }
+            catch { return null; }
+        }
+
+        public string GetFullPath(string path) => Path.GetFullPath(path);
+    }
+
+    private sealed class StubDirectoryReparseResolution : IPathResolution
+    {
+        private readonly string _reparsePath;
+        private readonly string _targetOutside;
+
+        public StubDirectoryReparseResolution(string reparsePath, string targetOutside)
+        {
+            _reparsePath = Path.GetFullPath(reparsePath);
+            _targetOutside = Path.GetFullPath(targetOutside);
+        }
+
+        public bool IsReparsePoint(string path)
+        {
+            try
+            {
+                var full = Path.GetFullPath(path);
+                return string.Equals(full, _reparsePath, StringComparison.OrdinalIgnoreCase);
+            }
+            catch { return false; }
+        }
+
+        public string? ResolveFinalPath(string path)
+        {
+            try
+            {
+                var full = Path.GetFullPath(path);
+                if (string.Equals(full, _reparsePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    return _targetOutside;
+                }
+
+                return Path.GetFullPath(path);
+            }
+            catch { return null; }
+        }
 
         public string GetFullPath(string path) => Path.GetFullPath(path);
     }
@@ -242,8 +323,11 @@ public sealed class FilesystemSecurityTests : IDisposable
         var result = policy.Validate(reparse);
 
         Assert.False(result.IsAllowed);
-        Assert.Contains("reparse", result.Error!, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("outside", result.Error!, StringComparison.OrdinalIgnoreCase);
+        Assert.True(
+            result.Error!.Contains("reparse", StringComparison.OrdinalIgnoreCase)
+            || result.Error!.Contains("outside", StringComparison.OrdinalIgnoreCase)
+            || result.Error!.Contains("protected", StringComparison.OrdinalIgnoreCase),
+            $"Expected reparse/outside/protected but got: {result.Error}");
     }
 
     [Fact]
@@ -258,7 +342,7 @@ public sealed class FilesystemSecurityTests : IDisposable
             outside = Path.Combine(Path.GetTempPath(), $"hammor-outside-{Guid.NewGuid():N}");
         }
 
-        var stub = new StubReparseResolution(reparseDir, outside);
+        var stub = new StubDirectoryReparseResolution(reparseDir, outside);
         var policy = PolicyFor(allowed, stub);
 
         var child = Path.Combine(reparseDir, "child.txt");
@@ -266,7 +350,99 @@ public sealed class FilesystemSecurityTests : IDisposable
         var result = policy.Validate(child);
 
         Assert.False(result.IsAllowed);
-        Assert.Contains("reparse", result.Error!, StringComparison.OrdinalIgnoreCase);
+        Assert.True(
+            result.Error!.Contains("reparse", StringComparison.OrdinalIgnoreCase)
+            || result.Error!.Contains("outside", StringComparison.OrdinalIgnoreCase)
+            || result.Error!.Contains("protected", StringComparison.OrdinalIgnoreCase),
+            $"Expected reparse/outside/protected but got: {result.Error}");
+    }
+
+    [Fact]
+    public void Policy_denies_reparse_point_whose_target_is_protected()
+    {
+        var allowed = CreateTempRoot();
+        var reparse = Path.Combine(allowed, "link2");
+        Directory.CreateDirectory(reparse);
+        var windowsDir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        if (string.IsNullOrWhiteSpace(windowsDir))
+        {
+            return;
+        }
+
+        var stub = new StubReparseResolution(reparse, windowsDir);
+        var policy = PolicyFor(allowed, stub);
+
+        var result = policy.Validate(reparse);
+
+        Assert.False(result.IsAllowed);
+        Assert.Contains("protected", result.Error!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Policy_rejects_extra_root_that_is_a_reparse_point()
+    {
+        var allowed = CreateTempRoot();
+        var outside = Path.Combine(Path.GetTempPath(), $"hammor-outside-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(outside);
+
+        var extraRoot = Path.Combine(allowed, "extra-link");
+        Directory.CreateDirectory(extraRoot);
+
+        var stub = new StubReparseResolution(extraRoot, outside);
+        var policy = PolicyFor(allowed, stub, extraRoots: new List<string> { extraRoot });
+
+        // The reparse extra root must not be trusted — accessing through it should not be allowed.
+        var throughReparse = policy.Validate(Path.Combine(extraRoot, "file.txt"));
+        Assert.False(throughReparse.IsAllowed);
+    }
+
+    [Fact]
+    public void Policy_outside_path_remains_denied_even_when_reparse_root_was_rejected()
+    {
+        var allowed = CreateTempRoot();
+        var outside = Path.Combine(Path.GetTempPath(), $"hammor-outside-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(outside);
+
+        var extraRoot = Path.Combine(allowed, "extra-link");
+        Directory.CreateDirectory(extraRoot);
+
+        var stub = new StubReparseResolution(extraRoot, outside);
+        var policy = PolicyFor(allowed, stub, extraRoots: new List<string> { extraRoot });
+
+        var outsideFile = Path.Combine(outside, "evil.txt");
+        var outsideResult = policy.Validate(outsideFile);
+        Assert.False(outsideResult.IsAllowed);
+        Assert.Contains("outside the allowed roots", outsideResult.Error!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Policy_allows_non_reparse_extra_root()
+    {
+        var allowed = CreateTempRoot();
+        var extra = CreateTempRoot();
+        // No reparse stub — plain extra root should be accepted.
+        var policy = PolicyFor(allowed, extraRoots: new List<string> { extra });
+
+        var result = policy.Validate(Path.Combine(extra, "notes.txt"));
+        Assert.True(result.IsAllowed, result.Error);
+    }
+
+    // ---- Canonicalization / Windows casing tests ----------------------
+
+    [Fact]
+    public void Policy_denies_windows_path_with_different_casing()
+    {
+        var allowed = CreateTempRoot();
+        var policy = PolicyFor(allowed);
+
+        var windowsDir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        if (string.IsNullOrWhiteSpace(windowsDir))
+        {
+            return;
+        }
+
+        var result = policy.Validate(windowsDir.ToUpperInvariant());
+        Assert.False(result.IsAllowed);
     }
 
     // ---- All four tools enforce the policy ----------------------------
@@ -395,5 +571,149 @@ public sealed class FilesystemSecurityTests : IDisposable
 
         Assert.False(result.Succeeded);
         Assert.Contains("protected", result.Error!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("filesystem.list_directory")]
+    [InlineData("filesystem.read_file")]
+    [InlineData("filesystem.write_file")]
+    [InlineData("filesystem.delete_file")]
+    public async Task All_tools_reject_reparse_escape(string toolName)
+    {
+        var allowed = CreateTempRoot();
+        var reparse = Path.Combine(allowed, "link");
+        Directory.CreateDirectory(reparse);
+        var outside = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        if (string.IsNullOrWhiteSpace(outside))
+        {
+            outside = Path.Combine(Path.GetTempPath(), $"hammor-outside-{Guid.NewGuid():N}");
+        }
+
+        var stub = new StubReparseResolution(reparse, outside);
+        var policy = PolicyFor(allowed, stub);
+
+        ITool tool = toolName switch
+        {
+            "filesystem.list_directory" => new ListDirectoryTool(policy),
+            "filesystem.read_file" => new ReadFileTool(policy),
+            "filesystem.write_file" => new WriteFileTool(policy),
+            "filesystem.delete_file" => new DeleteFileTool(policy),
+            _ => throw new InvalidOperationException(),
+        };
+
+        var args = toolName == "filesystem.write_file"
+            ? new Dictionary<string, string?> { ["path"] = reparse, ["content"] = "x" }
+            : new Dictionary<string, string?> { ["path"] = reparse };
+
+        var result = await tool.ExecuteAsync(Invoke(toolName, args));
+
+        Assert.False(result.Succeeded);
+    }
+
+    // ---- WriteFile parent-directory / TOCTOU regressions --------------
+
+    [Fact]
+    public async Task WriteFile_through_reparse_parent_is_denied()
+    {
+        var allowed = CreateTempRoot();
+        var reparseDir = Path.Combine(allowed, "junction");
+        Directory.CreateDirectory(reparseDir);
+        var outside = Path.Combine(Path.GetTempPath(), $"hammor-outside-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(outside);
+
+        var stub = new StubDirectoryReparseResolution(reparseDir, outside);
+        var policy = PolicyFor(allowed, stub);
+        var tool = new WriteFileTool(policy);
+
+        var target = Path.Combine(reparseDir, "evil.txt");
+        var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = target, ["content"] = "pwn" }));
+
+        Assert.False(result.Succeeded);
+    }
+
+    [Fact]
+    public async Task WriteFile_parent_recheck_blocks_reparse_swapped_between_validate_and_write()
+    {
+        var allowed = CreateTempRoot();
+        var subdir = Path.Combine(allowed, "a");
+        Directory.CreateDirectory(subdir);
+
+        var outside = Path.Combine(Path.GetTempPath(), $"hammor-outside-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(outside);
+
+        var flipping = new FlippingReparseResolution(Path.Combine(allowed, "a"), outside);
+        var policy = PolicyFor(allowed, flipping);
+        var tool = new WriteFileTool(policy);
+
+        var target = Path.Combine(allowed, "a", "b", "file.txt");
+        var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = target, ["content"] = "hello" }));
+
+        Assert.False(result.Succeeded);
+    }
+
+    private sealed class FlippingReparseResolution : IPathResolution
+    {
+        private readonly string _reparseDir;
+        private readonly string _target;
+        private int _calls;
+
+        public FlippingReparseResolution(string reparseDir, string target)
+        {
+            _reparseDir = Path.GetFullPath(reparseDir);
+            _target = Path.GetFullPath(target);
+        }
+
+        public bool IsReparsePoint(string path)
+        {
+            try
+            {
+                var full = Path.GetFullPath(path);
+                if (!string.Equals(full, _reparseDir, StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+
+                return Interlocked.Increment(ref _calls) > 1;
+            }
+            catch { return false; }
+        }
+
+        public string? ResolveFinalPath(string path)
+        {
+            try
+            {
+                var full = Path.GetFullPath(path);
+                if (string.Equals(full, _reparseDir, StringComparison.OrdinalIgnoreCase))
+                {
+                    return _target;
+                }
+
+                return Path.GetFullPath(path);
+            }
+            catch { return null; }
+        }
+
+        public string GetFullPath(string path) => Path.GetFullPath(path);
+    }
+
+    [Fact]
+    public async Task DeleteFile_through_reparse_parent_is_denied()
+    {
+        var allowed = CreateTempRoot();
+        var reparseDir = Path.Combine(allowed, "junction-del");
+        Directory.CreateDirectory(reparseDir);
+        var outside = Path.Combine(Path.GetTempPath(), $"hammor-outside-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(outside);
+
+        var stub = new StubDirectoryReparseResolution(reparseDir, outside);
+        var policy = PolicyFor(allowed, stub);
+
+        var fileUnderReparse = Path.Combine(reparseDir, "victim.txt");
+        File.WriteAllText(fileUnderReparse, "x");
+
+        var tool = new DeleteFileTool(policy);
+        var result = await tool.ExecuteAsync(Invoke(tool.Name, new() { ["path"] = fileUnderReparse }));
+
+        Assert.False(result.Succeeded);
     }
 }

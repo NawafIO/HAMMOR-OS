@@ -152,6 +152,38 @@ public sealed class WriteFileTool : ITool
                 Directory.CreateDirectory(directory);
             }
 
+            // TOCTOU hardening: re-validate after parent directories are materialised.
+            // An ancestor could have been swapped to a reparse point between the
+            // initial Validate and now, or the new directory chain could contain one.
+            if (_policy is not null)
+            {
+                var recheck = _policy.Validate(fullPath);
+                if (!recheck.IsAllowed)
+                {
+                    return ToolResult.Failure(recheck.Error!);
+                }
+
+                // Use the rechecked canonical path for the actual write.
+                fullPath = recheck.NormalizedPath;
+                directory = Path.GetDirectoryName(fullPath);
+            }
+
+            // Validate the parent directory itself when it exists — ensures we are
+            // not writing through a directory-symlink that escapes roots.
+            if (_policy is not null && !string.IsNullOrEmpty(directory) && Directory.Exists(directory))
+            {
+                var dirCheck = _policy.Validate(directory);
+                if (!dirCheck.IsAllowed)
+                {
+                    return ToolResult.Failure(dirCheck.Error!);
+                }
+            }
+
+            if (Directory.Exists(fullPath))
+            {
+                return ToolResult.Failure($"Path is a directory, not a file: '{fullPath}'.");
+            }
+
             var tempPath = Path.Combine(
                 directory ?? Path.GetTempPath(),
                 $".hammor-write-{Guid.NewGuid():N}.tmp");

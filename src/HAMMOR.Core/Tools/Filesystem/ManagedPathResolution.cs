@@ -23,10 +23,20 @@ public sealed class ManagedPathResolution : IPathResolution
 
     public string? ResolveFinalPath(string path)
     {
-        // Portable fallback cannot follow junctions reliably without P/Invoke.
-        // Callers treat null as "unresolvable" and deny the operation.
         try
         {
+            if (!File.Exists(path) && !Directory.Exists(path))
+            {
+                return null;
+            }
+
+            // Cannot reliably follow junctions without P/Invoke — signal
+            // unresolvable so the policy denies safely (fail-closed).
+            if (IsReparsePoint(path))
+            {
+                return null;
+            }
+
             return Path.GetFullPath(path);
         }
         catch

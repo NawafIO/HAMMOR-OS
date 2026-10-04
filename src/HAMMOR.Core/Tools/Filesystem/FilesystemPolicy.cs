@@ -35,20 +35,20 @@ public sealed class FilesystemPolicy : IFilesystemPolicy
         ArgumentNullException.ThrowIfNull(hammorPaths);
 
         _pathResolution = pathResolution ?? new ManagedPathResolution();
-        _dataRoot = EnsureTrailingSeparator(hammorPaths.DataRoot);
-        _secretsDirectory = EnsureTrailingSeparator(hammorPaths.SecretsDirectory);
+        // Do not follow reparse for the roots themselves — a configured root that is a
+        // symlink/junction is treated as untrusted and rejected in TryAddRoot. Using
+        // GetFullPath alone preserves the link name for the trust check.
+        _dataRoot = EnsureTrailingSeparator(_pathResolution.GetFullPath(hammorPaths.DataRoot));
+        _secretsDirectory = EnsureTrailingSeparator(_pathResolution.GetFullPath(hammorPaths.SecretsDirectory));
 
         _allowedRoots = new List<string> { _dataRoot };
 
-        // Memory.RootPath: when the user configures a custom memory location,
-        // that location is also an approved root.
         var memoryRoot = configurationStore.Current.Memory.RootPath;
         if (!string.IsNullOrWhiteSpace(memoryRoot))
         {
             TryAddRoot(memoryRoot);
         }
 
-        // SecuritySettings.FilesystemAllowedRoots: optional explicit allow-list.
         var extraRoots = configurationStore.Current.Security.FilesystemAllowedRoots;
         if (extraRoots is not null)
         {
@@ -65,21 +65,38 @@ public sealed class FilesystemPolicy : IFilesystemPolicy
         {
             try
             {
-                var full = _pathResolution.GetFullPath(raw);
+                var fullRaw = _pathResolution.GetFullPath(raw);
+                // Any configured root that is itself a reparse point (or traverses one) is
+                // untrusted — do not add it or its target. This prevents an attacker from
+                // configuring a symlink that redirects an allowed root outside the boundary.
+                if (ExistsAsReparsePoint(fullRaw))
+                {
+                    return;
+                }
+
+                if (IsInsideReparseChain(fullRaw, out _))
+                {
+                    return;
+                }
+
+                var full = Canonicalize(raw);
                 var normalised = EnsureTrailingSeparator(full);
                 if (!_allowedRoots.Any(r => string.Equals(r, normalised, StringComparison.OrdinalIgnoreCase)))
                 {
+                    if (GetProtectedReason(normalised) is not null)
+                    {
+                        return;
+                    }
+
                     _allowedRoots.Add(normalised);
                 }
             }
             catch
             {
-                // Ignore malformed configured roots; they will simply not be allowed.
             }
         }
     }
 
-    /// <summary>All roots the policy currently considers allowed.</summary>
     public IReadOnlyList<string> AllowedRoots => _allowedRoots;
 
     public FilesystemPolicyResult Validate(string rawPath)
@@ -99,7 +116,6 @@ public sealed class FilesystemPolicy : IFilesystemPolicy
             return FilesystemPolicyResult.Deny(rawPath, "Path contains invalid characters.");
         }
 
-        // Detect raw traversal markers before normalization.
         if (ContainsTraversalSegment(rawPath))
         {
             return FilesystemPolicyResult.Deny(rawPath, "Path contains traversal ('..') and is not allowed.");
@@ -108,7 +124,7 @@ public sealed class FilesystemPolicy : IFilesystemPolicy
         string normalized;
         try
         {
-            normalized = _pathResolution.GetFullPath(rawPath);
+            normalized = Canonicalize(rawPath);
         }
         catch (ArgumentException ex)
         {
@@ -123,7 +139,6 @@ public sealed class FilesystemPolicy : IFilesystemPolicy
             return FilesystemPolicyResult.Deny(rawPath, $"Path not supported: {ex.Message}");
         }
 
-        // If the path itself is a reparse point, resolve it and validate the target.
         if (ExistsAsReparsePoint(normalized))
         {
             var resolved = _pathResolution.ResolveFinalPath(normalized);
@@ -132,10 +147,9 @@ public sealed class FilesystemPolicy : IFilesystemPolicy
                 return FilesystemPolicyResult.Deny(normalized, "Path is a reparse point whose target cannot be resolved and is not allowed.");
             }
 
-            // Reparse must not escape roots.
             try
             {
-                resolved = _pathResolution.GetFullPath(resolved);
+                resolved = Canonicalize(resolved);
             }
             catch (Exception ex)
             {
@@ -147,40 +161,32 @@ public sealed class FilesystemPolicy : IFilesystemPolicy
                 return FilesystemPolicyResult.Deny(normalized, $"Path is a reparse point whose target '{resolved}' is outside the allowed roots and is not allowed.");
             }
 
-            // Also reject if the target is a protected location.
             var protectedReason = GetProtectedReason(resolved);
             if (protectedReason is not null)
             {
                 return FilesystemPolicyResult.Deny(normalized, protectedReason);
             }
 
-            // The normalized path to use is the resolved target for further checks.
-            // Keep reporting the original normalized path in the error, but return
-            // the resolved one as the effective path.
             normalized = resolved;
         }
-        else if (IsInsideReparseChain(normalized))
+        else if (IsInsideReparseChain(normalized, out var ancestorTarget))
         {
-            // Any ancestor of the path is a reparse point that escapes.
-            var ancestorResolve = TryResolveNearestReparseAncestor(normalized);
-            if (ancestorResolve is not null)
+            if (ancestorTarget is not null)
             {
                 return FilesystemPolicyResult.Deny(
                     normalized,
-                    $"Path traverses a reparse point whose target '{ancestorResolve}' is outside the allowed roots and is not allowed.");
+                    $"Path traverses a reparse point whose target '{ancestorTarget}' is outside the allowed roots and is not allowed.");
             }
 
             return FilesystemPolicyResult.Deny(normalized, "Path traverses a reparse point that cannot be safely resolved and is not allowed.");
         }
 
-        // Protected locations (Windows, Program Files, HAMMOR secrets).
         var reason = GetProtectedReason(normalized);
         if (reason is not null)
         {
             return FilesystemPolicyResult.Deny(normalized, reason);
         }
 
-        // Must be under an approved root.
         if (!IsUnderAllowedRoot(normalized))
         {
             var rootsText = string.Join(", ", _allowedRoots.Select(r => $"'{r.TrimEnd(Path.DirectorySeparatorChar)}'"));
@@ -192,7 +198,59 @@ public sealed class FilesystemPolicy : IFilesystemPolicy
         return FilesystemPolicyResult.Allow(normalized);
     }
 
-    // ---- helpers ------------------------------------------------------
+    private string Canonicalize(string path)
+    {
+        var full = _pathResolution.GetFullPath(path);
+        try
+        {
+            var remainder = string.Empty;
+            var probe = full;
+            while (!string.IsNullOrEmpty(probe))
+            {
+                if (File.Exists(probe) || Directory.Exists(probe))
+                {
+                    var resolved = _pathResolution.ResolveFinalPath(probe);
+                    if (resolved is not null)
+                    {
+                        try { resolved = _pathResolution.GetFullPath(resolved); } catch { resolved = null; }
+                    }
+
+                    if (resolved is not null && !string.IsNullOrEmpty(remainder))
+                    {
+                        resolved = Path.Combine(resolved, remainder);
+                        try { resolved = _pathResolution.GetFullPath(resolved); } catch { }
+                    }
+
+                    if (resolved is not null)
+                    {
+                        return resolved;
+                    }
+
+                    break;
+                }
+
+                var parent = Path.GetDirectoryName(probe);
+                if (string.IsNullOrEmpty(parent) || parent.Length < 3)
+                {
+                    break;
+                }
+
+                var leaf = Path.GetFileName(probe);
+                if (string.IsNullOrEmpty(leaf))
+                {
+                    break;
+                }
+
+                remainder = string.IsNullOrEmpty(remainder) ? leaf : Path.Combine(leaf, remainder);
+                probe = parent;
+            }
+        }
+        catch
+        {
+        }
+
+        return full;
+    }
 
     private bool ExistsAsReparsePoint(string fullPath)
     {
@@ -211,8 +269,9 @@ public sealed class FilesystemPolicy : IFilesystemPolicy
         }
     }
 
-    private bool IsInsideReparseChain(string fullPath)
+    private bool IsInsideReparseChain(string fullPath, out string? escapingTarget)
     {
+        escapingTarget = null;
         try
         {
             var current = Path.GetDirectoryName(fullPath);
@@ -223,26 +282,29 @@ public sealed class FilesystemPolicy : IFilesystemPolicy
                     var resolved = _pathResolution.ResolveFinalPath(current);
                     if (resolved is null)
                     {
+                        escapingTarget = null;
                         return true;
                     }
 
                     try
                     {
-                        resolved = _pathResolution.GetFullPath(resolved);
+                        resolved = Canonicalize(resolved);
                     }
                     catch
                     {
+                        escapingTarget = resolved;
                         return true;
                     }
 
                     if (!IsUnderAllowedRoot(resolved))
                     {
+                        escapingTarget = resolved;
                         return true;
                     }
 
-                    // If the ancestor reparse itself points to a protected location, treat as inside.
                     if (GetProtectedReason(resolved) is not null)
                     {
+                        escapingTarget = resolved;
                         return true;
                     }
                 }
@@ -258,42 +320,20 @@ public sealed class FilesystemPolicy : IFilesystemPolicy
         }
     }
 
-    private string? TryResolveNearestReparseAncestor(string fullPath)
-    {
-        try
-        {
-            var current = Path.GetDirectoryName(fullPath);
-            while (!string.IsNullOrEmpty(current) && current.Length >= 3)
-            {
-                if (Directory.Exists(current) && _pathResolution.IsReparsePoint(current))
-                {
-                    var resolved = _pathResolution.ResolveFinalPath(current);
-                    return resolved;
-                }
-
-                current = Path.GetDirectoryName(current);
-            }
-
-            return null;
-        }
-        catch
-        {
-            return null;
-        }
-    }
+    private bool IsInsideReparseChain(string fullPath) => IsInsideReparseChain(fullPath, out _);
 
     private bool IsUnderAllowedRoot(string normalized)
     {
+        var probe = normalized;
         foreach (var root in _allowedRoots)
         {
-            if (normalized.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+            if (probe.StartsWith(root, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
 
-            // Exact match without trailing separator.
             var trimmed = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            if (string.Equals(normalized, trimmed, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(probe.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), trimmed, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
@@ -304,10 +344,11 @@ public sealed class FilesystemPolicy : IFilesystemPolicy
 
     private string? GetProtectedReason(string normalized)
     {
-        // HAMMOR secrets directory is always protected, even though it is under DataRoot.
-        // Reads/writes to it must go through ISecretStore/DPAPI, not filesystem tools.
-        if (normalized.StartsWith(_secretsDirectory, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(normalized.TrimEnd(Path.DirectorySeparatorChar), _secretsDirectory.TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
+        var probe = normalized.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var withSep = EnsureTrailingSeparator(probe);
+
+        if (withSep.StartsWith(_secretsDirectory, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(probe, _secretsDirectory.TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
         {
             return $"Path '{normalized}' is inside HAMMOR's secret storage and is not allowed.";
         }
@@ -315,9 +356,10 @@ public sealed class FilesystemPolicy : IFilesystemPolicy
         var windowsDir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
         if (!string.IsNullOrWhiteSpace(windowsDir))
         {
-            var win = EnsureTrailingSeparator(Path.GetFullPath(windowsDir));
-            if (normalized.StartsWith(win, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(normalized.TrimEnd(Path.DirectorySeparatorChar), win.TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
+            string win;
+            try { win = EnsureTrailingSeparator(Canonicalize(windowsDir)); } catch { win = EnsureTrailingSeparator(Path.GetFullPath(windowsDir)); }
+            if (withSep.StartsWith(win, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(probe, win.TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
             {
                 return $"Path '{normalized}' is inside the protected Windows directory and is not allowed.";
             }
@@ -326,8 +368,10 @@ public sealed class FilesystemPolicy : IFilesystemPolicy
         var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
         if (!string.IsNullOrWhiteSpace(programFiles))
         {
-            var pf = EnsureTrailingSeparator(Path.GetFullPath(programFiles));
-            if (normalized.StartsWith(pf, StringComparison.OrdinalIgnoreCase))
+            string pf;
+            try { pf = EnsureTrailingSeparator(Canonicalize(programFiles)); } catch { pf = EnsureTrailingSeparator(Path.GetFullPath(programFiles)); }
+            if (withSep.StartsWith(pf, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(probe, pf.TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
             {
                 return $"Path '{normalized}' is inside Program Files and is not allowed.";
             }
@@ -336,9 +380,10 @@ public sealed class FilesystemPolicy : IFilesystemPolicy
         var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
         if (!string.IsNullOrWhiteSpace(programFilesX86))
         {
-            var pf86 = EnsureTrailingSeparator(Path.GetFullPath(programFilesX86));
-            if (normalized.StartsWith(pf86, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(normalized.TrimEnd(Path.DirectorySeparatorChar), pf86.TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
+            string pf86;
+            try { pf86 = EnsureTrailingSeparator(Canonicalize(programFilesX86)); } catch { pf86 = EnsureTrailingSeparator(Path.GetFullPath(programFilesX86)); }
+            if (withSep.StartsWith(pf86, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(probe, pf86.TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
             {
                 return $"Path '{normalized}' is inside Program Files (x86) and is not allowed.";
             }
@@ -349,11 +394,11 @@ public sealed class FilesystemPolicy : IFilesystemPolicy
 
     private static bool ContainsTraversalSegment(string raw)
     {
-        // Split on both separators; any ".." segment is traversal.
         var parts = raw.Split(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }, StringSplitOptions.None);
         foreach (var part in parts)
         {
-            if (part == "..")
+            var trimmed = part.Trim();
+            if (trimmed == "..")
             {
                 return true;
             }
