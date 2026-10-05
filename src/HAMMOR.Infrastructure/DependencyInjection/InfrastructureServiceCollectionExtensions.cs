@@ -16,6 +16,8 @@ using HAMMOR.Infrastructure.Persistence;
 using HAMMOR.Infrastructure.Status;
 using HAMMOR.Core.Storage;
 using HAMMOR.Core.Tools.Filesystem;
+using HAMMOR.Core.Tools.Git;
+using HAMMOR.Core.Tools.Project;
 using HAMMOR.Infrastructure.Tools;
 using HAMMOR.Infrastructure.Voice;
 using Microsoft.Extensions.DependencyInjection;
@@ -123,6 +125,15 @@ public static class InfrastructureServiceCollectionExtensions
         registry.Register(new ReadFileTool(policy));
         registry.Register(new WriteFileTool(policy));
         registry.Register(new DeleteFileTool(policy));
+
+        // Git: structured, no arbitrary command executor. Only status/diff/log.
+        var gitRunner = new SafeGitRunner(policy);
+        registry.Register(new GitStatusTool(gitRunner));
+        registry.Register(new GitDiffTool(gitRunner));
+        registry.Register(new GitLogTool(gitRunner));
+
+        // Project inspect: metadata-only, bounded, no content reads, no recursive scan.
+        registry.Register(new ProjectInspectTool(policy));
 
         return registry;
     }
