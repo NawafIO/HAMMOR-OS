@@ -8,6 +8,13 @@ public enum TaskState
     Completed = 2,
     Failed = 3,
     Cancelled = 4,
+
+    /// <summary>
+    /// Waiting for the user: an unattended run needed authority it was not
+    /// granted. Not terminal. Returns to Pending only through
+    /// <see cref="ITaskStore.ResumeBlockedAsync"/> with a new grant.
+    /// </summary>
+    Blocked = 5,
 }
 
 /// <summary>A unit of work HAMMOR tracks across restarts.</summary>
@@ -45,6 +52,22 @@ public sealed record HammorTask
 
     /// <summary>Human-readable result when the task completed.</summary>
     public string? Result { get; init; }
+
+    /// <summary>
+    /// Instruction handed to the agent when the task runs unattended. Distinct
+    /// from <see cref="Title"/>/<see cref="Description"/>, which are display text.
+    /// </summary>
+    public string? Prompt { get; init; }
+
+    /// <summary>Why the task is Blocked, when <see cref="State"/> is Blocked.</summary>
+    public string? BlockedReason { get; init; }
+
+    /// <summary>
+    /// Authority for unattended execution. Null means the task is
+    /// interactive-only and the runner will never execute it. Immutable once
+    /// stored: replaced only by <see cref="ITaskStore.ResumeBlockedAsync"/>.
+    /// </summary>
+    public TaskGrant? Grant { get; init; }
 
     public bool IsTerminal =>
         State is TaskState.Completed or TaskState.Failed or TaskState.Cancelled;

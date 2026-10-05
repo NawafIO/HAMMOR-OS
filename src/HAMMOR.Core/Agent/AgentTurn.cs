@@ -56,6 +56,17 @@ public sealed record AgentTurnResult(
     string? Error,
     AiUsage? Usage)
 {
+    /// <summary>
+    /// Set when an unattended run stopped because it needed authority it was
+    /// not granted. The task becomes Blocked rather than Failed.
+    /// </summary>
+    public string? BlockedReason { get; init; }
+
+    public bool IsBlocked => BlockedReason is not null;
+
+    public static AgentTurnResult Blocked(AgentStage stage, string reason) =>
+        new(false, string.Empty, stage, reason, null) { BlockedReason = reason };
+
     public static AgentTurnResult Success(string reply, AiUsage? usage) =>
         new(true, reply, AgentStage.Respond, null, usage);
 

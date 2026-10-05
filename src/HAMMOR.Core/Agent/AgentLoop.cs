@@ -5,6 +5,7 @@ using HAMMOR.Core.Diagnostics;
 using HAMMOR.Core.Memory;
 using HAMMOR.Core.Permissions;
 using HAMMOR.Core.Projects;
+using HAMMOR.Core.Tasks;
 using HAMMOR.Core.Tools;
 using Microsoft.Extensions.Logging;
 
@@ -50,7 +51,8 @@ public sealed class AgentLoop(
         AgentTurnRequest request,
         AgentLoopOptions? options = null,
         IProgress<AgentProgress>? progress = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        UnattendedRunContext? unattended = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         if (string.IsNullOrWhiteSpace(request.Input))
@@ -78,7 +80,14 @@ public sealed class AgentLoop(
         var toolCapable = provider as IToolCallingProvider;
 
         // Build tool definitions once; they are stable for this turn.
-        var toolDefs = _registry.All.Select(ToolDefinition.FromTool).ToList();
+        // In an unattended run the model is only shown the tools its grant names.
+        var toolDefs = _registry.All
+            .Where(t => unattended is null || unattended.IsToolGranted(t.Name))
+            .Select(ToolDefinition.FromTool)
+            .ToList();
+
+        // Audit text from an unattended run is tagged with its task id.
+        string Tag(string message) => unattended is null ? message : unattended.Tag(message);
 
         // Conversation history for the model: starts from caller-supplied history plus the new user turn.
         var history = new List<AiMessage>(request.History) { AiMessage.User(request.Input) };
@@ -131,7 +140,9 @@ public sealed class AgentLoop(
                     if (string.IsNullOrWhiteSpace(resp.Text))
                         return AgentTurnResult.Failed(AgentStage.Verify, "The model returned an empty response.");
                     var reply = resp.IsTruncated ? resp.Text + Environment.NewLine + "[Response was cut off by the output token limit.]" : resp.Text;
-                    await RememberAsync(request, reply, cancellationToken).ConfigureAwait(false);
+                    // Unattended runs are read-only: they do not write conversation memory.
+                    if (unattended is null)
+                        await RememberAsync(request, reply, cancellationToken).ConfigureAwait(false);
                     return AgentTurnResult.Success(reply, resp.Usage);
                 }
             }
@@ -166,7 +177,8 @@ public sealed class AgentLoop(
                     : turn.Text!;
 
                 progress?.Report(new AgentProgress(AgentStage.Remember, "Recording conversation."));
-                await RememberAsync(request, reply, cancellationToken).ConfigureAwait(false);
+                if (unattended is null)
+                    await RememberAsync(request, reply, cancellationToken).ConfigureAwait(false);
                 progress?.Report(new AgentProgress(AgentStage.Respond, "Done."));
                 return AgentTurnResult.Success(reply, null);
             }
@@ -200,11 +212,37 @@ public sealed class AgentLoop(
 
                 var tool = _registry.Find(invocation.ToolName)!;
 
-                // Permission evaluation + confirmation (existing path).
+                // Unattended runs: the task grant is checked BEFORE the normal
+                // permission path and can only narrow it. Any miss stops the run.
+                if (unattended is not null)
+                {
+                    var gate = unattended.Check(tool);
+                    if (gate.Outcome != ToolGateOutcome.Allow)
+                    {
+                        await _auditLog.AppendAsync(new AuditEntry
+                        {
+                            Category = AuditCategory.Authorisation,
+                            Subject = tool.Name,
+                            Message = SecretRedactor.Redact(Tag(gate.Reason)),
+                            Outcome = AuditOutcome.Denied,
+                            Permission = tool.Permission,
+                            ProjectId = request.ProjectId,
+                            CorrelationId = invocation.InvocationId,
+                        }, cancellationToken).ConfigureAwait(false);
+
+                        return gate.Outcome == ToolGateOutcome.Block
+                            ? AgentTurnResult.Blocked(AgentStage.Authorize, gate.Reason)
+                            : AgentTurnResult.Failed(AgentStage.Authorize, gate.Reason);
+                    }
+                }
+
+                // Permission evaluation + confirmation (existing path). Unattended
+                // runs use a confirmation service that never approves.
+                IConfirmationService callConfirmation = unattended is null ? _confirmation : unattended.Confirmation;
                 PermissionDecision decision;
                 try
                 {
-                    decision = await _evaluator.AuthoriseAsync(tool, invocation, _confirmation, cancellationToken).ConfigureAwait(false);
+                    decision = await _evaluator.AuthoriseAsync(tool, invocation, callConfirmation, cancellationToken).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException) { throw; }
                 catch (Exception ex)
@@ -213,10 +251,32 @@ public sealed class AgentLoop(
                     decision = PermissionDecision.Deny($"Permission evaluation failed for '{tool.Name}'.");
                 }
 
-                await _auditLog.AppendAsync(AuditEntry.ForDecision(tool, invocation, decision), cancellationToken).ConfigureAwait(false);
+                var decisionEntry = AuditEntry.ForDecision(tool, invocation, decision);
+                if (unattended is not null)
+                    decisionEntry = decisionEntry with { Message = SecretRedactor.Redact(Tag(decisionEntry.Message)) };
+                await _auditLog.AppendAsync(decisionEntry, cancellationToken).ConfigureAwait(false);
 
                 if (!decision.IsAllowed)
                 {
+                    // Unattended: nothing that needed a person (or was denied by
+                    // policy) is skipped or approved; the run stops and blocks.
+                    if (unattended is not null)
+                    {
+                        var blockedReason = SecretRedactor.Redact(SanitizeForAudit(decision.Reason));
+                        await _auditLog.AppendAsync(new AuditEntry
+                        {
+                            Category = AuditCategory.ToolExecution,
+                            Subject = tool.Name,
+                            Message = SecretRedactor.Redact(Tag("Not executed: " + blockedReason)),
+                            Outcome = AuditOutcome.Denied,
+                            Permission = tool.Permission,
+                            ProjectId = invocation.ProjectId,
+                            CorrelationId = invocation.InvocationId,
+                        }, cancellationToken).ConfigureAwait(false);
+
+                        return AgentTurnResult.Blocked(AgentStage.Authorize, blockedReason);
+                    }
+
                     // Structured denial: prevent execution, return typed error so the model can continue.
                     var deniedMsg = decision.Outcome == PermissionOutcome.Denied && decision.Reason.Contains("declined", StringComparison.OrdinalIgnoreCase)
                         ? "Permission/confirmation denied by user"
@@ -261,7 +321,7 @@ public sealed class AgentLoop(
                 {
                     Category = AuditCategory.ToolExecution,
                     Subject = tool.Name,
-                    Message = SecretRedactor.Redact((execResult.Succeeded ? "Completed: " : "Failed: ") + Truncate(safeMessage, 800)),
+                    Message = SecretRedactor.Redact(Tag((execResult.Succeeded ? "Completed: " : "Failed: ") + Truncate(safeMessage, 800))),
                     Outcome = outcome,
                     Permission = tool.Permission,
                     ProjectId = invocation.ProjectId,

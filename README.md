@@ -5,10 +5,13 @@ agent runtime; Claude is the reasoning brain; ElevenLabs is the initial voice
 provider. Each of those is behind an abstraction so it can be replaced without
 rebuilding the application.
 
-**Status: Phase 1 (foundation).** The shell, localisation, configuration,
-persistence, permission model and provider integrations are built and working.
-Several advertised capabilities are deliberately *not* implemented yet and are
-labelled as such in the UI — see [Current limitations](#current-limitations).
+**Status: Phase 4 (released, tag `phase-4`).** The shell, localisation,
+configuration, persistence, permission model and provider integrations are
+built and working, along with native filesystem tools behind a security
+boundary, read-only Git and project inspection, and model-driven tool calling
+through the agent pipeline. Several advertised capabilities are deliberately
+*not* implemented yet and are labelled as such in the UI — see
+[Current limitations](#current-limitations).
 
 ---
 
@@ -47,9 +50,11 @@ configured later in **Settings**.
 dotnet test
 ```
 
-63 tests covering the permission engine, tool registry, secret redaction,
-configuration round-trip, SQLite persistence, crash reconciliation and
-incremental indexing.
+199 tests (all passing at the Phase 4 release) covering the permission
+engine, tool registry, secret redaction, configuration round-trip, SQLite
+persistence, crash reconciliation, incremental indexing, the filesystem
+security boundary, the safe Git and project-inspection tools, and the
+model-driven agent loop.
 
 ---
 
@@ -126,9 +131,8 @@ These are real and visible in the UI rather than hidden:
 | **TTS streaming** | Not implemented. The ElevenLabs provider buffers the full response before playback and reports `SupportsStreaming = false`. |
 | **Semantic memory** | **Not implemented.** The abstraction exists; search is keyword-based and the Memory page states this. |
 | **Task scheduling / retry** | **Not implemented.** Tasks persist and are reconciled after a crash, but nothing runs them automatically. |
-| **Projects** | Store and model exist and scope memory/tasks. Creation UI and git inspection are not built. |
+| **Projects** | Store and model exist and scope memory/tasks. Read-only Git and project inspection exist as tools (status, diff, log, project inspect); the project creation UI is not built. |
 | **Tray / global hotkey / overlay** | **Not implemented.** The settings toggles are present but disabled. |
-| **Model-driven tool calls** | The pipeline authorises and runs tools through `InvokeToolAsync`, but the model is not yet given the tool list mid-turn. Tools are invoked explicitly. |
 | **Mobile gateway** | Not built. Core is kept platform-neutral so it can be hosted later. |
 
 ## Documentation

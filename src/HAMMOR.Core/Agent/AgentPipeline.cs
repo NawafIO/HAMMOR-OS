@@ -5,6 +5,7 @@ using HAMMOR.Core.Diagnostics;
 using HAMMOR.Core.Memory;
 using HAMMOR.Core.Permissions;
 using HAMMOR.Core.Projects;
+using HAMMOR.Core.Tasks;
 using HAMMOR.Core.Tools;
 using Microsoft.Extensions.Logging;
 
@@ -19,6 +20,17 @@ public interface IAgentPipeline
     /// </summary>
     Task<AgentTurnResult> RunAsync(
         AgentTurnRequest request,
+        IProgress<AgentProgress>? progress = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Runs an unattended (task) turn through the same agent loop, with every
+    /// tool call additionally bound by the task's grant and confirmation
+    /// replaced by a service that never approves. Used only by the task runner.
+    /// </summary>
+    Task<AgentTurnResult> RunUnattendedAsync(
+        AgentTurnRequest request,
+        UnattendedRunContext context,
         IProgress<AgentProgress>? progress = null,
         CancellationToken cancellationToken = default);
 
@@ -227,6 +239,28 @@ public sealed class AgentPipeline(
             : response.Text;
 
         return AgentTurnResult.Success(reply, response.Usage);
+    }
+
+    public async Task<AgentTurnResult> RunUnattendedAsync(
+        AgentTurnRequest request,
+        UnattendedRunContext context,
+        IProgress<AgentProgress>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(context);
+
+        // Fail closed: without the loop there is nowhere the grant could be enforced.
+        if (_agentLoop is null)
+        {
+            return AgentTurnResult.Failed(
+                AgentStage.Route,
+                "Unattended execution requires the agent loop, which is not configured.");
+        }
+
+        return await _agentLoop
+            .RunAsync(request, options: null, progress, cancellationToken, context)
+            .ConfigureAwait(false);
     }
 
     public async Task<ToolResult> InvokeToolAsync(

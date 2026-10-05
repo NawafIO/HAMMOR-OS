@@ -131,6 +131,90 @@ public sealed class SqliteDatabase
             """;
 
         command.ExecuteNonQuery();
+
+        // Unattended task execution (ADR-003). Columns are added in place so a
+        // database created by an earlier phase keeps its rows; existing tasks
+        // get no grant and therefore remain interactive-only.
+        EnsureColumn(connection, "tasks", "prompt", "TEXT NULL");
+        EnsureColumn(connection, "tasks", "blocked_reason", "TEXT NULL");
+        EnsureColumn(connection, "tasks", "grant_id", "TEXT NULL");
+
+        using var grants = connection.CreateCommand();
+        grants.CommandText = TaskGrantSchema;
+        grants.ExecuteNonQuery();
+
         _logger.LogInformation("SQLite schema verified.");
+    }
+
+    // Grants are append-only: no row is edited or deleted, apart from the
+    // one-way superseded_utc stamp set when a Blocked task resumes under a new
+    // grant. Triggers enforce that below the application layer too.
+    private const string TaskGrantSchema = """
+        CREATE TABLE IF NOT EXISTS task_grants (
+            id                  TEXT PRIMARY KEY,
+            task_id             TEXT NOT NULL,
+            allowed_tools       TEXT NOT NULL,
+            max_permission      INTEGER NOT NULL,
+            granted_utc         TEXT NOT NULL,
+            expires_utc         TEXT NOT NULL,
+            max_tool_calls      INTEGER NOT NULL,
+            project_id          TEXT NULL,
+            supersedes_grant_id TEXT NULL,
+            superseded_utc      TEXT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS ix_task_grants_task ON task_grants(task_id);
+
+        CREATE TRIGGER IF NOT EXISTS trg_task_grants_immutable
+        BEFORE UPDATE ON task_grants
+        WHEN OLD.id <> NEW.id
+          OR OLD.task_id <> NEW.task_id
+          OR OLD.allowed_tools <> NEW.allowed_tools
+          OR OLD.max_permission <> NEW.max_permission
+          OR OLD.granted_utc <> NEW.granted_utc
+          OR OLD.expires_utc <> NEW.expires_utc
+          OR OLD.max_tool_calls <> NEW.max_tool_calls
+          OR IFNULL(OLD.project_id, '') <> IFNULL(NEW.project_id, '')
+          OR IFNULL(OLD.supersedes_grant_id, '') <> IFNULL(NEW.supersedes_grant_id, '')
+          OR (OLD.superseded_utc IS NOT NULL
+              AND IFNULL(NEW.superseded_utc, '') <> OLD.superseded_utc)
+        BEGIN
+            SELECT RAISE(ABORT, 'task grants are immutable');
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS trg_task_grants_no_delete
+        BEFORE DELETE ON task_grants
+        BEGIN
+            SELECT RAISE(ABORT, 'task grants are append-only');
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS trg_tasks_grant_change
+        BEFORE UPDATE OF grant_id ON tasks
+        WHEN IFNULL(OLD.grant_id, '') <> IFNULL(NEW.grant_id, '')
+         AND NOT (OLD.state = 5 AND NEW.state = 0)
+        BEGIN
+            SELECT RAISE(ABORT, 'a task grant can only change when a Blocked task resumes');
+        END;
+        """;
+
+    private static void EnsureColumn(
+        SqliteConnection connection,
+        string table,
+        string column,
+        string definition)
+    {
+        // table/column/definition are compile-time constants, never input.
+        using var check = connection.CreateCommand();
+        check.CommandText = $"SELECT COUNT(*) FROM pragma_table_info('{table}') WHERE name = $name;";
+        check.Parameters.AddWithValue("$name", column);
+
+        if (Convert.ToInt64(check.ExecuteScalar()) > 0)
+        {
+            return;
+        }
+
+        using var alter = connection.CreateCommand();
+        alter.CommandText = $"ALTER TABLE {table} ADD COLUMN {column} {definition};";
+        alter.ExecuteNonQuery();
     }
 }

@@ -28,5 +28,17 @@ public interface ITaskStore
     /// </summary>
     Task<int> ReconcileInterruptedAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Returns a Blocked task to Pending under a NEW grant. The previous
+    /// grant is permanently superseded and can never authorise another run;
+    /// the new grant must be a different grant (new id), reference the
+    /// superseded one, and pass <see cref="TaskGrantValidator"/>. This is the
+    /// only way out of Blocked other than cancelling or failing the task.
+    /// </summary>
+    Task<HammorTask> ResumeBlockedAsync(
+        string taskId,
+        TaskGrant newGrant,
+        CancellationToken cancellationToken = default);
+
     event EventHandler<HammorTask>? TaskChanged;
 }

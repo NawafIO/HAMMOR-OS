@@ -14,6 +14,7 @@ using HAMMOR.Infrastructure.Configuration;
 using HAMMOR.Infrastructure.Memory;
 using HAMMOR.Infrastructure.Persistence;
 using HAMMOR.Infrastructure.Status;
+using HAMMOR.Infrastructure.Tasks;
 using HAMMOR.Core.Storage;
 using HAMMOR.Core.Tools.Filesystem;
 using HAMMOR.Core.Tools.Git;
@@ -101,6 +102,11 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IToolRegistry>(BuildToolRegistry);
         services.AddSingleton<IAgentPipeline, AgentPipeline>();
         services.AddSingleton<AgentLoop>();
+
+        // Unattended task execution (ADR-003). Registered but not started:
+        // the host must call TaskSchedulerService.Start() explicitly.
+        services.AddSingleton<ITaskRunner, TaskRunner>();
+        services.AddSingleton<TaskSchedulerService>();
         services.AddSingleton<ISystemStatusService, SystemStatusService>();
 
         return services;
