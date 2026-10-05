@@ -56,7 +56,8 @@ public sealed class TaskRunner(
     IToolRegistry toolRegistry,
     IAuditLog auditLog,
     ILogger<TaskRunner> logger,
-    TimeProvider? timeProvider = null) : ITaskRunner
+    TimeProvider? timeProvider = null,
+    TaskPathScope? pathScope = null) : ITaskRunner
 {
     private const int MaxResultChars = 4_000;
     private const int MaxReasonChars = 1_000;
@@ -68,6 +69,9 @@ public sealed class TaskRunner(
     private readonly IAuditLog _audit = auditLog ?? throw new ArgumentNullException(nameof(auditLog));
     private readonly ILogger<TaskRunner> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     private readonly TimeProvider _time = timeProvider ?? TimeProvider.System;
+
+    // Absent only in hosts without filesystem tools; path-scoped calls then block.
+    private readonly TaskPathScope? _pathScope = pathScope;
 
     // The single execution slot: one task at a time.
     private readonly SemaphoreSlim _slot = new(1, 1);
@@ -160,6 +164,22 @@ public sealed class TaskRunner(
             return "The task's grant is not valid: " + string.Join(" ", errors);
         }
 
+        // Roots are re-checked at every run: a directory that became a link,
+        // vanished, or left the policy since approval must not be trusted.
+        if (grant.AllowedRoots is { Count: > 0 })
+        {
+            if (_pathScope is null)
+            {
+                return "The task's grant names roots, but no path scope is configured.";
+            }
+
+            var roots = _pathScope.ValidateRoots(grant.AllowedRoots);
+            if (!roots.IsValid)
+            {
+                return "The task's granted roots are no longer valid: " + string.Join(" ", roots.Errors);
+            }
+        }
+
         if (string.IsNullOrWhiteSpace(task.Prompt))
         {
             return "The task has no prompt to run.";
@@ -213,7 +233,7 @@ public sealed class TaskRunner(
                 },
                 CancellationToken.None).ConfigureAwait(false);
 
-            var context = new UnattendedRunContext(task.Id, grant, _time);
+            var context = new UnattendedRunContext(task.Id, grant, _time, _pathScope);
             AgentTurnResult result;
 
             try
@@ -273,7 +293,7 @@ public sealed class TaskRunner(
 
             var error = Bound(result.Error ?? "The run failed.", MaxReasonChars);
 
-            if (attempt < task.MaxAttempts)
+            if (attempt < Math.Min(task.MaxAttempts, HammorTask.MaxAttemptsLimit))
             {
                 var delay = TimeSpan.FromSeconds(Math.Min(30d * Math.Pow(2, attempt - 1), MaxBackoffSeconds));
                 var next = _time.GetUtcNow() + delay;

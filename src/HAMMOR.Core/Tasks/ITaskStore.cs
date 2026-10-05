@@ -40,5 +40,15 @@ public interface ITaskStore
         TaskGrant newGrant,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Atomically cancels a task that is Pending or Blocked. Returns the
+    /// cancelled task, or null when the task does not exist or is in any
+    /// other state (for example already Running, which only the runner can
+    /// cancel). Never overwrites a state change made concurrently.
+    /// </summary>
+    Task<HammorTask?> TryCancelAsync(
+        string taskId,
+        CancellationToken cancellationToken = default);
+
     event EventHandler<HammorTask>? TaskChanged;
 }

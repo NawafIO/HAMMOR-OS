@@ -9,6 +9,7 @@ using HAMMOR.Core.Storage;
 using HAMMOR.Core.Tasks;
 using HAMMOR.Core.Tests.TestDoubles;
 using HAMMOR.Core.Tools;
+using HAMMOR.Core.Tools.Filesystem;
 using HAMMOR.Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -150,12 +151,20 @@ public sealed class UnattendedTaskRunnerTests : IDisposable
         _store = new SqliteTaskStore(database, NullLogger<SqliteTaskStore>.Instance, _clock);
     }
 
-    private TaskRunner BuildRunner(ScriptedProvider provider, IPermissionEvaluator? evaluator = null)
+    private TaskRunner BuildRunner(
+        ScriptedProvider provider,
+        IPermissionEvaluator? evaluator = null,
+        IEnumerable<ITool>? extraTools = null,
+        TaskPathScope? pathScope = null)
     {
         var registry = new ToolRegistry();
         registry.Register(_searchTool);
         registry.Register(_statusTool);
         registry.Register(_saveTool);
+        foreach (var tool in extraTools ?? Array.Empty<ITool>())
+        {
+            registry.Register(tool);
+        }
 
         var configuration = new FakeConfigurationStore(new HammorConfiguration());
         evaluator ??= new PermissionEvaluator(configuration);
@@ -183,7 +192,7 @@ public sealed class UnattendedTaskRunnerTests : IDisposable
             NullLogger<AgentPipeline>.Instance,
             loop);
 
-        return new TaskRunner(_store, pipeline, registry, _audit, NullLogger<TaskRunner>.Instance, _clock);
+        return new TaskRunner(_store, pipeline, registry, _audit, NullLogger<TaskRunner>.Instance, _clock, pathScope);
     }
 
     private static ModelResponseTurn CallTool(string name) =>
@@ -394,6 +403,39 @@ public sealed class UnattendedTaskRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task Runner_never_retries_beyond_the_attempt_limit_even_if_a_row_says_more()
+    {
+        var provider = new ScriptedProvider((_, _) => throw new AiProviderException("down"));
+        var runner = BuildRunner(provider);
+        var created = await _store.CreateAsync(TestTasks.Task(_clock, ttl: TimeSpan.FromDays(2)));
+
+        // A stored row raised past the limit after creation (UpdateAsync does not police it).
+        await _store.UpdateAsync(created with { MaxAttempts = 50 });
+
+        var reports = new List<TaskRunStatus>();
+        for (var i = 0; i < 20; i++)
+        {
+            var report = await runner.RunNextAsync();
+            if (report.Status != TaskRunStatus.NoWork)
+            {
+                reports.Add(report.Status);
+            }
+
+            if (report.Status == TaskRunStatus.Failed)
+            {
+                break;
+            }
+
+            _clock.Advance(TimeSpan.FromMinutes(16)); // longer than the 15-minute backoff cap
+        }
+
+        Assert.Equal(TaskRunStatus.Failed, reports[^1]);
+        Assert.Equal(HammorTask.MaxAttemptsLimit - 1, reports.Count(s => s == TaskRunStatus.Retrying));
+        Assert.Equal(HammorTask.MaxAttemptsLimit, provider.CallCount);
+        Assert.Equal(TaskState.Failed, (await Reload(created.Id)).State);
+    }
+
+    [Fact]
     public async Task Failure_on_the_last_attempt_is_terminal()
     {
         var provider = new ScriptedProvider((_, _) => throw new AiProviderException("down"));
@@ -564,6 +606,73 @@ public sealed class UnattendedTaskRunnerTests : IDisposable
 
         var secondReport = await runner.RunNextAsync();
         Assert.Equal(newer.Id, secondReport.TaskId);
+    }
+
+    // ------------------------------------------------------------ ADR-004 path scope, end to end
+
+    private (ReadFileTool Read, TaskPathScope Scope, string Granted, string Other) PathScopedSetup()
+    {
+        var granted = Directory.CreateDirectory(Path.Combine(_root, "granted")).FullName;
+        var other = Directory.CreateDirectory(Path.Combine(_root, "other")).FullName;
+        File.WriteAllText(Path.Combine(granted, "note.txt"), "inside");
+        File.WriteAllText(Path.Combine(other, "private.txt"), "outside");
+
+        var resolution = new ManagedPathResolution();
+        var policy = FilesystemPolicyFactory.CreateForRoot(_root, resolution);
+        return (new ReadFileTool(policy), new TaskPathScope(policy, resolution), granted, other);
+    }
+
+    private static ModelResponseTurn Read(string path) =>
+        new(null, [new ModelToolCall(Guid.NewGuid().ToString("n"), "filesystem.read_file", System.Text.Json.JsonSerializer.Serialize(new { path }))], ModelStopReasons.ToolUse);
+
+    private async Task<HammorTask> CreateScopedTaskAsync(TaskPathScope scope, string granted)
+    {
+        var roots = scope.ValidateRoots([granted]);
+        Assert.True(roots.IsValid, string.Join(" ", roots.Errors));
+        var task = TestTasks.Task(_clock, ["filesystem.read_file"]);
+        return await _store.CreateAsync(task with { Grant = task.Grant! with { AllowedRoots = roots.CanonicalRoots } });
+    }
+
+    [Fact]
+    public async Task Real_read_inside_the_granted_root_completes()
+    {
+        var (read, scope, granted, _) = PathScopedSetup();
+        var runner = BuildRunner(Script(Read(Path.Combine(granted, "note.txt")), Final("read it")), extraTools: [read], pathScope: scope);
+        var task = await CreateScopedTaskAsync(scope, granted);
+
+        var report = await runner.RunNextAsync();
+
+        Assert.Equal(TaskRunStatus.Completed, report.Status);
+        Assert.Contains(_audit.Entries, e => e.Category == AuditCategory.ToolExecution
+            && e.Outcome == AuditOutcome.Succeeded && e.Message.Contains($"[unattended task {task.Id}]"));
+    }
+
+    [Fact]
+    public async Task Real_read_outside_the_granted_root_blocks_before_the_tool_runs()
+    {
+        var (read, scope, granted, other) = PathScopedSetup();
+        var runner = BuildRunner(Script(Read(Path.Combine(other, "private.txt")), Final("unreachable")), extraTools: [read], pathScope: scope);
+        var task = await CreateScopedTaskAsync(scope, granted);
+
+        var report = await runner.RunNextAsync();
+
+        Assert.Equal(TaskRunStatus.Blocked, report.Status);
+        Assert.Contains("outside the task's granted roots", (await Reload(task.Id)).BlockedReason);
+        Assert.DoesNotContain(_audit.Entries, e => e.Category == AuditCategory.ToolExecution && e.Outcome == AuditOutcome.Succeeded);
+    }
+
+    [Fact]
+    public async Task Runner_without_a_path_scope_blocks_scoped_grants_before_calling_the_model()
+    {
+        var (read, scope, granted, _) = PathScopedSetup();
+        var provider = Script(Read(Path.Combine(granted, "note.txt")));
+        var runner = BuildRunner(provider, extraTools: [read], pathScope: null);
+        var task = await CreateScopedTaskAsync(scope, granted);
+
+        await runner.RunNextAsync();
+
+        Assert.Equal(0, provider.CallCount);
+        Assert.Equal(TaskState.Blocked, (await Reload(task.Id)).State);
     }
 
     public void Dispose()

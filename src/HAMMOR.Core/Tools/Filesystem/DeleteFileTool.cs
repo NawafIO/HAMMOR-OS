@@ -7,7 +7,7 @@ namespace HAMMOR.Core.Tools.Filesystem;
 /// requires explicit confirmation before it runs. Gated by
 /// <see cref="IFilesystemPolicy"/> when supplied.
 /// </summary>
-public sealed class DeleteFileTool : ITool
+public sealed class DeleteFileTool : ITool, IPathScopedTool
 {
     private readonly IFilesystemPolicy? _policy;
 
@@ -17,6 +17,8 @@ public sealed class DeleteFileTool : ITool
     }
 
     public string Name => "filesystem.delete_file";
+
+    public IReadOnlyList<string> PathArguments { get; } = ["path"];
 
     public string Description =>
         "Delete a single file. Requires explicit confirmation and cannot delete directories or recurse.";

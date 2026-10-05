@@ -1,6 +1,6 @@
 namespace HAMMOR.Core.Tools.Git;
 
-public sealed class GitLogTool : ITool
+public sealed class GitLogTool : ITool, IGitRepositoryScopedTool
 {
     private readonly SafeGitRunner _runner;
 
@@ -11,6 +11,8 @@ public sealed class GitLogTool : ITool
     }
 
     public string Name => "git.log";
+
+    public IReadOnlyList<string> PathArguments { get; } = ["repositoryPath"];
     public string Description => "Show recent commit log for an allowed repository path. Read-only, bounded to 50 entries.";
     public ToolPermission Permission => ToolPermission.Read;
 

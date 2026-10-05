@@ -47,6 +47,13 @@ public sealed record HammorTask
 
     public int MaxAttempts { get; init; } = 1;
 
+    /// <summary>
+    /// Upper bound on <see cref="MaxAttempts"/> for unattended execution.
+    /// Enforced when a granted task is authored or stored, and the runner
+    /// never retries beyond it whatever a stored row says.
+    /// </summary>
+    public const int MaxAttemptsLimit = 10;
+
     /// <summary>Failure detail when <see cref="State"/> is Failed.</summary>
     public string? Error { get; init; }
 

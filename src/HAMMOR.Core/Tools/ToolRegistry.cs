@@ -6,6 +6,13 @@ namespace HAMMOR.Core.Tools;
 /// </summary>
 public sealed class ToolRegistry : IToolRegistry
 {
+    /// <summary>
+    /// Name used on the confirmation dialog when a user approves a task grant
+    /// (ADR-004 §3). Reserved so no real tool can be mistaken for, or
+    /// approved as, a grant approval.
+    /// </summary>
+    public const string ReservedGrantApprovalName = "task.grant";
+
     private readonly Dictionary<string, ITool> _tools =
         new(StringComparer.OrdinalIgnoreCase);
 
@@ -29,6 +36,12 @@ public sealed class ToolRegistry : IToolRegistry
         if (string.IsNullOrWhiteSpace(tool.Name))
         {
             throw new ArgumentException("Tool name must not be blank.", nameof(tool));
+        }
+
+        if (string.Equals(tool.Name, ReservedGrantApprovalName, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"'{ReservedGrantApprovalName}' is reserved for task grant approval and cannot be a tool.");
         }
 
         lock (_gate)
