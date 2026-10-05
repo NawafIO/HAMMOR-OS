@@ -73,7 +73,14 @@ public static class InfrastructureServiceCollectionExtensions
         // --- AI providers -------------------------------------------------
         // Registered as a collection so additional providers can be added
         // without changing the pipeline; routing is by configured id.
-        services.AddSingleton<IAiProvider, ClaudeAiProvider>();
+        // ClaudeToolCallingProvider decorates ClaudeAiProvider: one instance is
+        // registered under both contracts so the provider collection contains a
+        // single "claude" entry that is also tool-capable. Registering the plain
+        // provider as a second IAiProvider would make routing by id ambiguous.
+        services.AddSingleton<ClaudeAiProvider>();
+        services.AddSingleton<ClaudeToolCallingProvider>();
+        services.AddSingleton<IAiProvider>(sp => sp.GetRequiredService<ClaudeToolCallingProvider>());
+        services.AddSingleton<IToolCallingProvider>(sp => sp.GetRequiredService<ClaudeToolCallingProvider>());
 
         // --- Voice providers ----------------------------------------------
         services.AddHttpClient(ElevenLabsTextToSpeechProvider.HttpClientName, client =>
@@ -93,6 +100,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IPermissionEvaluator, PermissionEvaluator>();
         services.AddSingleton<IToolRegistry>(BuildToolRegistry);
         services.AddSingleton<IAgentPipeline, AgentPipeline>();
+        services.AddSingleton<AgentLoop>();
         services.AddSingleton<ISystemStatusService, SystemStatusService>();
 
         return services;

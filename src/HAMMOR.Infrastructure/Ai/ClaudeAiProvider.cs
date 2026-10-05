@@ -183,6 +183,27 @@ public sealed class ClaudeAiProvider(
 
     private static AnthropicClient CreateClient(string apiKey) => new() { ApiKey = apiKey };
 
+    /// <summary>
+    /// Reads the stored key through DPAPI and builds a client from it. The one
+    /// place in Infrastructure that turns a stored secret into a live client,
+    /// so extensions such as <see cref="ClaudeToolCallingProvider"/> reuse this
+    /// path instead of re-implementing secret retrieval.
+    /// </summary>
+    internal async Task<AnthropicClient> CreateClientAsync(CancellationToken cancellationToken)
+    {
+        var apiKey = await _secretStore
+            .GetAsync(SecretNames.AnthropicApiKey, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            throw new AiProviderException(
+                "Claude is not configured: no Anthropic API key is stored.");
+        }
+
+        return CreateClient(apiKey);
+    }
+
     private static MessageParam ToMessageParam(AiMessage message) => new()
     {
         Role = message.Role == AiRole.Assistant ? Role.Assistant : Role.User,
@@ -194,7 +215,7 @@ public sealed class ClaudeAiProvider(
     /// values fall back to High rather than throwing, so a hand-edited config
     /// file cannot prevent the app from answering.
     /// </summary>
-    private static Effort MapEffort(string? configured) =>
+    internal static Effort MapEffort(string? configured) =>
         configured?.Trim().ToLowerInvariant() switch
         {
             "low" => Effort.Low,

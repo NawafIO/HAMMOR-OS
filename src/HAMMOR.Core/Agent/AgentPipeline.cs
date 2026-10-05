@@ -46,7 +46,8 @@ public sealed class AgentPipeline(
     IProjectStore projectStore,
     IAuditLog auditLog,
     IConfigurationStore configurationStore,
-    ILogger<AgentPipeline> logger) : IAgentPipeline
+    ILogger<AgentPipeline> logger,
+    AgentLoop? agentLoop = null) : IAgentPipeline
 {
     private readonly IReadOnlyList<IAiProvider> _aiProviders =
         aiProviders?.ToList() ?? throw new ArgumentNullException(nameof(aiProviders));
@@ -74,6 +75,13 @@ public sealed class AgentPipeline(
 
     private readonly ILogger<AgentPipeline> _logger =
         logger ?? throw new ArgumentNullException(nameof(logger));
+
+    /// <summary>
+    /// Handles the iterative model → tool → model cycle. Optional so a
+    /// conversation-only deployment (or a test) can run the pipeline without
+    /// it; when absent the turn stays on the single-shot conversational path.
+    /// </summary>
+    private readonly AgentLoop? _agentLoop = agentLoop;
 
     public async Task<AgentTurnResult> RunAsync(
         AgentTurnRequest request,
@@ -106,6 +114,23 @@ public sealed class AgentPipeline(
             return AgentTurnResult.Failed(
                 AgentStage.Route,
                 $"AI provider '{ai.PrimaryProvider}' is not registered.");
+        }
+
+        // ROUTE (continued) — an agentic turn is one where the routed provider
+        // can return structured tool calls and there are tools to offer. The
+        // pipeline stays the entry point and keeps macro-level coordination;
+        // the multi-round EXECUTE stage is delegated to AgentLoop, which
+        // enforces just-in-time per-tool authorisation through
+        // IPermissionEvaluator and IConfirmationService for every call. The
+        // delegation happens before the availability probe because the loop
+        // runs its own — probing twice would cost a second API round trip.
+        if (_agentLoop is not null
+            && provider is IToolCallingProvider
+            && _toolRegistry.All.Count > 0)
+        {
+            return await _agentLoop
+                .RunAsync(request, options: null, progress, cancellationToken)
+                .ConfigureAwait(false);
         }
 
         var availability = await provider.CheckAvailabilityAsync(cancellationToken)
