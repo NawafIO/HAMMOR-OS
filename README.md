@@ -5,11 +5,18 @@ agent runtime; Claude is the reasoning brain; ElevenLabs is the initial voice
 provider. Each of those is behind an abstraction so it can be replaced without
 rebuilding the application.
 
-**Status: Phase 4 (released, tag `phase-4`).** The shell, localisation,
+**Status: Phase 5 (tag `phase-5`).** The shell, localisation,
 configuration, persistence, permission model and provider integrations are
 built and working, along with native filesystem tools behind a security
-boundary, read-only Git and project inspection, and model-driven tool calling
-through the agent pipeline. Several advertised capabilities are deliberately
+boundary, read-only Git and project inspection, model-driven tool calling
+through the agent pipeline, and an unattended task runner/scheduler engine
+(read-only, per-task grants — see
+[ADR-003](docs/adr/ADR-003-task-runner-scheduler.md)).
+
+Phase 5 is an **engine-only milestone**: the runner, scheduler, grant model and
+storage exist in Core/Infrastructure and are tested, but the app does not start
+the scheduler and has no UI to create grants, so no task runs unattended in the
+app yet. Several advertised capabilities are deliberately
 *not* implemented yet and are labelled as such in the UI — see
 [Current limitations](#current-limitations).
 
@@ -50,11 +57,12 @@ configured later in **Settings**.
 dotnet test
 ```
 
-199 tests (all passing at the Phase 4 release) covering the permission
+255 tests (all passing at the Phase 5 release) covering the permission
 engine, tool registry, secret redaction, configuration round-trip, SQLite
 persistence, crash reconciliation, incremental indexing, the filesystem
-security boundary, the safe Git and project-inspection tools, and the
-model-driven agent loop.
+security boundary, the safe Git and project-inspection tools, the
+model-driven agent loop, and unattended task execution (grants, state
+machine, blocking, retry, cancellation, audit, schema migration).
 
 ---
 
@@ -130,7 +138,7 @@ These are real and visible in the UI rather than hidden:
 | **Speech-to-text** | **Not implemented.** No recogniser is wired up; `UnavailableSpeechToTextProvider` reports itself unavailable and the chat page says so. Voice *output* works. |
 | **TTS streaming** | Not implemented. The ElevenLabs provider buffers the full response before playback and reports `SupportsStreaming = false`. |
 | **Semantic memory** | **Not implemented.** The abstraction exists; search is keyword-based and the Memory page states this. |
-| **Task scheduling / retry** | **Not implemented.** Tasks persist and are reconciled after a crash, but nothing runs them automatically. |
+| **Task scheduling / retry** | **Engine implemented, not wired into the app.** `TaskRunner` and `TaskSchedulerService` run granted tasks one at a time with Read-only, expiring, immutable grants, retry/backoff, cancellation and audit (ADR-003). Deferred: starting the scheduler from the app, the grant-creation UI, Blocked-task display on the Tasks page, and path-level grant scope. Until then nothing runs tasks automatically in the app. |
 | **Projects** | Store and model exist and scope memory/tasks. Read-only Git and project inspection exist as tools (status, diff, log, project inspect); the project creation UI is not built. |
 | **Tray / global hotkey / overlay** | **Not implemented.** The settings toggles are present but disabled. |
 | **Mobile gateway** | Not built. Core is kept platform-neutral so it can be hosted later. |

@@ -1,7 +1,9 @@
 # ADR-003: Task Runner & Scheduler (unattended execution)
 
 ## Status
-Accepted — specification only. No code accompanies this ADR. Implementation is a separate, explicitly authorised step.
+Accepted and implemented (Phase 5, engine-only). Verified on Windows: `dotnet build -c Release` passed and `dotnet test -c Release` passed 255/255 (199 existing + 56 new).
+
+Phase 5 delivers the Core/Infrastructure engine only. See **Implementation status** for what is deferred.
 
 ## Context
 `HammorTask` and `ITaskStore` persist tasks and reconcile `Running` rows to `Failed` after a crash, and `HammorTask` already carries `ScheduledForUtc`, `AttemptCount` and `MaxAttempts`. Nothing executes tasks. The UI says so (`Tasks` page, README limitations).
@@ -35,7 +37,7 @@ Created at task creation, in the presence of the user, through the normal `IConf
 |---|---|
 | `AllowedTools` | Explicit tool names. Empty means no tools (text-only task). No wildcards. |
 | `MaxPermission` | Ceiling. **v1: must be `Read`.** `Write`, `Execute` and `Destructive` are rejected at grant creation. |
-| `Scope` | Optional constraints re-checked at call time: project id, and for filesystem/git tools, paths that must also pass `IFilesystemPolicy`. The grant narrows the policy; it never widens it. |
+| `Scope` | Optional constraints re-checked at call time: project id, and for filesystem/git tools, paths that must also pass `IFilesystemPolicy`. The grant narrows the policy; it never widens it. **Phase 5 implements project-id scope only; path-level scope is deferred** (the full `IFilesystemPolicy` still applies to every call). |
 | `GrantedUtc` / `ExpiresUtc` | **`ExpiresUtc` is mandatory.** A grant without an expiry, or with an expiry in the past or null/`MaxValue`, is rejected at creation. There is no default and no "forever" grant. A grant is invalid after expiry; a run starting past expiry is `Blocked`. |
 | `MaxToolCalls` | Hard cap per run, in addition to `AgentLoopOptions` round limits. |
 
@@ -111,7 +113,26 @@ Lifecycle and reliability:
 15. Audit completeness and correlation per run; audit write failure fails the run.
 16. Result and audit output bounded and redacted.
 17. Store migration from the Phase 4 schema keeps existing rows valid (existing tasks have no grant and stay interactive-only).
-18. Blocked tasks are visible on the Tasks page with their reason and trigger no other notification channel.
+18. Blocked tasks are visible on the Tasks page with their reason and trigger no other notification channel. **Deferred with the App work** (no Tasks-page change in Phase 5; no other notification channel exists).
+
+## Implementation status (Phase 5)
+Implemented in Core/Infrastructure and covered by tests:
+- `TaskGrant` + `TaskGrantValidator` (Read-only ceiling, mandatory finite expiry capped at 30 days, explicit tools, call cap of 1–50).
+- `TaskStateMachine`, `TaskState.Blocked`, enforced by `SqliteTaskStore`.
+- Immutable grants: store refuses grant changes; SQLite triggers block grant edits/deletes and grant swaps outside a Blocked → Pending resume.
+- `ResumeBlockedAsync`: new grant id required, must declare the superseded grant, old grant permanently retired.
+- `UnattendedRunContext` + `UnattendedConfirmationService` (never approves); grant check before the unchanged `PermissionEvaluator` path in `AgentLoop`; `AgentPipeline.RunUnattendedAsync`.
+- `TaskRunner` (single slot, lifecycle audit, retry/backoff, cancellation, bounded/redacted result; no conversation memory writes).
+- `TaskSchedulerService` (event-driven, bounded idle) registered in DI.
+- In-place schema migration from Phase 4.
+
+Deferred (not in Phase 5):
+- **Path-level grant scope** for filesystem/Git tools (§3 `Scope`). Project-id scope only.
+- **App wiring**: `TaskSchedulerService.Start()` is not called by the app, so nothing runs unattended in the app.
+- **Grant-creation UI** with the confirmation dialog (§3). No grant can be created from the app.
+- **Blocked-task UI** on the Tasks page (§5, required test 18).
+
+Behaviour note: a model tool call that is malformed or names an unknown tool is returned to the model as an error (unchanged Phase 4 behaviour) rather than blocking the run; only grant/permission misses block.
 
 ## Owner decisions (resolved)
 1. **Read-only only for v1.** No unattended Write.
