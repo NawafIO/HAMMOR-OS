@@ -5,7 +5,8 @@ namespace HAMMOR.Core.Tools.Git;
 
 /// <summary>
 /// Refuses repository layouts and config that would let git read outside the
-/// directory it was given (ADR-005). The path must already have passed
+/// directory it was given (ADR-005), or run a filter driver defined by the
+/// repository itself (ADR-006). The path must already have passed
 /// <see cref="HAMMOR.Core.Tools.Filesystem.IFilesystemPolicy"/>; this guard
 /// adds to that check and never replaces it.
 /// </summary>
@@ -28,6 +29,12 @@ internal static class GitRepositoryGuard
     // core.worktree in either form: "[core]\n worktree = x" or "[core] worktree = x".
     private static readonly Regex WorktreeKey =
         new(@"\bworktree\s*=", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    // Any filter driver: "[filter "x"]", "[filter.x]", also after another header
+    // on the same line. Its clean/process command runs on status and diff, and
+    // unlike every other config-selected program no flag or override turns it off.
+    private static readonly Regex FilterSection =
+        new(@"\[\s*filter", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     /// <summary>
     /// Returns why <paramref name="repositoryRoot"/> must not be handed to git,
@@ -128,6 +135,11 @@ internal static class GitRepositoryGuard
         if (WorktreeKey.IsMatch(text))
         {
             return $"'.git/{fileName}' sets a worktree key (core.worktree), which points git at another directory.";
+        }
+
+        if (FilterSection.IsMatch(text))
+        {
+            return $"'.git/{fileName}' defines a filter driver ([filter] section), which makes git run a program on file contents.";
         }
 
         return null;

@@ -94,7 +94,7 @@ With an explicit `GIT_DIR`, git skips its `safe.directory` ownership check. Meas
 - Refusal messages become part of the test contract: `gitdir`, `parent-directory discovery`, `commondir`, `alternates`, `include`, `worktree`, `config.worktree`, `reparse`.
 
 ### Residual risks (accepted here, not mitigated)
-1. **Repository config still controls everything except location.** With this change in place, `core.fsmonitor=<cmd>` still runs on `git status` and `diff.external=<cmd>` still runs on `git diff`; both were verified with marker files. Textconv and filter drivers, `log.showSignature` with `gpg.program`, and partial-clone lazy fetch are in the same class. This is command execution, not redirection. It needs its own decision (follow-up 1). Config can also name files outside the root (`core.excludesFile`, `core.attributesFile`, `diff.orderFile`); git reads them but does not print them.
+1. **Repository config still controls everything except location.** With this change in place, `core.fsmonitor=<cmd>` still runs on `git status` and `diff.external=<cmd>` still runs on `git diff`; both were verified with marker files. Textconv and filter drivers, `log.showSignature` with `gpg.program`, and partial-clone lazy fetch are in the same class. This is command execution, not redirection. It needs its own decision (follow-up 1). Addressed by [ADR-006](ADR-006-git-repository-config-execution.md). Config can also name files outside the root (`core.excludesFile`, `core.attributesFile`, `diff.orderFile`); git reads them but does not print them.
 2. Reparse points deeper inside `.git` (for example `.git/objects/ab`, `.git/refs/heads`) are not checked. This is the same class as alternates.
 3. An include or alternates file added between the guard and process start is honoured. This requires local write access and precise timing, the same as ADR-004 §2.6.
 
@@ -125,6 +125,6 @@ All tests use real git in temp directories. The redirection target is always a r
 | `Large_stderr_with_empty_stdout_does_not_deadlock` | reader fix (timed out at 30 s with the old loop) |
 
 ## Follow-ups
-1. Decide how to neutralise config-driven command execution (residual 1). Candidates: `--no-ext-diff --no-textconv` on `diff`, `--no-show-signature` on `log`, command-scope overrides such as `core.fsmonitor=false`, `GIT_NO_LAZY_FETCH=1`, and attribute-source control for filter drivers.
+1. Decide how to neutralise config-driven command execution (residual 1). Done in [ADR-006](ADR-006-git-repository-config-execution.md). Candidates: `--no-ext-diff --no-textconv` on `diff`, `--no-show-signature` on `log`, command-scope overrides such as `core.fsmonitor=false`, `GIT_NO_LAZY_FETCH=1`, and attribute-source control for filter drivers.
 2. Phase 6a: `TaskPathScope` calls `GitRepositoryGuard.FindProblem`. Its ADR-004 §2.5 rule is a subset of the guard. Add a note to ADR-004 when that branch merges.
 3. Optional: follow gitdir and commondir indirection only when every hop passes `IFilesystemPolicy`, so worktrees and submodule checkouts inside the allowed roots can be inspected.
