@@ -18,7 +18,10 @@ namespace HAMMOR.Core.Tools.Git;
 /// Git is confined to the validated directory (ADR-005):
 /// <see cref="GitRepositoryGuard"/> refuses layouts and config that redirect
 /// it elsewhere, and the child environment pins the work tree, common
-/// directory and discovery boundary to that directory.
+/// directory and discovery boundary to that directory. Repository config
+/// cannot make git run a program (ADR-006): the guard refuses filter drivers,
+/// and fixed flags plus command-scope config switch off every other
+/// config-selected program for these three commands.
 /// </remarks>
 public sealed class SafeGitRunner
 {
@@ -41,22 +44,26 @@ public sealed class SafeGitRunner
     public Task<SafeGitResult> GetDiffAsync(string repositoryPath, CancellationToken cancellationToken = default) =>
         GetDiffAsync(repositoryPath, staged: false, cancellationToken);
 
+    // --no-ext-diff / --no-textconv: diff.external, diff.<driver>.command and
+    // diff.<driver>.textconv in repository config name programs (ADR-006).
     public Task<SafeGitResult> GetDiffAsync(string repositoryPath, bool staged, CancellationToken cancellationToken = default)
     {
         var args = staged
-            ? new[] { "diff", "--no-color", "--ignore-submodules=all", "--staged" }
-            : new[] { "diff", "--no-color", "--ignore-submodules=all" };
+            ? new[] { "diff", "--no-color", "--ignore-submodules=all", "--no-ext-diff", "--no-textconv", "--staged" }
+            : new[] { "diff", "--no-color", "--ignore-submodules=all", "--no-ext-diff", "--no-textconv" };
         return RunValidatedAsync(repositoryPath, args, cancellationToken);
     }
 
     public Task<SafeGitResult> GetLogAsync(string repositoryPath, CancellationToken cancellationToken = default) =>
         GetLogAsync(repositoryPath, 50, cancellationToken);
 
+    // --no-show-signature: log.showSignature would run gpg.program or
+    // gpg.ssh.program from repository config on signed commits (ADR-006).
     public Task<SafeGitResult> GetLogAsync(string repositoryPath, int maxCount, CancellationToken cancellationToken = default)
     {
         var bounded = Math.Clamp(maxCount, 1, 50);
         var countText = bounded.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        return RunValidatedAsync(repositoryPath, new[] { "log", "--oneline", "-n", countText, "--no-decorate" }, cancellationToken);
+        return RunValidatedAsync(repositoryPath, new[] { "log", "--oneline", "-n", countText, "--no-decorate", "--no-show-signature" }, cancellationToken);
     }
 
     private async Task<SafeGitResult> RunValidatedAsync(string rawPath, IReadOnlyList<string> fixedArgs, CancellationToken cancellationToken)
@@ -96,6 +103,22 @@ public sealed class SafeGitRunner
     }
 
     /// <summary>
+    /// Command-scope config (<c>GIT_CONFIG_COUNT/KEY/VALUE</c>). It outranks
+    /// every config file, including the repository's, and git passes it on to
+    /// any child git it starts.
+    /// </summary>
+    private static readonly (string Key, string Value)[] CommandScopeConfig =
+    {
+        // ADR-005: the root itself is never used as an implicit bare repository.
+        ("safe.bareRepository", "explicit"),
+        // ADR-006: core.fsmonitor=<cmd> runs a program on every index read.
+        ("core.fsmonitor", "false"),
+        // ADR-006: git diff otherwise rewrites .git/index after a stat refresh,
+        // which fires post-index-change hooks (files or, from git 2.54, config).
+        ("diff.autoRefreshIndex", "false"),
+    };
+
+    /// <summary>
     /// Pins git to <paramref name="repositoryRoot"/>, so a <c>core.worktree</c>,
     /// <c>commondir</c> or broken <c>.git</c> that appears after
     /// <see cref="GitRepositoryGuard"/> ran still cannot redirect git.
@@ -128,10 +151,19 @@ public sealed class SafeGitRunner
         environment["GIT_WORK_TREE"] = root;
         environment["GIT_COMMON_DIR"] = Path.Combine(root, ".git");
 
-        // Command-scope config: the root itself is never used as an implicit bare repository.
-        environment["GIT_CONFIG_COUNT"] = "1";
-        environment["GIT_CONFIG_KEY_0"] = "safe.bareRepository";
-        environment["GIT_CONFIG_VALUE_0"] = "explicit";
+        // ADR-006: a missing object in a partial clone is an error, never a
+        // fetch through the promisor remote's upload-pack, ssh or credential helper.
+        environment["GIT_NO_LAZY_FETCH"] = "1";
+        // ADR-006: git status does not rewrite .git/index (no post-index-change hook).
+        environment["GIT_OPTIONAL_LOCKS"] = "0";
+
+        environment["GIT_CONFIG_COUNT"] = CommandScopeConfig.Length.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        for (var i = 0; i < CommandScopeConfig.Length; i++)
+        {
+            var index = i.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            environment["GIT_CONFIG_KEY_" + index] = CommandScopeConfig[i].Key;
+            environment["GIT_CONFIG_VALUE_" + index] = CommandScopeConfig[i].Value;
+        }
     }
 
     private static async Task<SafeGitResult> RunAsync(string workingDirectory, IReadOnlyList<string> fixedArgs, CancellationToken cancellationToken)
