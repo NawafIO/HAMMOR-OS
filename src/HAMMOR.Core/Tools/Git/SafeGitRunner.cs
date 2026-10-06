@@ -15,6 +15,10 @@ namespace HAMMOR.Core.Tools.Git;
 /// <see cref="Process.Start()"/>. Output is bounded so no unbounded stream
 /// is accumulated in memory. Process is launched via structured
 /// <see cref="ProcessStartInfo.ArgumentList"/> — no shell command string.
+/// Git is confined to the validated directory (ADR-005):
+/// <see cref="GitRepositoryGuard"/> refuses layouts and config that redirect
+/// it elsewhere, and the child environment pins the work tree, common
+/// directory and discovery boundary to that directory.
 /// </remarks>
 public sealed class SafeGitRunner
 {
@@ -29,8 +33,10 @@ public sealed class SafeGitRunner
         _policy = policy;
     }
 
+    // --ignore-submodules=all: a submodule checkout's .git file can point at any
+    // repository, and git would otherwise inspect it (ADR-005).
     public Task<SafeGitResult> GetStatusAsync(string repositoryPath, CancellationToken cancellationToken = default) =>
-        RunValidatedAsync(repositoryPath, new[] { "status", "--porcelain=v1" }, cancellationToken);
+        RunValidatedAsync(repositoryPath, new[] { "status", "--porcelain=v1", "--ignore-submodules=all" }, cancellationToken);
 
     public Task<SafeGitResult> GetDiffAsync(string repositoryPath, CancellationToken cancellationToken = default) =>
         GetDiffAsync(repositoryPath, staged: false, cancellationToken);
@@ -38,8 +44,8 @@ public sealed class SafeGitRunner
     public Task<SafeGitResult> GetDiffAsync(string repositoryPath, bool staged, CancellationToken cancellationToken = default)
     {
         var args = staged
-            ? new[] { "diff", "--no-color", "--staged" }
-            : new[] { "diff", "--no-color" };
+            ? new[] { "diff", "--no-color", "--ignore-submodules=all", "--staged" }
+            : new[] { "diff", "--no-color", "--ignore-submodules=all" };
         return RunValidatedAsync(repositoryPath, args, cancellationToken);
     }
 
@@ -80,7 +86,52 @@ public sealed class SafeGitRunner
             return SafeGitResult.Failure($"Invalid repository path '{canonical}': {ex.Message}");
         }
 
+        var problem = GitRepositoryGuard.FindProblem(canonical);
+        if (problem is not null)
+        {
+            return SafeGitResult.Failure(problem);
+        }
+
         return await RunAsync(canonical, fixedArgs, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Pins git to <paramref name="repositoryRoot"/>, so a <c>core.worktree</c>,
+    /// <c>commondir</c> or broken <c>.git</c> that appears after
+    /// <see cref="GitRepositoryGuard"/> ran still cannot redirect git.
+    /// Inherited <c>GIT_*</c> variables are dropped first: HAMMOR's own
+    /// environment must not redirect objects, index or config.
+    /// </summary>
+    /// <remarks>
+    /// <c>GIT_DIR</c> is deliberately not set: an explicit git directory makes
+    /// git skip its <c>safe.directory</c> ownership check. The ceiling and
+    /// <c>safe.bareRepository=explicit</c> bound discovery to
+    /// <c>&lt;root&gt;\.git</c> instead.
+    /// </remarks>
+    private static void ConfineToRepository(ProcessStartInfo psi, string repositoryRoot)
+    {
+        var environment = psi.Environment;
+        foreach (var key in environment.Keys.Where(k => k.StartsWith("GIT_", StringComparison.OrdinalIgnoreCase)).ToList())
+        {
+            environment.Remove(key);
+        }
+
+        var root = Path.TrimEndingDirectorySeparator(repositoryRoot);
+        var parent = Path.GetDirectoryName(root);
+        if (!string.IsNullOrEmpty(parent))
+        {
+            // Discovery may look at the root itself but never climbs into its parent.
+            environment["GIT_CEILING_DIRECTORIES"] = parent;
+        }
+
+        // Override core.worktree and .git/commondir from any config source.
+        environment["GIT_WORK_TREE"] = root;
+        environment["GIT_COMMON_DIR"] = Path.Combine(root, ".git");
+
+        // Command-scope config: the root itself is never used as an implicit bare repository.
+        environment["GIT_CONFIG_COUNT"] = "1";
+        environment["GIT_CONFIG_KEY_0"] = "safe.bareRepository";
+        environment["GIT_CONFIG_VALUE_0"] = "explicit";
     }
 
     private static async Task<SafeGitResult> RunAsync(string workingDirectory, IReadOnlyList<string> fixedArgs, CancellationToken cancellationToken)
@@ -102,6 +153,8 @@ public sealed class SafeGitRunner
         {
             psi.ArgumentList.Add(arg);
         }
+
+        ConfineToRepository(psi, workingDirectory);
 
         using var process = new Process
         {
@@ -148,7 +201,10 @@ public sealed class SafeGitRunner
         var truncated = false;
         int total = 0;
 
-        while (!reader.EndOfStream)
+        // Not reader.EndOfStream: it blocks synchronously, so the stderr reader
+        // would not start until stdout ends, and git blocks once the stderr pipe
+        // is full (e.g. a usage message with no stdout) — a deadlock.
+        while (true)
         {
             int read;
             try
