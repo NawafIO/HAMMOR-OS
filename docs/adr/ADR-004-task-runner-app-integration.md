@@ -1,7 +1,7 @@
 # ADR-004: Task Runner App Integration & Path-Scoped Grants (Phase 6)
 
 ## Status
-Accepted. **Phase 6a (Core/Infrastructure) implemented and verified on Windows** at commit `4f73234`: `dotnet build -c Release` succeeded, `dotnet test -c Release` passed 371/371 (0 failed, 0 skipped). **Phase 6b (App) not started.**
+Accepted. **Phase 6a (Core/Infrastructure) implemented and verified on Windows** at commit `4f73234`: `dotnet build -c Release` succeeded, `dotnet test -c Release` passed 371/371 (0 failed, 0 skipped). **Phase 6b (App) implemented at commit `4891eb9`, UNVERIFIED ON WINDOWS**: it has not been compiled or run, because the environment that wrote it has no .NET SDK and cannot run WPF. Phase 6b counts as verified only after a Windows Release build, a passing `dotnet test -c Release`, and the manual checklist under **Required tests**. See **Phase 6b implementation notes**.
 
 §2.5 is superseded in part by [ADR-005](ADR-005-interactive-git-repository-confinement.md). See **Phase 6a implementation notes** for where the code differs from the text below.
 
@@ -141,10 +141,49 @@ Where the code differs from, or adds to, the text above (commits `5af1e8d`, `4f7
 - **DI:** Infrastructure registers fallback `IPathResolution` (`ManagedPathResolution`) and `IFilesystemPolicy` with `TryAdd`, so the tools, `TaskPathScope` and authoring share one policy. Platform.Windows still overrides both. `TaskPathScope` and `TaskAuthoringService` are registered as singletons.
 - **Approval text:** the localised summary uses the keys `Tasks.Grant.ApprovalSummary` and `Tasks.Grant.ResumeSummary`, falling back to English until 6b adds them to the resource files.
 
+## Phase 6b implementation notes
+How the App layer meets §4 and §5 (commit `4891eb9`), including the choices the text left open:
+
+- **Scheduler start:** `App.StartScheduler` runs after `InitialiseAsync`, which has migrated the database and reconciled interrupted tasks, and before the first window is shown. If `InitialiseAsync` throws, the scheduler is never started. If the scheduler itself cannot be constructed, the error is logged and the app continues without it; no unattended task runs that session (fail closed).
+- **Scheduler stop:** §4 says "await `StopAsync()`". `OnExit` instead calls it synchronously, with a 5-second limit, on the thread pool, before the host is stopped or disposed. The reason is that WPF does not await an `async void` `OnExit`, so work after its first `await` may never run.
+  - Nothing in the scheduler's path waits for the UI thread (`TaskChanged` is forwarded with a non-blocking `Dispatcher.InvokeAsync`), so the wait cannot deadlock.
+  - If the limit is ever hit, the task stays Running and the next launch's reconciliation marks it Failed, not re-run.
+- **Editor:** `TaskEditorWindow` and `TaskEditorViewModel`, opened through `ITaskEditorDialog` so view models never reference window types.
+  - Only registered tools with `ToolPermission.Read` are offered.
+  - Folders are chosen with the .NET 8 `OpenFolderDialog` (several at once) and are sent only while a path-scoped tool is selected.
+  - Expiry defaults to 24 hours from now. The time is entered as local `HH:mm`. The date picker covers today to today + 30 days, and Core enforces the exact 30-day lifetime.
+  - The tool-call cap defaults to 10 (input 1–50).
+  - The schedule is optional and offered for new tasks only.
+  - The project is optional and shown only when projects exist.
+  - Retry attempts are not exposed, so the draft default of 1 applies.
+  - The view model only checks that dates and times can be read. Every grant rule, and its error text, comes from Core.
+- **Approval:** `TaskAuthoringService` raises its `ConfirmationRequest` through the existing `DialogConfirmationService`.
+  - The dialog is now owned by the active window, so it opens over the editor.
+  - Its tool name and details are forced left-to-right.
+  - The approval logic is unchanged: only Allow approves.
+  - On refusal the editor stays open with a notice, and nothing is created or changed.
+- **Resume:** the editor is pre-filled from the blocked grant: the tools that are still registered as Read, the roots and the call cap. The expiry is fresh. Core always creates a new grant id with `SupersedesGrantId`, and the old grant is never sent.
+- **Cancel:** `TaskAuthoringService.CancelAsync` for Pending, Running and Blocked rows. The buttons appear by state; Core rechecks the state.
+- **Live refresh:** `TasksViewModel` subscribes to `ITaskStore.TaskChanged` and updates rows on the dispatcher by task id. Changes that arrive during a reload are replayed after it, so an older snapshot never overwrites a newer state. There is no polling.
+- **Visuals:** `StatusBlockedBrush` (#8957E5) in `Tokens.xaml`; `TaskStateToBrushConverter` maps Blocked to it.
+- **Localisation:** 47 new keys in both `Strings.resx` and `Strings.ar.resx`. `Tasks.SchedulerNote` is rewritten. `Common.NotImplemented` stays because the Projects page still uses it. Paths, tool names, dates and grant details are kept left-to-right in RTL layouts.
+- **Known limitations:**
+  - Core error messages are not localised and appear in English in the Arabic UI. The approval details are invariant by design (§3).
+  - The Arabic strings have not been reviewed by a native speaker.
+  - Dates are shown in local time as `yyyy-MM-dd HH:mm`.
+
 ## Affected components
 - `HAMMOR.Core` (6a, done): `TaskGrant.AllowedRoots`, `TaskGrantValidator` (root structure, path-tool rule), `IPathScopedTool` + `IGitRepositoryScopedTool` on filesystem/Git/project tools, new `TaskPathScope` (root validation, run-time path check, `GitRepositoryGuard` call), `UnattendedRunContext` (takes `TaskPathScope`), `TaskRunner` (re-validates roots, passes `TaskPathScope`, retry cap), `HammorTask.MaxAttemptsLimit`, `ITaskStore.TryCancelAsync`, new `TaskAuthoringService` + `TaskDraft` + `GrantDraft`, `ToolRegistry` (reject `task.grant`).
 - `HAMMOR.Infrastructure` (6a, done): `task_grants.allowed_roots` column (in-place migration, separate immutability trigger `trg_task_grants_roots_immutable`), `SqliteTaskStore` mapping, `TryCancelAsync`, attempt-limit check, DI for fallback policy/resolution, `TaskPathScope` and `TaskAuthoringService`.
-- `HAMMOR.App`: scheduler start/stop in `App.xaml.cs`, `TasksViewModel` (live refresh, commands), Tasks page and new-task form, `TaskStateToBrushConverter` (Blocked), localisation (en/ar).
+- `HAMMOR.App` (6b, implemented at `4891eb9`, unverified on Windows):
+  - scheduler start/stop in `App.xaml.cs`;
+  - new `TasksViewModel` + `TaskItemViewModel` (live refresh, commands), moved out of `ListPageViewModels.cs`;
+  - new `TaskEditorViewModel`, `TaskEditorWindow` and `TaskEditorDialogService`;
+  - `TasksPage.xaml`;
+  - `TaskStateToBrushConverter` and `Tokens.xaml` (Blocked);
+  - `ConfirmationDialog.xaml` (left-to-right technical text);
+  - `DialogConfirmationService` (owned by the active window);
+  - localisation (en/ar).
 - Unchanged: `PermissionEvaluator`, `FilesystemPolicy`, `SafeGitRunner`, `ToolCallValidator`, interactive chat path.
 
 ## Required tests
@@ -172,17 +211,21 @@ Authoring:
 17. `Details` text lists every grant field exactly; `task.grant` cannot be registered as a tool.
 
 ### Manual Windows verification checklist (6b)
-1. Fresh start: migration and reconciliation complete before the scheduler starts (log order); a task left Running by a killed process shows Failed, not re-run.
-2. Create a text-only task (no tools) with near-future schedule → runs once, Completed, result visible.
-3. Create a task with `filesystem.read_file` + one root; approve → runs; reading inside root succeeds.
-4. Same, model asked to read outside the root → task shows Blocked with reason.
-5. Approval dialog: Deny and window close both create nothing.
-6. Blocked → Resume with new grant: form pre-filled, new approval required, task runs; old grant not reused.
-7. Cancel a Pending, a Blocked and a Running task; each shows Cancelled.
-8. Expiry picker cannot exceed 30 days; tool picker lists only Read tools; root picker appears only for path-scoped tools.
-9. List updates live without manual refresh.
-10. Exit while a task runs → on next launch it is Cancelled (not Running, not re-run).
-11. Switch to Arabic: all new strings translated, RTL layout correct, Blocked badge visible.
+Not yet run (status: unverified on Windows). Run it on the 6b branch after `dotnet build -c Release` and `dotnet test -c Release` pass. A configured Claude API key is needed for steps that actually run a task. Logs are under `%LOCALAPPDATA%\HAMMOR\logs`.
+
+1. **Start order.** Launch HAMMOR. In the day's log, `Task scheduler started.` appears after the reconciliation and memory-index lines. Kill HAMMOR while a task is Running, relaunch, and confirm that task shows Failed and is not re-run.
+2. **Banner.** Tasks page: the info bar says "Unattended tasks", and no "Not Implemented" text appears.
+3. **Text-only task.** Choose New task…, enter a title and instruction, select no tools, keep the default expiry, choose Review and create…, then Allow. The task appears immediately without a manual refresh, runs, and ends Completed with a visible result.
+4. **Approval shows the exact grant.** In step 3 the confirmation lists `task:`, `grant:`, `permission: Read`, `tools:`, `roots:`, `expires:`, `max tool calls:`, `schedule:` and `project:`.
+5. **Deny and dismissal.** Create again, but choose Deny. The editor shows "Not approved. Nothing was created." and no task appears. Repeat, closing the confirmation with Escape or ×; same result. Cancel the editor; nothing is created.
+6. **Read-only tools only.** The tool list contains only Read tools: no `filesystem.write_file`, `filesystem.delete_file` or `memory.save`.
+7. **Folders.** Selecting `filesystem.read_file` (or a `git.*` tool, or `project.inspect`) shows Allowed folders. Add folder… opens the Windows folder picker and allows several folders. Deselecting all filesystem tools hides the section. With such a tool but no folder, Core's error ("must name at least one root") is shown and no dialog appears.
+8. **Expiry limits.** The date picker offers no date beyond 30 days. A time like `25:00` gives the HH:mm error. Today with a time in the past gives Core's expiry error.
+9. **Inside and outside the root.** Create a task with `filesystem.read_file` and one folder, asking it to read a file inside the folder: it runs. Then ask for a file outside the folder: the task shows the Blocked badge (purple) with a reason naming the path.
+10. **Resume.** On the Blocked task, choose Resume with new grant…. The form is pre-filled with tools, folders and call cap, and shows the blocked reason. Change what is needed, choose Review and resume…, and confirm the dialog shows `supersedes: <old grant id>`. Allow, and the task returns to Pending and runs. Repeat with Deny: "Not approved. The task stays blocked." and nothing changes.
+11. **Cancel.** Cancel a Pending task, a Blocked task and a Running task. Each ends Cancelled; the Running one shows "Cancellation requested…" first. Completed, Failed and Cancelled rows have no Cancel button.
+12. **Exit while running.** Exit while a task runs. The log shows `Task scheduler stopped.`, and on the next launch that task is Cancelled (or Failed if the 5 s limit was hit), never re-run.
+13. **Arabic.** Switch to Arabic. All new texts are translated, with no `!Key!` placeholders. The layout mirrors, while paths, tool names, dates and the confirmation details read left-to-right. The Blocked badge is visible.
 
 ## Consequences
 - Unattended tasks become usable from the app, still Read-only and approval-gated.
