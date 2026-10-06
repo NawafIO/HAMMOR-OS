@@ -139,7 +139,7 @@ These are real and visible in the UI rather than hidden:
 | **TTS streaming** | Not implemented. The ElevenLabs provider buffers the full response before playback and reports `SupportsStreaming = false`. |
 | **Semantic memory** | **Not implemented.** The abstraction exists; search is keyword-based and the Memory page states this. |
 | **Task scheduling / retry** | **Engine implemented, not wired into the app.** `TaskRunner` and `TaskSchedulerService` run granted tasks one at a time with Read-only, expiring, immutable grants, retry/backoff, cancellation and audit (ADR-003). Deferred: starting the scheduler from the app, the grant-creation UI, Blocked-task display on the Tasks page, and path-level grant scope. Until then nothing runs tasks automatically in the app. |
-| **Projects** | Store and model exist and scope memory/tasks. Read-only Git and project inspection exist as tools (status, diff, log, project inspect); the project creation UI is not built. |
+| **Projects** | Store and model exist and scope memory/tasks. Read-only Git and project inspection exist as tools (status, diff, log, project inspect); Git tools only accept a repository root with its own `.git` directory and refuse layouts or config that would redirect git elsewhere ([ADR-005](docs/adr/ADR-005-interactive-git-repository-confinement.md)), and repository config cannot make them run a program; repositories whose own config defines a filter driver are refused ([ADR-006](docs/adr/ADR-006-git-repository-config-execution.md)); the project creation UI is not built. |
 | **Tray / global hotkey / overlay** | **Not implemented.** The settings toggles are present but disabled. |
 | **Mobile gateway** | Not built. Core is kept platform-neutral so it can be hosted later. |
 

@@ -7,6 +7,7 @@ using Xunit;
 
 namespace HAMMOR.Core.Tests.Tools.Git;
 
+[Collection(GitProcessCollection.Name)]
 public sealed class GitToolsSecurityTests : IDisposable
 {
     private readonly List<string> _tempRoots = new();
@@ -249,6 +250,24 @@ public sealed class GitToolsSecurityTests : IDisposable
         {
             Assert.True(result.Truncated);
         }
+    }
+
+    [Fact]
+    public async Task Large_stderr_with_empty_stdout_does_not_deadlock()
+    {
+        // An empty .git passes the repository guard, so git runs and prints its
+        // usage text (larger than a pipe buffer) to stderr with nothing on stdout.
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, ".git"));
+        var runner = RunnerFor(root);
+
+        var diff = Task.Run(() => runner.GetDiffAsync(root));
+        var finished = await Task.WhenAny(diff, Task.Delay(TimeSpan.FromSeconds(30)));
+
+        Assert.Same(diff, finished);
+        var result = await diff;
+        Assert.False(result.Succeeded);
+        Assert.True(result.StdErr.Length > 4096, $"Fixture must overflow the 4 KiB stderr pipe; got {result.StdErr.Length} chars.");
     }
 
     // ---- Helpers: isolated git fixture (git init only inside temp dirs) ---
