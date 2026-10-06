@@ -164,6 +164,24 @@
   <data name="Confirm.Tool" xml:space="preserve">
     <value>الأداة</value>
   </data>
+  <data name="LivingCore.Blocked" xml:space="preserve">
+    <value>مهمة بانتظار موافقتك في صفحة المهام.</value>
+  </data>
+  <data name="LivingCore.Error" xml:space="preserve">
+    <value>حدث خلل ويحتاج إلى انتباهك.</value>
+  </data>
+  <data name="LivingCore.Idle" xml:space="preserve">
+    <value>هامور هنا وجاهز.</value>
+  </data>
+  <data name="LivingCore.Listening" xml:space="preserve">
+    <value>هامور منتبه إليك.</value>
+  </data>
+  <data name="LivingCore.Speaking" xml:space="preserve">
+    <value>هامور يتحدث.</value>
+  </data>
+  <data name="LivingCore.Thinking" xml:space="preserve">
+    <value>هامور يفكّر.</value>
+  </data>
   <data name="Memory.Empty" xml:space="preserve">
     <value>لا توجد مدخلات ذاكرة بعد.</value>
   </data>

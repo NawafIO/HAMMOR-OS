@@ -25,7 +25,12 @@
                      Title="{loc:Loc Setup.Title}"
                      FlowDirection="LeftToRight"
                      ShowMaximize="False"
-                     ShowMinimize="False" />
+                     ShowMinimize="False">
+            <!-- Application mark: the 20 px app-icon tile (V2 Lens). -->
+            <ui:TitleBar.Icon>
+                <ui:ImageIcon Width="16" Height="16" Source="{DynamicResource HammorTitleBarIcon}" />
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
 
         <ScrollViewer Grid.Row="1" Margin="28,8,28,0" VerticalScrollBarVisibility="Auto">
             <StackPanel>

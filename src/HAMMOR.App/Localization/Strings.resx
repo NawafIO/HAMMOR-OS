@@ -164,6 +164,24 @@
   <data name="Confirm.Tool" xml:space="preserve">
     <value>Tool</value>
   </data>
+  <data name="LivingCore.Blocked" xml:space="preserve">
+    <value>A task is waiting for your approval in Tasks.</value>
+  </data>
+  <data name="LivingCore.Error" xml:space="preserve">
+    <value>Something failed and needs your attention.</value>
+  </data>
+  <data name="LivingCore.Idle" xml:space="preserve">
+    <value>HAMMOR is here and ready.</value>
+  </data>
+  <data name="LivingCore.Listening" xml:space="preserve">
+    <value>HAMMOR is paying attention to you.</value>
+  </data>
+  <data name="LivingCore.Speaking" xml:space="preserve">
+    <value>HAMMOR is speaking.</value>
+  </data>
+  <data name="LivingCore.Thinking" xml:space="preserve">
+    <value>HAMMOR is thinking.</value>
+  </data>
   <data name="Memory.Empty" xml:space="preserve">
     <value>No memory entries yet.</value>
   </data>

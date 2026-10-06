@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
 using HAMMOR.App.Localization;
+using HAMMOR.App.Presence;
 using HAMMOR.App.ViewModels;
 using HAMMOR.Core.Localization;
 using Wpf.Ui.Abstractions;
@@ -13,19 +14,22 @@ namespace HAMMOR.App.Views;
 public partial class MainWindow : FluentWindow
 {
     private readonly ILocalizationService _localization;
+    private readonly LivingCorePresenter _presence;
 
     private Type _currentPageType = typeof(ChatPage);
 
     public MainWindow(
         ShellViewModel viewModel,
         INavigationViewPageProvider pageProvider,
-        ILocalizationService localization)
+        ILocalizationService localization,
+        LivingCorePresenter presence)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(pageProvider);
 
         ViewModel = viewModel;
         _localization = localization ?? throw new ArgumentNullException(nameof(localization));
+        _presence = presence ?? throw new ArgumentNullException(nameof(presence));
 
         // The view model is the DataContext, not the window: binding the
         // window's own FlowDirection to a DataContext of `this` would be
@@ -59,6 +63,10 @@ public partial class MainWindow : FluentWindow
         if (args.Page is FrameworkElement page)
         {
             _currentPageType = page.GetType();
+
+            // A failed task shown on the Tasks page counts as seen, which
+            // releases the Living Core's Error state.
+            _presence.SetTaskListVisible(page is TasksPage);
         }
     }
 

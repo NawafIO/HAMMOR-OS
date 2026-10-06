@@ -27,7 +27,12 @@
                      Title="{loc:Loc App.Title}"
                      FlowDirection="LeftToRight"
                      ShowMaximize="True"
-                     ShowMinimize="True" />
+                     ShowMinimize="True">
+            <!-- Application mark: the 20 px app-icon tile (V2 Lens). -->
+            <ui:TitleBar.Icon>
+                <ui:ImageIcon Width="16" Height="16" Source="{DynamicResource HammorTitleBarIcon}" />
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
 
         <!-- Sidebar navigation. Pages are resolved from DI by the
              INavigationViewPageProvider so each view gets its view model. -->
@@ -36,6 +41,39 @@
                            IsBackButtonVisible="Collapsed"
                            IsPaneToggleVisible="True"
                            OpenPaneLength="220">
+
+            <!-- Sidebar mark (Logo board): the full mark with its seal ring and
+                 the wordmark while the pane is open, the compact lens while it
+                 is collapsed. Marks are never mirrored, hence LeftToRight. -->
+            <ui:NavigationView.PaneHeader>
+                <Grid Margin="6,2,0,10" HorizontalAlignment="Left">
+                    <StackPanel Orientation="Horizontal"
+                                Visibility="{Binding IsPaneOpen, ElementName=RootNavigation, Converter={StaticResource BoolToVisibility}}">
+                        <Image Width="28"
+                               Height="28"
+                               FlowDirection="LeftToRight"
+                               Source="{DynamicResource HammorSidebarMark}" />
+                        <Path Margin="10,0,0,0"
+                              VerticalAlignment="Center"
+                              FlowDirection="LeftToRight"
+                              Data="{DynamicResource HammorWordmarkLatin}"
+                              Fill="{DynamicResource HammorMarkInkBrush}"
+                              Visibility="{Binding IsRightToLeft, Source={x:Static loc:LocalizationSource.Instance}, Converter={StaticResource InverseBoolToVisibility}}" />
+                        <Path Margin="10,0,0,0"
+                              VerticalAlignment="Center"
+                              FlowDirection="LeftToRight"
+                              Data="{DynamicResource HammorWordmarkArabic}"
+                              Fill="{DynamicResource HammorMarkInkBrush}"
+                              Visibility="{Binding IsRightToLeft, Source={x:Static loc:LocalizationSource.Instance}, Converter={StaticResource BoolToVisibility}}" />
+                    </StackPanel>
+                    <Image Width="24"
+                           Height="24"
+                           Margin="2,0,0,0"
+                           FlowDirection="LeftToRight"
+                           Source="{DynamicResource HammorSidebarLens}"
+                           Visibility="{Binding IsPaneOpen, ElementName=RootNavigation, Converter={StaticResource InverseBoolToVisibility}}" />
+                </Grid>
+            </ui:NavigationView.PaneHeader>
 
             <ui:NavigationView.MenuItems>
                 <ui:NavigationViewItem Content="{loc:Loc Nav.Chat}"

@@ -2,7 +2,9 @@ using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using HAMMOR.App.Localization;
+using HAMMOR.App.Presence;
 using HAMMOR.App.Services;
+using HAMMOR.App.Themes;
 using HAMMOR.App.ViewModels;
 using HAMMOR.App.Views;
 using HAMMOR.Core.Configuration;
@@ -11,12 +13,15 @@ using HAMMOR.Core.Permissions;
 using HAMMOR.Core.Status;
 using HAMMOR.Core.Storage;
 using HAMMOR.Core.Tasks;
+using HAMMOR.Core.Voice;
 using HAMMOR.Infrastructure.DependencyInjection;
 using HAMMOR.Infrastructure.Memory;
 using HAMMOR.Infrastructure.Persistence;
 using HAMMOR.Infrastructure.Tasks;
+using HAMMOR.Platform.Windows.Audio;
 using HAMMOR.Platform.Windows.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Serilog;
@@ -44,6 +49,9 @@ public partial class App : Application
     // Set only once startup housekeeping has succeeded (ADR-004 §4).
     private TaskSchedulerService? _scheduler;
 
+    // The static mark, shown while the host starts.
+    private SplashScreen? _splash;
+
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -58,6 +66,8 @@ public partial class App : Application
 
         ConfigureSerilog(paths);
 
+        _splash = ShowSplash();
+
         try
         {
             _host = BuildHost();
@@ -70,10 +80,14 @@ public partial class App : Application
             // InitialiseAsync throws and no unattended task ever runs.
             StartScheduler(_host.Services);
 
+            // Before the first window: the setup wizard is modal and must
+            // never open underneath the splash.
+            CloseSplash();
             ShowFirstWindow(_host.Services);
         }
         catch (Exception ex)
         {
+            CloseSplash();
             Log.Fatal(ex, "HAMMOR failed to start.");
 
             MessageBox.Show(
@@ -107,6 +121,43 @@ public partial class App : Application
         Log.Information("HAMMOR starting. Data root: {DataRoot}", paths.DataRoot);
     }
 
+    /// <summary>
+    /// Shows the V2 Lens splash (Logo board) until the first window is ready.
+    /// Purely presentational: a failure is logged and start-up continues.
+    /// </summary>
+    private static SplashScreen? ShowSplash()
+    {
+        try
+        {
+            var splash = new SplashScreen("Assets/Splash.png");
+            splash.Show(autoClose: false, topMost: false);
+            return splash;
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Splash screen could not be shown.");
+            return null;
+        }
+    }
+
+    private void CloseSplash()
+    {
+        var splash = Interlocked.Exchange(ref _splash, null);
+        if (splash is null)
+        {
+            return;
+        }
+
+        try
+        {
+            splash.Close(TimeSpan.FromMilliseconds(300));
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Splash screen could not be closed cleanly.");
+        }
+    }
+
     private static IHost BuildHost() =>
         Host.CreateDefaultBuilder()
             .ConfigureLogging(logging =>
@@ -126,6 +177,18 @@ public partial class App : Application
 
                 // Windows-specific: DPAPI secrets, WASAPI audio.
                 services.AddHammorWindowsPlatform();
+
+                // Living Core: observe when speech really plays. The WASAPI
+                // player is wrapped, not replaced, and nothing below the UI
+                // layer changes; VoiceOrchestrator still receives an
+                // IAudioPlayer that behaves exactly as before.
+                services.AddSingleton<NAudioPlayer>();
+                services.AddSingleton(sp => new SpeechPlaybackMonitor(
+                    sp.GetRequiredService<NAudioPlayer>(),
+                    sp.GetRequiredService<ILogger<SpeechPlaybackMonitor>>()));
+                services.Replace(ServiceDescriptor.Singleton<IAudioPlayer>(
+                    sp => sp.GetRequiredService<SpeechPlaybackMonitor>()));
+                services.AddSingleton<LivingCorePresenter>();
 
                 // UI-layer services.
                 services.AddSingleton<ILocalizationService, ResxLocalizationService>();
@@ -172,6 +235,9 @@ public partial class App : Application
 
         services.GetRequiredService<IThemeService>()
             .Apply(configurationStore.Current.General.Theme);
+
+        // The static mark for the title bar and sidebar, matched to the theme.
+        BrandMarks.Register(Current);
 
         services.GetRequiredService<SqliteDatabase>().Migrate();
 

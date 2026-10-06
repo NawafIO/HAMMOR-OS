@@ -3,6 +3,7 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
       xmlns:loc="clr-namespace:HAMMOR.App.Localization"
+      xmlns:presence="clr-namespace:HAMMOR.App.Presence"
       xmlns:vm="clr-namespace:HAMMOR.App.ViewModels"
       d:DataContext="{d:DesignInstance Type=vm:ChatViewModel}"
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -21,15 +22,32 @@
         <!-- Header -->
         <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <TextBlock Grid.Column="0"
+            <!-- Living Core, compact, during a conversation: keeps Thinking,
+                 Speaking and Error visible once the empty-state core gives way
+                 to the transcript. Its aura spills into the page padding. -->
+            <Border Grid.Column="0"
+                    Margin="-16,-24,4,-24"
+                    VerticalAlignment="Center"
+                    Visibility="{Binding HasMessages, Converter={StaticResource BoolToVisibility}}">
+                <presence:LivingCore x:Name="CompactCore"
+                                     Width="112"
+                                     Height="112"
+                                     State="{Binding State}"
+                                     ToolTip="{Binding Description}"
+                                     AutomationProperties.Name="{Binding Description}" />
+            </Border>
+
+            <TextBlock Grid.Column="1"
+                       VerticalAlignment="Center"
                        Style="{StaticResource PageTitleText}"
                        Text="{loc:Loc Chat.Title}" />
 
-            <StackPanel Grid.Column="1" Orientation="Horizontal">
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                 <ui:Button Appearance="Secondary"
                            Padding="8,4"
                            Command="{Binding SpeakLastCommand}"
@@ -56,10 +74,18 @@
                       VerticalScrollBarVisibility="Auto"
                       Padding="0,8">
             <Grid>
-                <!-- Empty state -->
+                <!-- Empty state: the Living Core is the home screen's centre. -->
                 <StackPanel VerticalAlignment="Center"
                             HorizontalAlignment="Center"
                             Visibility="{Binding HasMessages, Converter={StaticResource InverseBoolToVisibility}}">
+                    <presence:LivingCore x:Name="HeroCore"
+                                         Width="240"
+                                         Height="240"
+                                         Margin="{StaticResource FieldGap}"
+                                         HorizontalAlignment="Center"
+                                         State="{Binding State}"
+                                         ToolTip="{Binding Description}"
+                                         AutomationProperties.Name="{Binding Description}" />
                     <TextBlock Style="{StaticResource SectionTitleText}"
                                HorizontalAlignment="Center"
                                Text="{loc:Loc Chat.EmptyTitle}" />
