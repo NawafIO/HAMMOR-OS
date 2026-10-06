@@ -1,7 +1,7 @@
 # ADR-006: Neutralising program execution from repository Git config
 
 ## Status
-Accepted and implemented. Verified on Windows at commit `f57c4df`: `dotnet build -c Release` succeeded with 0 errors and 2 warnings, and `dotnet test -c Release` passed 325/325 (299 existing + 26 new), 0 failed, 0 skipped. Both warnings predate this change: CS0067 in `FilesystemPolicyFactory.cs` and xUnit1031 in `TaskStoreGrantTests.cs`. Also verified on Linux with real git 2.43.0 (Ubuntu `2.43.0-1ubuntu7.3`) and 2.55.0 (built from source): 325/325 on each.
+Accepted and implemented. Verified on Windows with git 2.55.0.windows.5 at commit `f57c4df`: `dotnet build -c Release` succeeded with 0 errors and 2 warnings, and `dotnet test -c Release` passed 325/325 (299 existing + 26 new), 0 failed, 0 skipped. Both warnings predate this change: CS0067 in `FilesystemPolicyFactory.cs` and xUnit1031 in `TaskStoreGrantTests.cs`. Also verified on Linux with real git 2.43.0 (Ubuntu `2.43.0-1ubuntu7.3`) and 2.55.0 (built from source): 325/325 on each.
 
 ## Date
 2026-10-06
@@ -136,7 +136,7 @@ All new tests use real git in temp directories. Each vector test first runs the 
 | `Filter_attribute_without_a_repository_driver_is_allowed`, `Partial_clone_filter_setting_is_not_mistaken_for_a_filter_driver` | no over-refusal |
 | `Tools_still_report_changes_and_never_rewrite_the_index` | status, diff, diff --staged and log still report real changes; a stat-only change is not reported; `.git/index` bytes unchanged |
 
-**Results:** on Windows at `f57c4df`, `dotnet build -c Release` gave 0 errors and 2 pre-existing warnings (CS0067 in `FilesystemPolicyFactory.cs`, xUnit1031 in `TaskStoreGrantTests.cs`), and `dotnet test -c Release` passed 325/325, with 0 failed and 0 skipped. On Linux with git 2.43.0 and with git 2.55.0, 325/325 passed on each.
+**Results:** on Windows with git 2.55.0.windows.5 at `f57c4df`, `dotnet build -c Release` gave 0 errors and 2 pre-existing warnings (CS0067 in `FilesystemPolicyFactory.cs`, xUnit1031 in `TaskStoreGrantTests.cs`), and `dotnet test -c Release` passed 325/325, with 0 failed and 0 skipped. On Linux with git 2.43.0 and with git 2.55.0, 325/325 passed on each.
 
 **Before the fix**, 20 of the original 24 failed for the expected reason. **Mutation check (git 2.55):** each mitigation was removed on its own and the suite re-run. Every removal turned at least one test red: `core.fsmonitor=false` → 2, `diff.autoRefreshIndex=false` → 3, `GIT_OPTIONAL_LOCKS=0` → 3, `GIT_NO_LAZY_FETCH=1` → 1, `--no-ext-diff` → 3, `--no-textconv` (unstaged / staged) → 1 / 1, `--no-show-signature` → 2, `[filter` refusal → 8.
 
