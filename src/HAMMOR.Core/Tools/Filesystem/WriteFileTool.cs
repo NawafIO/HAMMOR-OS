@@ -8,7 +8,7 @@ namespace HAMMOR.Core.Tools.Filesystem;
 /// <see cref="IFilesystemPolicy"/> when supplied. Uses an atomic write
 /// (temp file + move) so a failure does not leave a half-written file.
 /// </summary>
-public sealed class WriteFileTool : ITool
+public sealed class WriteFileTool : ITool, IPathScopedTool
 {
     private const int MaxContentChars = 2_000_000;
     private const long MaxContentBytes = 2 * 1024 * 1024;
@@ -21,6 +21,8 @@ public sealed class WriteFileTool : ITool
     }
 
     public string Name => "filesystem.write_file";
+
+    public IReadOnlyList<string> PathArguments { get; } = ["path"];
 
     public string Description =>
         "Write text to a file, creating parent directories as needed. Fails if the file exists and overwrite is false.";

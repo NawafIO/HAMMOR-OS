@@ -1,6 +1,6 @@
 namespace HAMMOR.Core.Tools.Git;
 
-public sealed class GitStatusTool : ITool
+public sealed class GitStatusTool : ITool, IGitRepositoryScopedTool
 {
     private readonly SafeGitRunner _runner;
 
@@ -11,6 +11,8 @@ public sealed class GitStatusTool : ITool
     }
 
     public string Name => "git.status";
+
+    public IReadOnlyList<string> PathArguments { get; } = ["repositoryPath"];
     public string Description => "Show working-tree status for an allowed repository path. Read-only.";
     public ToolPermission Permission => ToolPermission.Read;
 

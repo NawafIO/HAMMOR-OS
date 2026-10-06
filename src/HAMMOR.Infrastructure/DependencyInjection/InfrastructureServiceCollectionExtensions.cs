@@ -22,6 +22,7 @@ using HAMMOR.Core.Tools.Project;
 using HAMMOR.Infrastructure.Tools;
 using HAMMOR.Infrastructure.Voice;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace HAMMOR.Infrastructure.DependencyInjection;
 
@@ -99,6 +100,13 @@ public static class InfrastructureServiceCollectionExtensions
 
         // --- Security + agent loop ----------------------------------------
         services.AddSingleton<IPermissionEvaluator, PermissionEvaluator>();
+
+        // Platform-neutral fallbacks so the tools, the run-time path scope and
+        // grant authoring share one policy. Platform.Windows registers the
+        // Windows-aware IPathResolution/IFilesystemPolicy afterwards, which
+        // take precedence.
+        services.TryAddSingleton<IPathResolution, ManagedPathResolution>();
+        services.TryAddSingleton<IFilesystemPolicy, FilesystemPolicy>();
         services.AddSingleton<IToolRegistry>(BuildToolRegistry);
         services.AddSingleton<IAgentPipeline, AgentPipeline>();
         services.AddSingleton<AgentLoop>();
@@ -107,6 +115,11 @@ public static class InfrastructureServiceCollectionExtensions
         // the host must call TaskSchedulerService.Start() explicitly.
         services.AddSingleton<ITaskRunner, TaskRunner>();
         services.AddSingleton<TaskSchedulerService>();
+
+        // Path-scoped grants and grant authoring (ADR-004). TaskAuthoringService
+        // needs the UI's IConfirmationService, registered by the app.
+        services.AddSingleton<TaskPathScope>();
+        services.AddSingleton<TaskAuthoringService>();
         services.AddSingleton<ISystemStatusService, SystemStatusService>();
 
         return services;

@@ -7,7 +7,7 @@ namespace HAMMOR.Core.Tools.Filesystem;
 /// Reads a bounded window of a text file. Gated by <see cref="IFilesystemPolicy"/> when supplied.
 /// Never loads an unbounded file into memory and never treats opaque binary as text.
 /// </summary>
-public sealed class ReadFileTool : ITool
+public sealed class ReadFileTool : ITool, IPathScopedTool
 {
     private const long MaxBytes = 2 * 1024 * 1024;
     private const int DefaultMaxLines = 5000;
@@ -22,6 +22,8 @@ public sealed class ReadFileTool : ITool
     }
 
     public string Name => "filesystem.read_file";
+
+    public IReadOnlyList<string> PathArguments { get; } = ["path"];
 
     public string Description =>
         "Read a text file with bounded size and optional line windowing. Use offset and limit to page through large files.";

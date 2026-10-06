@@ -17,6 +17,13 @@ public sealed record TaskGrant
     /// <summary>Exact tool names. Empty means a text-only task. No wildcards.</summary>
     public IReadOnlyList<string> AllowedTools { get; init; } = [];
 
+    /// <summary>
+    /// Directories that path-scoped tools may touch (ADR-004 §2). Required
+    /// when any listed tool is <see cref="IPathScopedTool"/>. Stored in the
+    /// filesystem policy's canonical form with a trailing separator.
+    /// </summary>
+    public IReadOnlyList<string> AllowedRoots { get; init; } = [];
+
     /// <summary>Ceiling. In this version it must be <see cref="ToolPermission.Read"/>.</summary>
     public ToolPermission MaxPermission { get; init; } = ToolPermission.Read;
 
@@ -50,6 +57,8 @@ public static class TaskGrantValidator
     public const int MaxToolCallsLimit = 50;
 
     public const int MaxAllowedTools = 32;
+
+    public const int MaxAllowedRoots = 16;
 
     private static readonly TimeSpan ClockSkew = TimeSpan.FromMinutes(5);
 
@@ -134,6 +143,36 @@ public static class TaskGrantValidator
             }
         }
 
+        var roots = grant.AllowedRoots;
+        if (roots is null)
+        {
+            errors.Add("AllowedRoots must not be null.");
+        }
+        else
+        {
+            if (roots.Count > MaxAllowedRoots)
+            {
+                errors.Add($"A grant may list at most {MaxAllowedRoots} roots.");
+            }
+
+            var seenRoots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var root in roots)
+            {
+                if (string.IsNullOrWhiteSpace(root))
+                {
+                    errors.Add("Root paths must not be blank.");
+                }
+                else if (root.AsSpan().IndexOfAny('*', '?') >= 0)
+                {
+                    errors.Add($"Wildcards are not allowed in root paths ('{root}').");
+                }
+                else if (!seenRoots.Add(root.TrimEnd('\\', '/')))
+                {
+                    errors.Add($"Root '{root}' is listed more than once.");
+                }
+            }
+        }
+
         return errors;
     }
 
@@ -144,6 +183,7 @@ public static class TaskGrantValidator
         ArgumentNullException.ThrowIfNull(registry);
 
         var errors = new List<string>();
+        var listsPathScopedTool = false;
 
         foreach (var name in grant.AllowedTools ?? Array.Empty<string>())
         {
@@ -161,6 +201,17 @@ public static class TaskGrantValidator
                 errors.Add(
                     $"Tool '{name}' needs {tool.Permission}; only Read tools are grantable.");
             }
+
+            if (tool is IPathScopedTool)
+            {
+                listsPathScopedTool = true;
+            }
+        }
+
+        // ADR-004 §2.3: no "any allowed path" grant for path-scoped tools.
+        if (listsPathScopedTool && (grant.AllowedRoots is null || grant.AllowedRoots.Count == 0))
+        {
+            errors.Add("A grant that lists filesystem, Git or project tools must name at least one root.");
         }
 
         return errors;

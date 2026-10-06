@@ -8,7 +8,7 @@ namespace HAMMOR.Core.Tools.Filesystem;
 /// for expected filesystem conditions. All paths are gated by
 /// <see cref="IFilesystemPolicy"/> when one is supplied.
 /// </summary>
-public sealed class ListDirectoryTool : ITool
+public sealed class ListDirectoryTool : ITool, IPathScopedTool
 {
     private const int MaxEntries = 5_000;
     private const int MaxDepth = 16;
@@ -21,6 +21,8 @@ public sealed class ListDirectoryTool : ITool
     }
 
     public string Name => "filesystem.list_directory";
+
+    public IReadOnlyList<string> PathArguments { get; } = ["path"];
 
     public string Description =>
         "List files and folders in a directory. Use when you need to see what exists at a path before reading or writing. "

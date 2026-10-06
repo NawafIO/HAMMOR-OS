@@ -216,7 +216,7 @@ public sealed class AgentLoop(
                 // permission path and can only narrow it. Any miss stops the run.
                 if (unattended is not null)
                 {
-                    var gate = unattended.Check(tool);
+                    var gate = unattended.Check(tool, invocation);
                     if (gate.Outcome != ToolGateOutcome.Allow)
                     {
                         await _auditLog.AppendAsync(new AuditEntry

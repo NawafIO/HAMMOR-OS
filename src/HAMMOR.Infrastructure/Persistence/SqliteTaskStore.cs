@@ -46,6 +46,12 @@ public sealed class SqliteTaskStore(
                 throw new ArgumentException("A new task's first grant cannot supersede another.", nameof(task));
             }
 
+            if (task.MaxAttempts < 1 || task.MaxAttempts > HammorTask.MaxAttemptsLimit)
+            {
+                throw new ArgumentException(
+                    $"A task with a grant must allow between 1 and {HammorTask.MaxAttemptsLimit} attempts.", nameof(task));
+            }
+
             ThrowIfInvalid(task.Grant);
         }
 
@@ -270,6 +276,46 @@ public sealed class SqliteTaskStore(
         return resumed;
     }
 
+    public async Task<HammorTask?> TryCancelAsync(
+        string taskId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(taskId);
+
+        int affected;
+        await using (var connection = _database.OpenConnection())
+        await using (var command = connection.CreateCommand())
+        {
+            // Compare-and-set on state: a task the runner has just started is
+            // left alone (only the runner can cancel a running task).
+            command.CommandText = """
+                UPDATE tasks
+                SET state = $cancelled,
+                    completed_utc = $now
+                WHERE id = $id AND state IN ($pending, $blocked);
+                """;
+            command.Parameters.AddWithValue("$cancelled", (int)TaskState.Cancelled);
+            command.Parameters.AddWithValue("$pending", (int)TaskState.Pending);
+            command.Parameters.AddWithValue("$blocked", (int)TaskState.Blocked);
+            command.Parameters.AddWithValue("$now", _time.GetUtcNow().ToStorage());
+            command.Parameters.AddWithValue("$id", taskId);
+            affected = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        if (affected == 0)
+        {
+            return null;
+        }
+
+        var cancelled = await GetAsync(taskId, cancellationToken).ConfigureAwait(false);
+        if (cancelled is not null)
+        {
+            TaskChanged?.Invoke(this, cancelled);
+        }
+
+        return cancelled;
+    }
+
     public async Task<IReadOnlyList<HammorTask>> ListAsync(
         IReadOnlyCollection<TaskState>? states = null,
         string? projectId = null,
@@ -364,7 +410,7 @@ public sealed class SqliteTaskStore(
 
     private const string GrantColumns =
         "id, task_id, allowed_tools, max_permission, granted_utc, expires_utc, "
-        + "max_tool_calls, project_id, supersedes_grant_id, superseded_utc";
+        + "max_tool_calls, project_id, supersedes_grant_id, superseded_utc, allowed_roots";
 
     private sealed record Row(HammorTask Task, string? GrantId);
 
@@ -410,10 +456,10 @@ public sealed class SqliteTaskStore(
         command.CommandText = """
             INSERT INTO task_grants
                 (id, task_id, allowed_tools, max_permission, granted_utc, expires_utc,
-                 max_tool_calls, project_id, supersedes_grant_id, superseded_utc)
+                 max_tool_calls, project_id, supersedes_grant_id, superseded_utc, allowed_roots)
             VALUES
                 ($id, $task, $tools, $permission, $granted, $expires,
-                 $maxCalls, $project, $supersedes, NULL);
+                 $maxCalls, $project, $supersedes, NULL, $roots);
             """;
 
         command.Parameters.AddWithValue("$id", grant.Id);
@@ -425,6 +471,7 @@ public sealed class SqliteTaskStore(
         command.Parameters.AddWithValue("$maxCalls", grant.MaxToolCalls);
         command.Parameters.AddWithValue("$project", grant.ProjectId.OrDbNull());
         command.Parameters.AddWithValue("$supersedes", grant.SupersedesGrantId.OrDbNull());
+        command.Parameters.AddWithValue("$roots", JsonSerializer.Serialize(grant.AllowedRoots ?? Array.Empty<string>()));
         await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -455,11 +502,18 @@ public sealed class SqliteTaskStore(
         var tools = JsonSerializer.Deserialize<List<string>>(reader.GetStringValue("allowed_tools"))
             ?? new List<string>();
 
+        // Null for grants stored before ADR-004 (Phase 5): no roots.
+        var rootsJson = reader.GetNullableString("allowed_roots");
+        var roots = rootsJson is null
+            ? new List<string>()
+            : JsonSerializer.Deserialize<List<string>>(rootsJson) ?? new List<string>();
+
         var grant = new TaskGrant
         {
             Id = reader.GetStringValue("id"),
             TaskId = reader.GetStringValue("task_id"),
             AllowedTools = tools,
+            AllowedRoots = roots,
             MaxPermission = (HAMMOR.Core.Tools.ToolPermission)reader.GetInt("max_permission"),
             GrantedUtc = reader.GetTimestamp("granted_utc"),
             ExpiresUtc = reader.GetTimestamp("expires_utc"),

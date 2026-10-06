@@ -8,7 +8,7 @@ namespace HAMMOR.Core.Tools.Project;
 /// recursively traverses the workspace. Every inspected path is independently
 /// validated through <see cref="IFilesystemPolicy"/>.
 /// </summary>
-public sealed class ProjectInspectTool : ITool
+public sealed class ProjectInspectTool : ITool, IPathScopedTool
 {
     private readonly IFilesystemPolicy _policy;
 
@@ -42,6 +42,8 @@ public sealed class ProjectInspectTool : ITool
     }
 
     public string Name => "project.inspect";
+
+    public IReadOnlyList<string> PathArguments { get; } = ["projectPath"];
     public string Description => "Inspect project root metadata: top-level entries and known markers. Metadata-only, bounded, no content reads.";
     public ToolPermission Permission => ToolPermission.Read;
 

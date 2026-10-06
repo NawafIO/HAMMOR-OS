@@ -143,6 +143,14 @@ public sealed class SqliteDatabase
         grants.CommandText = TaskGrantSchema;
         grants.ExecuteNonQuery();
 
+        // Path-scoped grants (ADR-004). Added in place; Phase 5 grants keep
+        // NULL (no roots), which blocks path-scoped tools at run time.
+        EnsureColumn(connection, "task_grants", "allowed_roots", "TEXT NULL");
+
+        using var roots = connection.CreateCommand();
+        roots.CommandText = TaskGrantRootsSchema;
+        roots.ExecuteNonQuery();
+
         _logger.LogInformation("SQLite schema verified.");
     }
 
@@ -194,6 +202,17 @@ public sealed class SqliteDatabase
          AND NOT (OLD.state = 5 AND NEW.state = 0)
         BEGIN
             SELECT RAISE(ABORT, 'a task grant can only change when a Blocked task resumes');
+        END;
+        """;
+
+    // allowed_roots post-dates trg_task_grants_immutable, so its immutability
+    // is enforced by a separate trigger created after the column exists.
+    private const string TaskGrantRootsSchema = """
+        CREATE TRIGGER IF NOT EXISTS trg_task_grants_roots_immutable
+        BEFORE UPDATE OF allowed_roots ON task_grants
+        WHEN IFNULL(OLD.allowed_roots, '') <> IFNULL(NEW.allowed_roots, '')
+        BEGIN
+            SELECT RAISE(ABORT, 'task grants are immutable');
         END;
         """;
 

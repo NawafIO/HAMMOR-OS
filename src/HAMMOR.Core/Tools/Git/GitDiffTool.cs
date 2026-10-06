@@ -1,6 +1,6 @@
 namespace HAMMOR.Core.Tools.Git;
 
-public sealed class GitDiffTool : ITool
+public sealed class GitDiffTool : ITool, IGitRepositoryScopedTool
 {
     private readonly SafeGitRunner _runner;
 
@@ -11,6 +11,8 @@ public sealed class GitDiffTool : ITool
     }
 
     public string Name => "git.diff";
+
+    public IReadOnlyList<string> PathArguments { get; } = ["repositoryPath"];
     public string Description => "Show unstaged/staged diff for an allowed repository path. Read-only, bounded output.";
     public ToolPermission Permission => ToolPermission.Read;
 

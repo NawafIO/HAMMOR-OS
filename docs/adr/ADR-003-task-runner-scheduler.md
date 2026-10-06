@@ -132,6 +132,10 @@ Deferred (not in Phase 5):
 - **Grant-creation UI** with the confirmation dialog (§3). No grant can be created from the app.
 - **Blocked-task UI** on the Tasks page (§5, required test 18).
 
+Addressed in ADR-004 (Phase 6): all four deferred items above.
+
+Known deviation from §7 and the §3 clarification (found after release): `SqliteTaskStore.CreateAsync` and `ResumeBlockedAsync` do not write audit entries, so grant creation, supersession and the superseded-grant id on a new approval are not audited in Phase 5. Grants appear in the audit log only through the runner's "Run started" entries. Closed by ADR-004 §3. The decisions in this ADR are otherwise unchanged.
+
 Behaviour note: a model tool call that is malformed or names an unknown tool is returned to the model as an error (unchanged Phase 4 behaviour) rather than blocking the run; only grant/permission misses block.
 
 ## Owner decisions (resolved)

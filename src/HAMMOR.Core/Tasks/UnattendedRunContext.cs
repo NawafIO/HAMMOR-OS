@@ -53,8 +53,17 @@ public sealed class UnattendedRunContext
 {
     private readonly HashSet<string> _allowed;
     private readonly TimeProvider _time;
+    private readonly TaskPathScope? _pathScope;
 
-    public UnattendedRunContext(string taskId, TaskGrant grant, TimeProvider? timeProvider = null)
+    /// <param name="pathScope">
+    /// Required for path-scoped tools; when absent every path-scoped call
+    /// blocks (fail closed).
+    /// </param>
+    public UnattendedRunContext(
+        string taskId,
+        TaskGrant grant,
+        TimeProvider? timeProvider = null,
+        TaskPathScope? pathScope = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(taskId);
         ArgumentNullException.ThrowIfNull(grant);
@@ -62,6 +71,7 @@ public sealed class UnattendedRunContext
         TaskId = taskId;
         Grant = grant;
         _time = timeProvider ?? TimeProvider.System;
+        _pathScope = pathScope;
         _allowed = new HashSet<string>(grant.AllowedTools ?? Array.Empty<string>(), StringComparer.Ordinal);
     }
 
@@ -80,12 +90,23 @@ public sealed class UnattendedRunContext
     public string Tag(string message) => $"[unattended task {TaskId}] {message}";
 
     /// <summary>
-    /// Checked after the call has been validated and the tool resolved, and
-    /// before the normal permission evaluation.
+    /// Tool-level check without arguments. A path-scoped tool always blocks
+    /// here because its path arguments cannot be verified.
     /// </summary>
     public ToolGateDecision Check(ITool tool)
     {
         ArgumentNullException.ThrowIfNull(tool);
+        return Check(tool, new ToolInvocation { ToolName = tool.Name });
+    }
+
+    /// <summary>
+    /// Checked after the call has been validated and the tool resolved, and
+    /// before the normal permission evaluation.
+    /// </summary>
+    public ToolGateDecision Check(ITool tool, ToolInvocation invocation)
+    {
+        ArgumentNullException.ThrowIfNull(tool);
+        ArgumentNullException.ThrowIfNull(invocation);
 
         if (Grant.SupersededUtc is not null)
         {
@@ -106,6 +127,22 @@ public sealed class UnattendedRunContext
         if (!_allowed.Contains(tool.Name))
         {
             return ToolGateDecision.Block($"'{tool.Name}' is not in the task's grant.");
+        }
+
+        // ADR-004 §2.4: path arguments must resolve inside the granted roots.
+        if (tool is IPathScopedTool)
+        {
+            if (_pathScope is null)
+            {
+                return ToolGateDecision.Block(
+                    $"'{tool.Name}' touches the filesystem, but no path scope is configured for this run.");
+            }
+
+            var pathDecision = _pathScope.CheckCall(tool, invocation, Grant.AllowedRoots);
+            if (pathDecision.Outcome != ToolGateOutcome.Allow)
+            {
+                return pathDecision;
+            }
         }
 
         if (ToolCallsAuthorised >= Grant.MaxToolCalls)

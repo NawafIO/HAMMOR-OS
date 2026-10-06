@@ -30,7 +30,7 @@ The following were found while probing and are handled the same way:
 | Submodule gitlink whose checkout `.git` file points outside (+ `diff.submodule=log`) | `diff` prints the other repository's commit subjects; `status` runs a child git inside it |
 | Inherited `GIT_*` variables in HAMMOR's environment (`GIT_ALTERNATE_OBJECT_DIRECTORIES`, `GIT_OBJECT_DIRECTORY`, `GIT_INDEX_FILE`, `GIT_CONFIG_PARAMETERS`, …) | redirect objects, index or config for every call |
 
-ADR-004 §2.5 specifies a `.git`-must-be-a-directory rule for **unattended** runs only and says "Interactive Git behaviour is unchanged". That rule is not implemented yet: no `TaskPathScope` exists on any branch. This ADR supersedes that sentence: interactive calls are confined too, and Phase 6a should call the guard below instead of writing its own rule.
+ADR-004 §2.5 specifies a `.git`-must-be-a-directory rule for **unattended** runs only and says "Interactive Git behaviour is unchanged". When this ADR was written, that rule was not implemented yet: no `TaskPathScope` existed on any branch. This ADR supersedes that sentence: interactive calls are confined too, and Phase 6a should call the guard below instead of writing its own rule. (Phase 6a now does so; see follow-up 2.)
 
 While testing, a pre-existing deadlock was found in `SafeGitRunner.ReadBoundedAsync`. It looped on `reader.EndOfStream`, which blocks synchronously, so the stderr reader did not start until stdout ended. Git blocks once the 4 KiB stderr pipe is full. `git diff` in a directory that is not a repository prints about 7 KiB of usage text with no stdout, so `git.diff` on any allowed non-repository directory hung forever.
 
@@ -74,7 +74,7 @@ With an explicit `GIT_DIR`, git skips its `safe.directory` ownership check. Meas
 |---|---|
 | `GIT_DIR` + `GIT_WORK_TREE` (+ `GIT_CEILING_DIRECTORIES`) | Rejected as the primary mechanism. It skips the ownership check (§3). The ceiling is a no-op while `GIT_DIR` is set. `GIT_DIR` pointing at a `.git` file still follows it. |
 | `-c core.worktree=…` arguments | Not needed: `GIT_WORK_TREE` already wins over every config source. `-c` can only set keys, so it cannot disable includes, `commondir`, gitfiles, alternates or discovery. |
-| Reuse `TaskPathScope` checks | Not possible: not implemented. Reversed: Phase 6a should reuse `GitRepositoryGuard`. |
+| Reuse `TaskPathScope` checks | Not possible at the time: not implemented. Reversed: Phase 6a reuses `GitRepositoryGuard` (follow-up 2, done). |
 | Refusal only | Fragile: it depends on parsing config exactly as git does, and it is open to changes after the check. |
 | Neutralisation only | Insufficient: no environment variable or flag disables includes, alternates or gitfile following. |
 
@@ -126,5 +126,5 @@ All tests use real git in temp directories. The redirection target is always a r
 
 ## Follow-ups
 1. Decide how to neutralise config-driven command execution (residual 1). Done in [ADR-006](ADR-006-git-repository-config-execution.md). Candidates: `--no-ext-diff --no-textconv` on `diff`, `--no-show-signature` on `log`, command-scope overrides such as `core.fsmonitor=false`, `GIT_NO_LAZY_FETCH=1`, and attribute-source control for filter drivers.
-2. Phase 6a: `TaskPathScope` calls `GitRepositoryGuard.FindProblem`. Its ADR-004 §2.5 rule is a subset of the guard. Add a note to ADR-004 when that branch merges.
+2. Phase 6a: `TaskPathScope` calls `GitRepositoryGuard.FindProblem`. Its ADR-004 §2.5 rule is a subset of the guard. Add a note to ADR-004 when that branch merges. **Done** in commit `4f73234` (Windows-verified, 371/371); ADR-004 §2.5 carries the note.
 3. Optional: follow gitdir and commondir indirection only when every hop passes `IFilesystemPolicy`, so worktrees and submodule checkouts inside the allowed roots can be inspected.
