@@ -22,6 +22,10 @@ resumes them under a new grant, and cancels tasks
 *not* implemented yet and are labelled as such in the UI — see
 [Current limitations](#current-limitations).
 
+The Living Core P0 is also **pending Windows verification**. It covers the
+animated presence on the chat page and the static V2 Lens mark used for the
+app icon, splash and sidebar. See [docs/LIVING-CORE.md](docs/LIVING-CORE.md).
+
 ---
 
 ## Requirements
@@ -149,3 +153,5 @@ These are real and visible in the UI rather than hidden:
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — layering, agent loop, providers,
   voice pipeline, tools and permissions, memory, tasks, engineering decisions.
+- [docs/LIVING-CORE.md](docs/LIVING-CORE.md) — the Living Core and the V2 Lens
+  mark: architecture, state mapping, budget, Windows checklist.

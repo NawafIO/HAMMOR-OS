@@ -25,6 +25,7 @@ Five projects. The dependency direction only ever points inward toward Core.
                 └─────────────────────────────┘
 
                   tests/HAMMOR.Core.Tests  net8.0
+                  tests/HAMMOR.App.Tests   net8.0-windows  (Living Core model)
 ```
 
 **Core owns** AI provider contracts, intent/routing/planning, the permission
