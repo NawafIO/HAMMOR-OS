@@ -110,6 +110,7 @@ public sealed class TaskStateToBrushConverter : IValueConverter
                 TaskState.Completed => "StatusSuccessBrush",
                 TaskState.Running => "StatusWarningBrush",
                 TaskState.Failed => "StatusErrorBrush",
+                TaskState.Blocked => "StatusBlockedBrush",
                 _ => "StatusNeutralBrush",
             }
             : "StatusNeutralBrush";

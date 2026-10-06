@@ -52,11 +52,15 @@
     <Color x:Key="StatusWarningColor">#D29922</Color>
     <Color x:Key="StatusErrorColor">#D13438</Color>
     <Color x:Key="StatusNeutralColor">#8B949E</Color>
+    <!-- Blocked tasks wait for the user (ADR-004 §5): a colour of their own,
+         distinct from running (amber) and failed (red). -->
+    <Color x:Key="StatusBlockedColor">#8957E5</Color>
 
     <SolidColorBrush x:Key="StatusSuccessBrush" Color="{StaticResource StatusSuccessColor}" />
     <SolidColorBrush x:Key="StatusWarningBrush" Color="{StaticResource StatusWarningColor}" />
     <SolidColorBrush x:Key="StatusErrorBrush" Color="{StaticResource StatusErrorColor}" />
     <SolidColorBrush x:Key="StatusNeutralBrush" Color="{StaticResource StatusNeutralColor}" />
+    <SolidColorBrush x:Key="StatusBlockedBrush" Color="{StaticResource StatusBlockedColor}" />
 
     <!-- ===== Shared text styles ===== -->
     <Style x:Key="PageTitleText" TargetType="TextBlock">

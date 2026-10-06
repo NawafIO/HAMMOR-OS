@@ -7,7 +7,6 @@ using HAMMOR.Core.Audit;
 using HAMMOR.Core.Memory;
 using HAMMOR.Core.Projects;
 using HAMMOR.Core.Storage;
-using HAMMOR.Core.Tasks;
 using Microsoft.Extensions.Logging;
 
 namespace HAMMOR.App.ViewModels;
@@ -47,51 +46,6 @@ public sealed partial class ActivityViewModel(
         catch (Exception ex)
         {
             _logger.LogError(ex, "Could not load the audit trail.");
-        }
-        finally
-        {
-            IsLoading = false;
-            OnPropertyChanged(nameof(IsEmpty));
-        }
-    }
-}
-
-/// <summary>Shows persisted tasks.</summary>
-public sealed partial class TasksViewModel(
-    ITaskStore taskStore,
-    ILogger<TasksViewModel> logger) : ObservableObject
-{
-    private readonly ITaskStore _taskStore =
-        taskStore ?? throw new ArgumentNullException(nameof(taskStore));
-
-    private readonly ILogger<TasksViewModel> _logger =
-        logger ?? throw new ArgumentNullException(nameof(logger));
-
-    public ObservableCollection<HammorTask> Tasks { get; } = [];
-
-    [ObservableProperty]
-    private bool _isLoading;
-
-    public bool IsEmpty => Tasks.Count == 0 && !IsLoading;
-
-    [RelayCommand]
-    public async Task LoadAsync()
-    {
-        IsLoading = true;
-
-        try
-        {
-            var tasks = await _taskStore.ListAsync().ConfigureAwait(true);
-
-            Tasks.Clear();
-            foreach (var task in tasks)
-            {
-                Tasks.Add(task);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Could not load tasks.");
         }
         finally
         {

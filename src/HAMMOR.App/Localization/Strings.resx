@@ -458,11 +458,149 @@
   <data name="Status.Unavailable" xml:space="preserve">
     <value>Unavailable</value>
   </data>
+  <data name="TaskEditor.AddFolder" xml:space="preserve">
+    <value>Add folder…</value>
+  </data>
+  <data name="TaskEditor.BlockedTask" xml:space="preserve">
+    <value>Blocked task</value>
+  </data>
+  <data name="TaskEditor.CreateTitle" xml:space="preserve">
+    <value>New unattended task</value>
+  </data>
+  <data name="TaskEditor.ErrorsTitle" xml:space="preserve">
+    <value>Please fix the following:</value>
+  </data>
+  <data name="TaskEditor.Expiry" xml:space="preserve">
+    <value>Grant expires</value>
+  </data>
+  <data name="TaskEditor.ExpiryNote" xml:space="preserve">
+    <value>Required. At most 30 days from now. Enter the time as HH:mm (24-hour).</value>
+  </data>
+  <data name="TaskEditor.ExpiryRequired" xml:space="preserve">
+    <value>Choose an expiry date.</value>
+  </data>
+  <data name="TaskEditor.Folders" xml:space="preserve">
+    <value>Allowed folders</value>
+  </data>
+  <data name="TaskEditor.FoldersNote" xml:space="preserve">
+    <value>Filesystem, Git and project tools may only use these folders. At least one is required.</value>
+  </data>
+  <data name="TaskEditor.InvalidTime" xml:space="preserve">
+    <value>Enter times as HH:mm, for example 18:30.</value>
+  </data>
+  <data name="TaskEditor.MaxToolCalls" xml:space="preserve">
+    <value>Maximum tool calls per run</value>
+  </data>
+  <data name="TaskEditor.MaxToolCallsNote" xml:space="preserve">
+    <value>Between 1 and 50. A run that needs more fails.</value>
+  </data>
+  <data name="TaskEditor.NoProject" xml:space="preserve">
+    <value>(none)</value>
+  </data>
+  <data name="TaskEditor.Project" xml:space="preserve">
+    <value>Project (optional)</value>
+  </data>
+  <data name="TaskEditor.Prompt" xml:space="preserve">
+    <value>Instruction</value>
+  </data>
+  <data name="TaskEditor.PromptHint" xml:space="preserve">
+    <value>What HAMMOR should do when the task runs.</value>
+  </data>
+  <data name="TaskEditor.Refused" xml:space="preserve">
+    <value>Not approved. Nothing was created.</value>
+  </data>
+  <data name="TaskEditor.RefusedResume" xml:space="preserve">
+    <value>Not approved. The task stays blocked.</value>
+  </data>
+  <data name="TaskEditor.RemoveFolder" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="TaskEditor.ResumeTitle" xml:space="preserve">
+    <value>Resume with a new grant</value>
+  </data>
+  <data name="TaskEditor.ReviewNote" xml:space="preserve">
+    <value>Next you will see exactly what access is being granted. Nothing is created unless you choose Allow.</value>
+  </data>
+  <data name="TaskEditor.Schedule" xml:space="preserve">
+    <value>Run at a specific time</value>
+  </data>
+  <data name="TaskEditor.ScheduleNote" xml:space="preserve">
+    <value>Otherwise the task runs as soon as possible. The time must be before the grant expires.</value>
+  </data>
+  <data name="TaskEditor.ScheduleRequired" xml:space="preserve">
+    <value>Choose a date for the scheduled run.</value>
+  </data>
+  <data name="TaskEditor.SubmitCreate" xml:space="preserve">
+    <value>Review and create…</value>
+  </data>
+  <data name="TaskEditor.SubmitResume" xml:space="preserve">
+    <value>Review and resume…</value>
+  </data>
+  <data name="TaskEditor.TaskName" xml:space="preserve">
+    <value>Title</value>
+  </data>
+  <data name="TaskEditor.Tools" xml:space="preserve">
+    <value>Read-only tools</value>
+  </data>
+  <data name="TaskEditor.ToolsNote" xml:space="preserve">
+    <value>Unattended tasks can only use tools that read. Select none for a text-only task.</value>
+  </data>
+  <data name="Tasks.BlockedReason" xml:space="preserve">
+    <value>Blocked because</value>
+  </data>
+  <data name="Tasks.Cancel" xml:space="preserve">
+    <value>Cancel task</value>
+  </data>
   <data name="Tasks.Empty" xml:space="preserve">
     <value>No tasks yet.</value>
   </data>
+  <data name="Tasks.Folders" xml:space="preserve">
+    <value>Folders:</value>
+  </data>
+  <data name="Tasks.Grant.ApprovalSummary" xml:space="preserve">
+    <value>Allow this task to run unattended with the read-only access below?</value>
+  </data>
+  <data name="Tasks.Grant.ResumeSummary" xml:space="preserve">
+    <value>Resume this blocked task with a new read-only grant? The previous grant will be retired.</value>
+  </data>
+  <data name="Tasks.GrantExpires" xml:space="preserve">
+    <value>Grant expires:</value>
+  </data>
+  <data name="Tasks.InfoTitle" xml:space="preserve">
+    <value>Unattended tasks</value>
+  </data>
+  <data name="Tasks.Message.CancelNotAllowed" xml:space="preserve">
+    <value>This task can no longer be cancelled.</value>
+  </data>
+  <data name="Tasks.Message.CancelRequested" xml:space="preserve">
+    <value>Cancellation requested. The running task will stop shortly.</value>
+  </data>
+  <data name="Tasks.Message.Cancelled" xml:space="preserve">
+    <value>Task cancelled.</value>
+  </data>
+  <data name="Tasks.Message.Created" xml:space="preserve">
+    <value>Task created. It runs when it is due.</value>
+  </data>
+  <data name="Tasks.Message.Resumed" xml:space="preserve">
+    <value>Task resumed under a new grant.</value>
+  </data>
+  <data name="Tasks.New" xml:space="preserve">
+    <value>New task…</value>
+  </data>
+  <data name="Tasks.Result" xml:space="preserve">
+    <value>Result</value>
+  </data>
+  <data name="Tasks.Resume" xml:space="preserve">
+    <value>Resume with new grant…</value>
+  </data>
+  <data name="Tasks.Schedule" xml:space="preserve">
+    <value>Scheduled:</value>
+  </data>
   <data name="Tasks.SchedulerNote" xml:space="preserve">
-    <value>Background scheduling and retry are not implemented yet. Tasks recorded here persist and are reconciled after a crash, but nothing runs them automatically.</value>
+    <value>HAMMOR runs these tasks in the background, one at a time, with read-only access and only under a grant you approved. A task that needs more access stops as Blocked and waits here: resume it with a new grant or cancel it.</value>
+  </data>
+  <data name="Tasks.State.Blocked" xml:space="preserve">
+    <value>Blocked</value>
   </data>
   <data name="Tasks.State.Cancelled" xml:space="preserve">
     <value>Cancelled</value>
@@ -481,6 +619,9 @@
   </data>
   <data name="Tasks.Title" xml:space="preserve">
     <value>Tasks</value>
+  </data>
+  <data name="Tasks.Tools" xml:space="preserve">
+    <value>Tools:</value>
   </data>
   <data name="Tray.Exit" xml:space="preserve">
     <value>Exit</value>

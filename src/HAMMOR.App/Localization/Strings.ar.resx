@@ -458,11 +458,149 @@
   <data name="Status.Unavailable" xml:space="preserve">
     <value>غير متاح</value>
   </data>
+  <data name="TaskEditor.AddFolder" xml:space="preserve">
+    <value>إضافة مجلد…</value>
+  </data>
+  <data name="TaskEditor.BlockedTask" xml:space="preserve">
+    <value>المهمة المعلّقة</value>
+  </data>
+  <data name="TaskEditor.CreateTitle" xml:space="preserve">
+    <value>مهمة تلقائية جديدة</value>
+  </data>
+  <data name="TaskEditor.ErrorsTitle" xml:space="preserve">
+    <value>يرجى تصحيح ما يلي:</value>
+  </data>
+  <data name="TaskEditor.Expiry" xml:space="preserve">
+    <value>ينتهي الإذن في</value>
+  </data>
+  <data name="TaskEditor.ExpiryNote" xml:space="preserve">
+    <value>مطلوب. 30 يومًا على الأكثر من الآن. أدخل الوقت بصيغة HH:mm (نظام 24 ساعة).</value>
+  </data>
+  <data name="TaskEditor.ExpiryRequired" xml:space="preserve">
+    <value>اختر تاريخ انتهاء الإذن.</value>
+  </data>
+  <data name="TaskEditor.Folders" xml:space="preserve">
+    <value>المجلدات المسموح بها</value>
+  </data>
+  <data name="TaskEditor.FoldersNote" xml:space="preserve">
+    <value>لا يمكن لأدوات الملفات وGit والمشاريع استخدام سوى هذه المجلدات. يلزم مجلد واحد على الأقل.</value>
+  </data>
+  <data name="TaskEditor.InvalidTime" xml:space="preserve">
+    <value>أدخل الوقت بصيغة HH:mm، مثل 18:30.</value>
+  </data>
+  <data name="TaskEditor.MaxToolCalls" xml:space="preserve">
+    <value>الحد الأقصى لاستدعاءات الأدوات في كل تشغيل</value>
+  </data>
+  <data name="TaskEditor.MaxToolCallsNote" xml:space="preserve">
+    <value>بين 1 و50. يفشل التشغيل الذي يحتاج إلى أكثر من ذلك.</value>
+  </data>
+  <data name="TaskEditor.NoProject" xml:space="preserve">
+    <value>(بلا مشروع)</value>
+  </data>
+  <data name="TaskEditor.Project" xml:space="preserve">
+    <value>المشروع (اختياري)</value>
+  </data>
+  <data name="TaskEditor.Prompt" xml:space="preserve">
+    <value>التعليمات</value>
+  </data>
+  <data name="TaskEditor.PromptHint" xml:space="preserve">
+    <value>ما الذي يجب أن يفعله HAMMOR عند تشغيل المهمة.</value>
+  </data>
+  <data name="TaskEditor.Refused" xml:space="preserve">
+    <value>لم تتم الموافقة. لم يُنشأ أي شيء.</value>
+  </data>
+  <data name="TaskEditor.RefusedResume" xml:space="preserve">
+    <value>لم تتم الموافقة. تبقى المهمة معلّقة.</value>
+  </data>
+  <data name="TaskEditor.RemoveFolder" xml:space="preserve">
+    <value>إزالة</value>
+  </data>
+  <data name="TaskEditor.ResumeTitle" xml:space="preserve">
+    <value>الاستئناف بإذن جديد</value>
+  </data>
+  <data name="TaskEditor.ReviewNote" xml:space="preserve">
+    <value>ستعرض الخطوة التالية بالضبط الصلاحيات التي ستُمنح. لن يُنشأ أي شيء ما لم تختر «السماح».</value>
+  </data>
+  <data name="TaskEditor.Schedule" xml:space="preserve">
+    <value>التشغيل في وقت محدد</value>
+  </data>
+  <data name="TaskEditor.ScheduleNote" xml:space="preserve">
+    <value>وإلا فستُشغَّل المهمة في أقرب وقت ممكن. يجب أن يسبق الوقتُ انتهاءَ الإذن.</value>
+  </data>
+  <data name="TaskEditor.ScheduleRequired" xml:space="preserve">
+    <value>اختر تاريخًا للتشغيل المجدول.</value>
+  </data>
+  <data name="TaskEditor.SubmitCreate" xml:space="preserve">
+    <value>مراجعة وإنشاء…</value>
+  </data>
+  <data name="TaskEditor.SubmitResume" xml:space="preserve">
+    <value>مراجعة واستئناف…</value>
+  </data>
+  <data name="TaskEditor.TaskName" xml:space="preserve">
+    <value>العنوان</value>
+  </data>
+  <data name="TaskEditor.Tools" xml:space="preserve">
+    <value>أدوات القراءة فقط</value>
+  </data>
+  <data name="TaskEditor.ToolsNote" xml:space="preserve">
+    <value>لا يمكن للمهام التلقائية استخدام سوى أدوات القراءة. لا تحدد أي أداة لمهمة نصية فقط.</value>
+  </data>
+  <data name="Tasks.BlockedReason" xml:space="preserve">
+    <value>سبب التعليق</value>
+  </data>
+  <data name="Tasks.Cancel" xml:space="preserve">
+    <value>إلغاء المهمة</value>
+  </data>
   <data name="Tasks.Empty" xml:space="preserve">
     <value>لا توجد مهام بعد.</value>
   </data>
+  <data name="Tasks.Folders" xml:space="preserve">
+    <value>المجلدات:</value>
+  </data>
+  <data name="Tasks.Grant.ApprovalSummary" xml:space="preserve">
+    <value>هل تسمح بتشغيل هذه المهمة تلقائيًا بصلاحية القراءة فقط الموضحة أدناه؟</value>
+  </data>
+  <data name="Tasks.Grant.ResumeSummary" xml:space="preserve">
+    <value>هل تريد استئناف هذه المهمة المعلّقة بإذن قراءة جديد؟ سيُسحب الإذن السابق نهائيًا.</value>
+  </data>
+  <data name="Tasks.GrantExpires" xml:space="preserve">
+    <value>ينتهي الإذن:</value>
+  </data>
+  <data name="Tasks.InfoTitle" xml:space="preserve">
+    <value>المهام التلقائية</value>
+  </data>
+  <data name="Tasks.Message.CancelNotAllowed" xml:space="preserve">
+    <value>لم يعد بالإمكان إلغاء هذه المهمة.</value>
+  </data>
+  <data name="Tasks.Message.CancelRequested" xml:space="preserve">
+    <value>طُلب الإلغاء. ستتوقف المهمة الجارية قريبًا.</value>
+  </data>
+  <data name="Tasks.Message.Cancelled" xml:space="preserve">
+    <value>أُلغيت المهمة.</value>
+  </data>
+  <data name="Tasks.Message.Created" xml:space="preserve">
+    <value>أُنشئت المهمة. ستُشغَّل عند حلول موعدها.</value>
+  </data>
+  <data name="Tasks.Message.Resumed" xml:space="preserve">
+    <value>استُؤنفت المهمة بإذن جديد.</value>
+  </data>
+  <data name="Tasks.New" xml:space="preserve">
+    <value>مهمة جديدة…</value>
+  </data>
+  <data name="Tasks.Result" xml:space="preserve">
+    <value>النتيجة</value>
+  </data>
+  <data name="Tasks.Resume" xml:space="preserve">
+    <value>استئناف بإذن جديد…</value>
+  </data>
+  <data name="Tasks.Schedule" xml:space="preserve">
+    <value>موعد التشغيل:</value>
+  </data>
   <data name="Tasks.SchedulerNote" xml:space="preserve">
-    <value>لم يتم تنفيذ الجدولة الخلفية وإعادة المحاولة بعد. المهام المسجلة هنا تُحفظ ويتم تسويتها بعد أي تعطّل، لكن لا شيء يُشغّلها تلقائيًا.</value>
+    <value>يشغّل HAMMOR هذه المهام في الخلفية، واحدة تلو الأخرى، بصلاحية قراءة فقط، ووفق إذن وافقت عليه فقط. المهمة التي تحتاج إلى صلاحية أكبر تتوقف بحالة «معلّقة» وتنتظر هنا: استأنفها بإذن جديد أو ألغِها.</value>
+  </data>
+  <data name="Tasks.State.Blocked" xml:space="preserve">
+    <value>معلّقة</value>
   </data>
   <data name="Tasks.State.Cancelled" xml:space="preserve">
     <value>ملغاة</value>
@@ -481,6 +619,9 @@
   </data>
   <data name="Tasks.Title" xml:space="preserve">
     <value>المهام</value>
+  </data>
+  <data name="Tasks.Tools" xml:space="preserve">
+    <value>الأدوات:</value>
   </data>
   <data name="Tray.Exit" xml:space="preserve">
     <value>إنهاء</value>

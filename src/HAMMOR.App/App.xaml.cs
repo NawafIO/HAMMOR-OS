@@ -14,6 +14,7 @@ using HAMMOR.Core.Tasks;
 using HAMMOR.Infrastructure.DependencyInjection;
 using HAMMOR.Infrastructure.Memory;
 using HAMMOR.Infrastructure.Persistence;
+using HAMMOR.Infrastructure.Tasks;
 using HAMMOR.Platform.Windows.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -31,7 +32,17 @@ namespace HAMMOR.App;
 /// </summary>
 public partial class App : Application
 {
+    /// <summary>
+    /// Upper bound on waiting for the scheduler at exit. Cancelling a run and
+    /// recording it as Cancelled takes milliseconds; the bound only exists so a
+    /// misbehaving run can never hang shutdown.
+    /// </summary>
+    private static readonly TimeSpan SchedulerStopTimeout = TimeSpan.FromSeconds(5);
+
     private IHost? _host;
+
+    // Set only once startup housekeeping has succeeded (ADR-004 §4).
+    private TaskSchedulerService? _scheduler;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -53,6 +64,11 @@ public partial class App : Application
             await _host.StartAsync().ConfigureAwait(true);
 
             await InitialiseAsync(_host.Services).ConfigureAwait(true);
+
+            // ADR-004 §4: the scheduler starts only after migration and
+            // interrupted-task reconciliation have completed. If either fails,
+            // InitialiseAsync throws and no unattended task ever runs.
+            StartScheduler(_host.Services);
 
             ShowFirstWindow(_host.Services);
         }
@@ -116,6 +132,7 @@ public partial class App : Application
                 services.AddSingleton<IConfirmationService, DialogConfirmationService>();
                 services.AddSingleton<IThemeService, WpfUiThemeService>();
                 services.AddSingleton<INavigationViewPageProvider, DependencyInjectionPageProvider>();
+                services.AddSingleton<ITaskEditorDialog, TaskEditorDialogService>();
 
                 // View models.
                 services.AddSingleton<ShellViewModel>();
@@ -188,6 +205,64 @@ public partial class App : Application
             .RefreshAsync().ConfigureAwait(true);
     }
 
+    private void StartScheduler(IServiceProvider services)
+    {
+        try
+        {
+            var scheduler = services.GetRequiredService<TaskSchedulerService>();
+            scheduler.Start();
+            _scheduler = scheduler;
+
+            Log.Information("Task scheduler started.");
+        }
+        catch (Exception ex)
+        {
+            // Fails closed: without a scheduler no unattended task runs. The
+            // rest of the app stays usable, and the failure is logged loudly.
+            Log.Error(ex, "Task scheduler could not start; unattended tasks will not run this session.");
+        }
+    }
+
+    /// <summary>
+    /// Stops the scheduler before the host is stopped and disposed, so a task
+    /// that is running is cancelled and recorded as Cancelled while the store
+    /// and audit log are still alive (ADR-004 §4).
+    /// </summary>
+    /// <remarks>
+    /// Deliberately synchronous and bounded. WPF does not await an
+    /// <c>async void</c> <see cref="OnExit"/>, so work placed after its first
+    /// await may never run before the process ends. The stop runs on the
+    /// thread pool so no cancellation callback executes on the UI thread, and
+    /// nothing in the scheduler's path waits for the UI thread, so this cannot
+    /// deadlock; the timeout is a last resort.
+    /// </remarks>
+    private void StopScheduler()
+    {
+        var scheduler = Interlocked.Exchange(ref _scheduler, null);
+        if (scheduler is null)
+        {
+            return;
+        }
+
+        try
+        {
+            if (Task.Run(() => scheduler.StopAsync()).Wait(SchedulerStopTimeout))
+            {
+                Log.Information("Task scheduler stopped.");
+            }
+            else
+            {
+                Log.Warning(
+                    "Task scheduler did not stop within {Timeout}; continuing shutdown.",
+                    SchedulerStopTimeout);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Task scheduler did not stop cleanly.");
+        }
+    }
+
     private static void ShowFirstWindow(IServiceProvider services)
     {
         var configurationStore = services.GetRequiredService<IConfigurationStore>();
@@ -211,6 +286,9 @@ public partial class App : Application
 
     protected override async void OnExit(ExitEventArgs e)
     {
+        // Before any await, and before the host is stopped or disposed.
+        StopScheduler();
+
         if (_host is not null)
         {
             await _host.StopAsync().ConfigureAwait(false);
