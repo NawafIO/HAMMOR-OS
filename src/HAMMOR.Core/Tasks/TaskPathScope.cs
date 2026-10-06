@@ -1,5 +1,6 @@
 using HAMMOR.Core.Tools;
 using HAMMOR.Core.Tools.Filesystem;
+using HAMMOR.Core.Tools.Git;
 
 namespace HAMMOR.Core.Tasks;
 
@@ -176,28 +177,28 @@ public sealed class TaskPathScope
         return false;
     }
 
+    /// <summary>
+    /// ADR-004 §2.5 as superseded by ADR-005: the repository rules are
+    /// <see cref="GitRepositoryGuard"/>'s, shared with interactive calls, so
+    /// unattended runs never apply a weaker or divergent Git check. This
+    /// method only adds what is specific to a grant: the injected reparse
+    /// view of <c>.git</c> and containment in the granted roots.
+    /// </summary>
     private string? FindGitDirectoryProblem(string repositoryPath, IReadOnlyList<string> grantRoots)
     {
+        var guardProblem = GitRepositoryGuard.FindProblem(repositoryPath);
+        if (guardProblem is not null)
+        {
+            return guardProblem;
+        }
+
         var gitDirectory = Path.Combine(repositoryPath, ".git");
 
         try
         {
-            if (!Directory.Exists(gitDirectory))
-            {
-                // Also covers a .git *file* (gitdir: indirection) and a
-                // subdirectory whose repository lives in a parent.
-                return "unattended Git calls need a '.git' directory directly inside the repository path.";
-            }
-
             if (_pathResolution.IsReparsePoint(gitDirectory))
             {
                 return "the repository's '.git' directory is a reparse point, which unattended runs do not follow.";
-            }
-
-            var redirect = FindGitRedirect(gitDirectory);
-            if (redirect is not null)
-            {
-                return redirect;
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
@@ -208,65 +209,6 @@ public sealed class TaskPathScope
         return IsUnderAny(gitDirectory, grantRoots)
             ? null
             : "the repository's '.git' directory is outside the task's granted roots.";
-    }
-
-    private const long MaxGitConfigBytes = 1024 * 1024;
-
-    /// <summary>
-    /// Repository-local settings that make Git read or report files outside
-    /// the repository directory even though a real <c>.git</c> directory is
-    /// present: a <c>commondir</c> file, a per-worktree config file,
-    /// <c>core.worktree</c>, or config includes (which can supply either).
-    /// Object alternates remain an accepted residual (ADR-004 §2.5).
-    /// </summary>
-    private static string? FindGitRedirect(string gitDirectory)
-    {
-        if (File.Exists(Path.Combine(gitDirectory, "commondir")))
-        {
-            return "the repository's '.git' has a 'commondir' redirect, which unattended runs do not follow.";
-        }
-
-        if (File.Exists(Path.Combine(gitDirectory, "config.worktree")))
-        {
-            return "the repository uses a per-worktree config, which unattended runs do not follow.";
-        }
-
-        var config = new FileInfo(Path.Combine(gitDirectory, "config"));
-        if (!config.Exists)
-        {
-            return null; // Git falls back to defaults; nothing can redirect it.
-        }
-
-        if (config.Length > MaxGitConfigBytes)
-        {
-            return "the repository's Git config is too large to inspect.";
-        }
-
-        foreach (var rawLine in File.ReadLines(config.FullName))
-        {
-            var line = rawLine.Trim();
-            if (line.StartsWith('['))
-            {
-                var close = line.IndexOf(']');
-                var header = (close > 0 ? line[1..close] : line[1..]).Trim();
-                if (header.StartsWith("include", StringComparison.OrdinalIgnoreCase))
-                {
-                    return "the repository's Git config includes other config files, which unattended runs do not follow.";
-                }
-
-                // Git accepts a variable on the same line as its section header.
-                line = close > 0 ? line[(close + 1)..].Trim() : string.Empty;
-            }
-
-            var separator = line.IndexOf('=');
-            var key = (separator >= 0 ? line[..separator] : line).Trim();
-            if (string.Equals(key, "worktree", StringComparison.OrdinalIgnoreCase))
-            {
-                return "the repository's Git config sets a work tree elsewhere (core.worktree), which unattended runs do not follow.";
-            }
-        }
-
-        return null;
     }
 
     private string? FindLinkProblem(string root)

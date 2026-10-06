@@ -350,7 +350,7 @@ public sealed class PathScopedGrantTests : IDisposable
         var status = new GitStatusTool(new SafeGitRunner(policy));
         var roots = GrantedRoots(scope);
 
-        string Repo(string name, string? config = null, string? extraFile = null)
+        string Repo(string name, string? config = null, string? extraFile = null, string extraContent = "elsewhere")
         {
             var repo = Path.Combine(Granted, name);
             var git = Directory.CreateDirectory(Path.Combine(repo, ".git")).FullName;
@@ -361,7 +361,7 @@ public sealed class PathScopedGrantTests : IDisposable
 
             if (extraFile is not null)
             {
-                File.WriteAllText(Path.Combine(git, extraFile), "elsewhere");
+                File.WriteAllText(Path.Combine(git, extraFile), extraContent);
             }
 
             return repo;
@@ -375,7 +375,7 @@ public sealed class PathScopedGrantTests : IDisposable
             Repo("inc1", "[include]\n\tpath = ../../other.cfg"),
             Repo("inc2", "[includeIf \"gitdir:/x/\"]\n\tpath = y.cfg"),
             Repo("common", extraFile: "commondir"),
-            Repo("perwt", extraFile: "config.worktree"),
+            Repo("perwt", extraFile: "config.worktree", extraContent: "[core]\n\tworktree = " + Other),
         };
 
         foreach (var repo in blocked)
@@ -384,10 +384,11 @@ public sealed class PathScopedGrantTests : IDisposable
         }
 
         // An ordinary repository config, including names that merely contain "worktree", is allowed.
+        // (GitRepositoryGuard is deliberately coarse: "worktree =" anywhere, even in a comment, is refused.)
         var normal = Repo(
             "normal",
             "[core]\n\trepositoryformatversion = 0\n\tbare = false\n[branch \"worktree-feature\"]\n\tremote = origin\n"
-            + "[extensions]\n\tworktreeConfig = false\n# worktree = " + Other + "\n");
+            + "[extensions]\n\tworktreeConfig = false\n");
         Assert.Equal(ToolGateOutcome.Allow, scope.CheckCall(status, Call(status, "repositoryPath", normal), roots).Outcome);
     }
 
