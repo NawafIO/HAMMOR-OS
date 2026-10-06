@@ -1,7 +1,9 @@
 # ADR-004: Task Runner App Integration & Path-Scoped Grants (Phase 6)
 
 ## Status
-Accepted — specification only. No code accompanies this ADR. Implementation is a separate, explicitly authorised step.
+Accepted. **Phase 6a (Core/Infrastructure) implemented and verified on Windows** at commit `4f73234`: `dotnet build -c Release` succeeded, `dotnet test -c Release` passed 371/371 (0 failed, 0 skipped). **Phase 6b (App) not started.**
+
+§2.5 is superseded in part by [ADR-005](ADR-005-interactive-git-repository-confinement.md). See **Phase 6a implementation notes** for where the code differs from the text below.
 
 ## Date
 2026-10-05
@@ -57,7 +59,7 @@ public interface IPathScopedTool
 
 Implemented by `filesystem.list_directory`, `filesystem.read_file` (`path`), `git.status`, `git.diff`, `git.log` (`repositoryPath`) and `project.inspect` (`projectPath`). `filesystem.write_file` and `filesystem.delete_file` also implement it for consistency, though they remain ungrantable (not Read). No argument names are hard-coded in the gate.
 
-#### 2.3 Grant creation rules (added to `TaskGrantValidator`)
+#### 2.3 Grant creation rules (`TaskGrantValidator` + `TaskPathScope`; see implementation notes)
 - If `AllowedTools` contains any path-scoped tool, `AllowedRoots` must be non-empty. There is no "any allowed path" grant for path-scoped tools.
 - At most 16 roots; no blanks, no duplicates (case-insensitive after canonicalisation), no wildcards.
 - Each root must pass `IFilesystemPolicy.Validate`, must be an existing directory, must not be a reparse point and must not lie inside a reparse chain (same rule as configured allowed roots). Stored in the policy-canonical form with a trailing separator.
@@ -73,12 +75,24 @@ For a path-scoped tool, every declared path argument must be present and non-bla
 Any miss blocks the run with a reason naming the argument and the normalised path. A grant without roots that lists a path-scoped tool (for example a Phase 5 grant) blocks at run time.
 
 #### 2.5 Git-specific rule
-Because Git discovers repositories by walking parents and follows `.git` files, a scoped Git call additionally requires `<repositoryPath>\.git` to exist as a **directory** (not a file, not a reparse point) under a granted root. This stops discovery from escaping to a parent repository and refuses `gitdir:` indirection (worktrees, submodule checkouts) for unattended runs. Interactive Git behaviour is unchanged.
+Because Git discovers repositories by walking parents and follows `.git` files, a scoped Git call additionally requires `<repositoryPath>\.git` to exist as a **directory** (not a file, not a reparse point) under a granted root. This stops discovery from escaping to a parent repository and refuses `gitdir:` indirection (worktrees, submodule checkouts) for unattended runs.
 
-Residual, accepted: object alternates (`.git/objects/info/alternates`) can make Git read object data elsewhere; Git output is still bounded/redacted and the operations remain read-only.
+**Superseded in part by ADR-005 and ADR-006.** Interactive Git calls are now confined too, so the original sentence "Interactive Git behaviour is unchanged" no longer holds. The repository rules live in one place, `GitRepositoryGuard`, and unattended calls use it rather than a rule of their own. `TaskPathScope` calls `GitRepositoryGuard.FindProblem(resolvedRepositoryPath)`. The guard refuses everything in the paragraph above and also:
+- object alternates;
+- reparse points directly inside `.git`;
+- `commondir`;
+- `[include]`/`[includeIf]` sections and `worktree =` in `config` or `config.worktree`;
+- filter drivers (ADR-006).
+
+`TaskPathScope` then adds only the grant-specific checks: the `IPathResolution` reparse view of `.git`, and `.git` lying inside a granted root. `SafeGitRunner` additionally pins the work tree and common directory (ADR-005 §2).
+
+The earlier "Residual, accepted: object alternates" is withdrawn: the guard now refuses alternates. ADR-005 lists the Git residuals that remain.
 
 #### 2.6 Residual race, accepted
 The gate validates paths and the tool validates them again when it runs. A local actor who can rewrite directories inside a granted root between those two checks could redirect a call to another location that is still inside the global allowed roots (the tool's own policy check still enforces those). This requires local write access and precise timing; it cannot reach outside the global policy. Documented, not mitigated in Phase 6.
+
+#### 2.7 Residual: `project.inspect` link markers
+`project.inspect` checks a fixed list of marker names directly under `projectPath`. Each marker passes `IFilesystemPolicy` on its own, but not the grant's roots. If a marker is a link pointing outside the granted root and inside the global allowed roots, the tool reports whether the target exists. It never reads content, and it cannot reach outside the global policy. This is documented, not mitigated in Phase 6.
 
 ### 3. Grant authoring and approval (Core: `TaskAuthoringService`)
 The only component that creates grants. The store keeps its own validation as defence in depth.
@@ -112,9 +126,24 @@ ADR-003 §7's "grant expired" requirement is already met at run time by the runn
 ### 6. Out of scope
 Write grants, Execute/Destructive grants, recurrence, parallel runs, tray/toast notifications, enable/disable setting, a `net8.0-windows` test project, any change to `PermissionEvaluator`, `IFilesystemPolicy` semantics, `ToolCallValidator`, or the set of Git operations.
 
+## Phase 6a implementation notes
+Where the code differs from, or adds to, the text above (commits `5af1e8d`, `4f73234`):
+
+- **Root validation lives in `TaskPathScope.ValidateRoots`**, not in `TaskGrantValidator`, because it needs `IFilesystemPolicy` and `IPathResolution`. `TaskGrantValidator` enforces the registry-independent rules: at most 16 roots, no blanks, no duplicates, no wildcards. It also enforces that a grant listing a path-scoped tool names at least one root. `TaskRunner` re-runs `ValidateRoots` at the start of every run.
+- **`UnattendedRunContext` and `TaskRunner` take a `TaskPathScope`**, not an `IFilesystemPolicy`. Without one, path-scoped calls and grants with roots block (fail closed). `UnattendedRunContext.Check(tool)` is kept as an overload that checks with no arguments, so a path-scoped tool blocks there.
+- **`IGitRepositoryScopedTool`** is a marker extending `IPathScopedTool`. It is implemented by `git.status`, `git.diff` and `git.log`, and it selects the Git rule in §2.5 without matching tool names.
+- **Resume takes a `GrantDraft`.** The signature is `ResumeAsync(string taskId, GrantDraft draft)`, not a full `TaskDraft`, because a resume replaces only the grant; title, prompt and schedule are unchanged. A resume always builds a new grant id and never accepts a grant object.
+- **`ITaskStore.TryCancelAsync`** cancels only a Pending or Blocked task, in a single conditional update. A Running task is never overwritten; `TaskAuthoringService.CancelAsync` then asks the runner.
+- **Retry limit:** `HammorTask.MaxAttemptsLimit = 10`. It is enforced in three places:
+  - `TaskAuthoringService` rejects drafts outside 1–10;
+  - the store rejects granted tasks outside 1–10;
+  - the runner never retries past the limit, whatever a stored row says.
+- **DI:** Infrastructure registers fallback `IPathResolution` (`ManagedPathResolution`) and `IFilesystemPolicy` with `TryAdd`, so the tools, `TaskPathScope` and authoring share one policy. Platform.Windows still overrides both. `TaskPathScope` and `TaskAuthoringService` are registered as singletons.
+- **Approval text:** the localised summary uses the keys `Tasks.Grant.ApprovalSummary` and `Tasks.Grant.ResumeSummary`, falling back to English until 6b adds them to the resource files.
+
 ## Affected components
-- `HAMMOR.Core`: `TaskGrant.AllowedRoots`, `TaskGrantValidator` (roots, path-tool rule), `IPathScopedTool` + implementations on filesystem/Git/project tools, `UnattendedRunContext` (path and `.git` checks; takes `IFilesystemPolicy`), `TaskRunner` (passes policy into the context), new `TaskAuthoringService` + `TaskDraft`, `ToolRegistry` (reject `task.grant`).
-- `HAMMOR.Infrastructure`: `task_grants.allowed_roots` column (in-place migration, immutability trigger updated), `SqliteTaskStore` mapping, DI for `TaskAuthoringService`.
+- `HAMMOR.Core` (6a, done): `TaskGrant.AllowedRoots`, `TaskGrantValidator` (root structure, path-tool rule), `IPathScopedTool` + `IGitRepositoryScopedTool` on filesystem/Git/project tools, new `TaskPathScope` (root validation, run-time path check, `GitRepositoryGuard` call), `UnattendedRunContext` (takes `TaskPathScope`), `TaskRunner` (re-validates roots, passes `TaskPathScope`, retry cap), `HammorTask.MaxAttemptsLimit`, `ITaskStore.TryCancelAsync`, new `TaskAuthoringService` + `TaskDraft` + `GrantDraft`, `ToolRegistry` (reject `task.grant`).
+- `HAMMOR.Infrastructure` (6a, done): `task_grants.allowed_roots` column (in-place migration, separate immutability trigger `trg_task_grants_roots_immutable`), `SqliteTaskStore` mapping, `TryCancelAsync`, attempt-limit check, DI for fallback policy/resolution, `TaskPathScope` and `TaskAuthoringService`.
 - `HAMMOR.App`: scheduler start/stop in `App.xaml.cs`, `TasksViewModel` (live refresh, commands), Tasks page and new-task form, `TaskStateToBrushConverter` (Blocked), localisation (en/ar).
 - Unchanged: `PermissionEvaluator`, `FilesystemPolicy`, `SafeGitRunner`, `ToolCallValidator`, interactive chat path.
 
