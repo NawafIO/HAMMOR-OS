@@ -14,6 +14,7 @@ using HAMMOR.Core.Status;
 using HAMMOR.Core.Storage;
 using HAMMOR.Core.Tasks;
 using HAMMOR.Core.Voice;
+using HAMMOR.Infrastructure.Ai.ClaudeCode;
 using HAMMOR.Infrastructure.DependencyInjection;
 using HAMMOR.Infrastructure.Memory;
 using HAMMOR.Infrastructure.Persistence;
@@ -269,8 +270,13 @@ public partial class App : Application
 
         // Probe providers once so the shell opens with real status rather than
         // placeholder values. Event-driven from here on; nothing polls.
-        await services.GetRequiredService<ISystemStatusService>()
-            .RefreshAsync().ConfigureAwait(true);
+        var statusService = services.GetRequiredService<ISystemStatusService>();
+        await statusService.RefreshAsync().ConfigureAwait(true);
+
+        // Claude Code's state (signed in or out, a usage limit) reaches the
+        // status bar when a request or a check reveals it.
+        services.GetRequiredService<IClaudeCodeAccount>().StatusChanged +=
+            (_, _) => _ = Current.Dispatcher.InvokeAsync(() => statusService.RefreshAsync());
     }
 
     private void StartScheduler(IServiceProvider services)

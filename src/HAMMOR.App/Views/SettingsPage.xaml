@@ -69,11 +69,113 @@
                     <TextBlock Style="{StaticResource SectionTitleText}" Text="{loc:Loc Settings.Ai}" />
 
                     <TextBlock Style="{StaticResource BodyText}" Text="{loc:Loc Settings.Ai.Provider}" />
-                    <ui:TextBox Margin="{StaticResource StackGap}"
-                                Width="280"
-                                HorizontalAlignment="Left"
-                                Text="{Binding Draft.Ai.PrimaryProvider, Mode=TwoWay}"
-                                IsReadOnly="True" />
+                    <ComboBox Margin="{StaticResource StackGap}"
+                              MinWidth="380"
+                              HorizontalAlignment="Left"
+                              ItemsSource="{Binding ProviderOptions}"
+                              SelectedValue="{Binding SelectedProviderId, Mode=TwoWay}"
+                              SelectedValuePath="Id"
+                              DisplayMemberPath="Label" />
+
+                    <!-- ===== Claude Code: the user's own Claude account ===== -->
+                    <StackPanel Visibility="{Binding IsClaudeCodeSelected, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Style="{StaticResource SecondaryText}"
+                                   Margin="{StaticResource StackGap}"
+                                   Text="{loc:Loc Settings.ClaudeCode.Description}" />
+
+                        <!-- State, as Claude Code reports it -->
+                        <StackPanel Margin="{StaticResource FieldGap}" Orientation="Horizontal">
+                            <Ellipse Width="10" Height="10" VerticalAlignment="Center">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="{StaticResource StatusNeutralBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ClaudeCodeLevel}" Value="Good">
+                                                <Setter Property="Fill" Value="{StaticResource StatusSuccessBrush}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding ClaudeCodeLevel}" Value="Attention">
+                                                <Setter Property="Fill" Value="{StaticResource StatusWarningBrush}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding ClaudeCodeLevel}" Value="Problem">
+                                                <Setter Property="Fill" Value="{StaticResource StatusErrorBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock Margin="8,0,0,0"
+                                       VerticalAlignment="Center"
+                                       Style="{StaticResource BodyText}"
+                                       FontWeight="SemiBold"
+                                       Text="{Binding ClaudeCodeStateText}" />
+                        </StackPanel>
+
+                        <!-- Version, method and Claude Code's own messages: left to right -->
+                        <TextBlock Margin="{StaticResource FieldGap}"
+                                   Style="{StaticResource CaptionText}"
+                                   FlowDirection="LeftToRight"
+                                   HorizontalAlignment="Left"
+                                   Text="{Binding ClaudeCodeDetailText}" />
+
+                        <TextBlock Margin="{StaticResource FieldGap}"
+                                   Style="{StaticResource SecondaryText}"
+                                   Text="{loc:Loc Settings.ClaudeCode.InstallHint}"
+                                   Visibility="{Binding ShowClaudeCodeInstallHint, Converter={StaticResource BoolToVisibility}}" />
+                        <TextBlock Margin="{StaticResource FieldGap}"
+                                   Style="{StaticResource SecondaryText}"
+                                   Text="{loc:Loc Settings.ClaudeCode.LauncherHint}"
+                                   Visibility="{Binding ShowClaudeCodeLauncherHint, Converter={StaticResource BoolToVisibility}}" />
+                        <TextBlock Margin="{StaticResource FieldGap}"
+                                   Style="{StaticResource SecondaryText}"
+                                   Text="{loc:Loc Settings.ClaudeCode.UpdateHint}"
+                                   Visibility="{Binding ShowClaudeCodeUpdateHint, Converter={StaticResource BoolToVisibility}}" />
+
+                        <StackPanel Margin="{StaticResource StackGap}" Orientation="Horizontal">
+                            <ui:Button Margin="0,0,8,0"
+                                       Padding="12,6"
+                                       Appearance="Primary"
+                                       Command="{Binding SignInToClaudeCodeCommand}"
+                                       Content="{loc:Loc Settings.ClaudeCode.SignIn}"
+                                       Visibility="{Binding CanSignInToClaudeCode, Converter={StaticResource BoolToVisibility}}" />
+                            <ui:Button Margin="0,0,8,0"
+                                       Padding="12,6"
+                                       Appearance="Secondary"
+                                       Command="{Binding ReconnectClaudeCodeCommand}"
+                                       Content="{loc:Loc Settings.ClaudeCode.Reconnect}"
+                                       Visibility="{Binding CanReconnectClaudeCode, Converter={StaticResource BoolToVisibility}}" />
+                            <ui:Button Margin="0,0,8,0"
+                                       Padding="12,6"
+                                       Appearance="Secondary"
+                                       Command="{Binding SignOutOfClaudeCodeCommand}"
+                                       Content="{loc:Loc Settings.ClaudeCode.SignOut}"
+                                       Visibility="{Binding CanSignOutOfClaudeCode, Converter={StaticResource BoolToVisibility}}" />
+                            <ui:Button Padding="12,6"
+                                       Appearance="Secondary"
+                                       Command="{Binding RefreshClaudeCodeCommand}"
+                                       Content="{loc:Loc Settings.ClaudeCode.Refresh}"
+                                       Icon="{ui:SymbolIcon ArrowSync24}" />
+                        </StackPanel>
+
+                        <TextBlock Margin="{StaticResource FieldGap}"
+                                   Style="{StaticResource SecondaryText}"
+                                   Text="{loc:Loc Settings.ClaudeCode.Waiting}"
+                                   Visibility="{Binding IsWaitingForClaudeCodeSignIn, Converter={StaticResource BoolToVisibility}}" />
+
+                        <TextBlock Margin="{StaticResource FieldGap}"
+                                   Style="{StaticResource CaptionText}"
+                                   Text="{loc:Loc Settings.ClaudeCode.SignOutNote}"
+                                   Visibility="{Binding CanSignOutOfClaudeCode, Converter={StaticResource BoolToVisibility}}" />
+
+                        <TextBlock Margin="{StaticResource StackGap}"
+                                   Style="{StaticResource CaptionText}"
+                                   Text="{loc:Loc Settings.ClaudeCode.TextOnly}" />
+                    </StackPanel>
+
+                    <!-- ===== Anthropic API key: optional ===== -->
+                    <StackPanel Visibility="{Binding IsApiKeySelected, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Style="{StaticResource SecondaryText}"
+                               Margin="{StaticResource StackGap}"
+                               Text="{loc:Loc Settings.Ai.ApiKeyOptional}" />
 
                     <TextBlock Style="{StaticResource BodyText}" Text="{loc:Loc Settings.Ai.Model}" />
                     <ui:TextBox Margin="{StaticResource StackGap}"
@@ -131,6 +233,7 @@
                                    Command="{Binding ClearAnthropicKeyCommand}"
                                    Content="{loc:Loc Settings.ClearKey}" />
                     </Grid>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 

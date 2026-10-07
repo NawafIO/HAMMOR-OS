@@ -164,6 +164,9 @@
   <data name="Confirm.Tool" xml:space="preserve">
     <value>Tool</value>
   </data>
+  <data name="FirstRun.ClaudeCodeHint" xml:space="preserve">
+    <value>No API key? Skip it: HAMMOR can use your Claude account through Claude Code instead. Set that up later in Settings → AI provider.</value>
+  </data>
   <data name="Home.Greeting.Afternoon" xml:space="preserve">
     <value>Good afternoon.</value>
   </data>
@@ -260,6 +263,9 @@
   <data name="Settings.Ai.ApiKey" xml:space="preserve">
     <value>Anthropic API key</value>
   </data>
+  <data name="Settings.Ai.ApiKeyOptional" xml:space="preserve">
+    <value>Optional: talk to Claude with your own Anthropic API key, billed to your API account. HAMMOR's tools work only with this provider.</value>
+  </data>
   <data name="Settings.Ai.Effort" xml:space="preserve">
     <value>Reasoning effort</value>
   </data>
@@ -272,6 +278,12 @@
   <data name="Settings.Ai.Provider" xml:space="preserve">
     <value>Primary provider</value>
   </data>
+  <data name="Settings.Ai.Provider.ApiKey" xml:space="preserve">
+    <value>Anthropic API key (optional)</value>
+  </data>
+  <data name="Settings.Ai.Provider.ClaudeCode" xml:space="preserve">
+    <value>Claude Code — your Claude account (recommended)</value>
+  </data>
   <data name="Settings.ApiKeyNotStored" xml:space="preserve">
     <value>No key stored.</value>
   </data>
@@ -280,6 +292,84 @@
   </data>
   <data name="Settings.ApiKeyStored" xml:space="preserve">
     <value>A key is stored.</value>
+  </data>
+  <data name="Settings.ClaudeCode.Description" xml:space="preserve">
+    <value>HAMMOR talks to Claude through Claude Code installed on this PC, with the Claude account you sign in to there. HAMMOR never sees your credentials: you sign in in Claude Code's own window.</value>
+  </data>
+  <data name="Settings.ClaudeCode.InstallHint" xml:space="preserve">
+    <value>Install Claude Code with Anthropic's native installer or with WinGet (winget install Anthropic.ClaudeCode), then choose Refresh.</value>
+  </data>
+  <data name="Settings.ClaudeCode.LauncherHint" xml:space="preserve">
+    <value>HAMMOR starts only the native claude.exe, never a script launcher such as claude.cmd. Install Claude Code with the native installer or WinGet, then choose Refresh.</value>
+  </data>
+  <data name="Settings.ClaudeCode.Method" xml:space="preserve">
+    <value>Signed in with {0}</value>
+  </data>
+  <data name="Settings.ClaudeCode.Method.ApiKey" xml:space="preserve">
+    <value>Anthropic API key (billed to the API)</value>
+  </data>
+  <data name="Settings.ClaudeCode.Method.Subscription" xml:space="preserve">
+    <value>Claude subscription</value>
+  </data>
+  <data name="Settings.ClaudeCode.Method.ThirdParty" xml:space="preserve">
+    <value>cloud provider</value>
+  </data>
+  <data name="Settings.ClaudeCode.Method.Token" xml:space="preserve">
+    <value>Claude subscription token</value>
+  </data>
+  <data name="Settings.ClaudeCode.Method.Unknown" xml:space="preserve">
+    <value>unknown method</value>
+  </data>
+  <data name="Settings.ClaudeCode.Reconnect" xml:space="preserve">
+    <value>Reconnect</value>
+  </data>
+  <data name="Settings.ClaudeCode.Refresh" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="Settings.ClaudeCode.SignIn" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
+  <data name="Settings.ClaudeCode.SignOut" xml:space="preserve">
+    <value>Sign out</value>
+  </data>
+  <data name="Settings.ClaudeCode.SignOutNote" xml:space="preserve">
+    <value>Signing out signs Claude Code out on this PC, including in your terminal.</value>
+  </data>
+  <data name="Settings.ClaudeCode.State.Checking" xml:space="preserve">
+    <value>Checking Claude Code…</value>
+  </data>
+  <data name="Settings.ClaudeCode.State.Error" xml:space="preserve">
+    <value>Claude Code could not be checked</value>
+  </data>
+  <data name="Settings.ClaudeCode.State.NeedsUpdate" xml:space="preserve">
+    <value>Claude Code needs an update</value>
+  </data>
+  <data name="Settings.ClaudeCode.State.NotInstalled" xml:space="preserve">
+    <value>Claude Code is not installed</value>
+  </data>
+  <data name="Settings.ClaudeCode.State.NotSignedIn" xml:space="preserve">
+    <value>Installed, not signed in</value>
+  </data>
+  <data name="Settings.ClaudeCode.State.SignedIn" xml:space="preserve">
+    <value>Signed in</value>
+  </data>
+  <data name="Settings.ClaudeCode.State.UnsupportedInstall" xml:space="preserve">
+    <value>Only a script launcher for Claude Code was found</value>
+  </data>
+  <data name="Settings.ClaudeCode.State.UsageLimited" xml:space="preserve">
+    <value>Signed in · usage limit reached</value>
+  </data>
+  <data name="Settings.ClaudeCode.TextOnly" xml:space="preserve">
+    <value>Through Claude Code, HAMMOR answers in text only: Claude Code runs with no tools, and HAMMOR's own tools (files, Git, projects) need the API key provider.</value>
+  </data>
+  <data name="Settings.ClaudeCode.UpdateHint" xml:space="preserve">
+    <value>Run 'claude update' in a terminal, then choose Refresh.</value>
+  </data>
+  <data name="Settings.ClaudeCode.Version" xml:space="preserve">
+    <value>Claude Code {0}</value>
+  </data>
+  <data name="Settings.ClaudeCode.Waiting" xml:space="preserve">
+    <value>Finish signing in in the Claude Code window. HAMMOR checks again when that window closes.</value>
   </data>
   <data name="Settings.ClearKey" xml:space="preserve">
     <value>Remove key</value>

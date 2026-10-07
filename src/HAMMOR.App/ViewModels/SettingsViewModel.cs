@@ -7,6 +7,7 @@ using HAMMOR.Core.Security;
 using HAMMOR.Core.Status;
 using HAMMOR.Core.Tools;
 using HAMMOR.Core.Voice;
+using HAMMOR.Infrastructure.Ai.ClaudeCode;
 using Microsoft.Extensions.Logging;
 
 namespace HAMMOR.App.ViewModels;
@@ -39,6 +40,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         ISystemStatusService statusService,
         IAudioDeviceProvider audioDevices,
         IVoiceOrchestrator voice,
+        IClaudeCodeAccount claudeCode,
         ILogger<SettingsViewModel> logger)
     {
         _configurationStore = configurationStore
@@ -55,6 +57,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         ConfigurationFilePath = configurationStore.ConfigurationFilePath;
 
         _localization.LanguageChanged += OnLanguageChanged;
+        InitializeClaudeCode(claudeCode);
     }
 
     /// <summary>Working copy. Nothing is persisted until Save runs.</summary>
@@ -134,6 +137,8 @@ public sealed partial class SettingsViewModel : ObservableObject
             .ExistsAsync(SecretNames.ElevenLabsApiKey).ConfigureAwait(true);
 
         OnPropertyChanged(nameof(SelectedLanguage));
+
+        await LoadClaudeCodeAsync().ConfigureAwait(true);
     }
 
     [RelayCommand]

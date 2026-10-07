@@ -164,6 +164,9 @@
   <data name="Confirm.Tool" xml:space="preserve">
     <value>الأداة</value>
   </data>
+  <data name="FirstRun.ClaudeCodeHint" xml:space="preserve">
+    <value>لا تملك مفتاح API؟ تخطَّه: يمكن لهامور استخدام حساب Claude الخاص بك عبر Claude Code بدلًا من ذلك. اضبط ذلك لاحقًا من الإعدادات ← مزوّد الذكاء الاصطناعي.</value>
+  </data>
   <data name="Home.Greeting.Afternoon" xml:space="preserve">
     <value>طاب يومك.</value>
   </data>
@@ -260,6 +263,9 @@
   <data name="Settings.Ai.ApiKey" xml:space="preserve">
     <value>مفتاح واجهة Anthropic</value>
   </data>
+  <data name="Settings.Ai.ApiKeyOptional" xml:space="preserve">
+    <value>اختياري: تحدّث إلى Claude باستخدام مفتاح Anthropic API الخاص بك، وتُحتسب التكلفة على حساب API الخاص بك. لا تعمل أدوات هامور إلا مع هذا المزوّد.</value>
+  </data>
   <data name="Settings.Ai.Effort" xml:space="preserve">
     <value>مستوى التفكير</value>
   </data>
@@ -272,6 +278,12 @@
   <data name="Settings.Ai.Provider" xml:space="preserve">
     <value>المزود الأساسي</value>
   </data>
+  <data name="Settings.Ai.Provider.ApiKey" xml:space="preserve">
+    <value>مفتاح Anthropic API (اختياري)</value>
+  </data>
+  <data name="Settings.Ai.Provider.ClaudeCode" xml:space="preserve">
+    <value>Claude Code — حساب Claude الخاص بك (موصى به)</value>
+  </data>
   <data name="Settings.ApiKeyNotStored" xml:space="preserve">
     <value>لا يوجد مفتاح مخزَّن.</value>
   </data>
@@ -280,6 +292,84 @@
   </data>
   <data name="Settings.ApiKeyStored" xml:space="preserve">
     <value>تم تخزين مفتاح.</value>
+  </data>
+  <data name="Settings.ClaudeCode.Description" xml:space="preserve">
+    <value>يتحدث هامور إلى Claude عبر Claude Code المثبّت على هذا الجهاز، باستخدام حساب Claude الذي تسجّل الدخول إليه هناك. لا يرى هامور بيانات اعتمادك أبدًا: يتم تسجيل الدخول في نافذة Claude Code نفسها.</value>
+  </data>
+  <data name="Settings.ClaudeCode.InstallHint" xml:space="preserve">
+    <value>ثبّت Claude Code باستخدام المثبّت الرسمي من Anthropic أو عبر WinGet ‏(winget install Anthropic.ClaudeCode)، ثم اختر إعادة الفحص.</value>
+  </data>
+  <data name="Settings.ClaudeCode.LauncherHint" xml:space="preserve">
+    <value>يشغّل هامور ملف claude.exe الأصلي فقط، ولا يشغّل أي مُشغّل نصي مثل claude.cmd. ثبّت Claude Code بالمثبّت الرسمي أو عبر WinGet، ثم اختر إعادة الفحص.</value>
+  </data>
+  <data name="Settings.ClaudeCode.Method" xml:space="preserve">
+    <value>مسجّل الدخول عبر {0}</value>
+  </data>
+  <data name="Settings.ClaudeCode.Method.ApiKey" xml:space="preserve">
+    <value>مفتاح Anthropic API (يُحتسب على حساب API)</value>
+  </data>
+  <data name="Settings.ClaudeCode.Method.Subscription" xml:space="preserve">
+    <value>اشتراك Claude</value>
+  </data>
+  <data name="Settings.ClaudeCode.Method.ThirdParty" xml:space="preserve">
+    <value>مزوّد سحابي</value>
+  </data>
+  <data name="Settings.ClaudeCode.Method.Token" xml:space="preserve">
+    <value>رمز اشتراك Claude</value>
+  </data>
+  <data name="Settings.ClaudeCode.Method.Unknown" xml:space="preserve">
+    <value>طريقة غير معروفة</value>
+  </data>
+  <data name="Settings.ClaudeCode.Reconnect" xml:space="preserve">
+    <value>إعادة الاتصال</value>
+  </data>
+  <data name="Settings.ClaudeCode.Refresh" xml:space="preserve">
+    <value>إعادة الفحص</value>
+  </data>
+  <data name="Settings.ClaudeCode.SignIn" xml:space="preserve">
+    <value>تسجيل الدخول</value>
+  </data>
+  <data name="Settings.ClaudeCode.SignOut" xml:space="preserve">
+    <value>تسجيل الخروج</value>
+  </data>
+  <data name="Settings.ClaudeCode.SignOutNote" xml:space="preserve">
+    <value>يؤدي تسجيل الخروج إلى إخراج Claude Code من حسابك على هذا الجهاز، بما في ذلك في الطرفية.</value>
+  </data>
+  <data name="Settings.ClaudeCode.State.Checking" xml:space="preserve">
+    <value>جارٍ التحقق من Claude Code…</value>
+  </data>
+  <data name="Settings.ClaudeCode.State.Error" xml:space="preserve">
+    <value>تعذّر التحقق من Claude Code</value>
+  </data>
+  <data name="Settings.ClaudeCode.State.NeedsUpdate" xml:space="preserve">
+    <value>يحتاج Claude Code إلى تحديث</value>
+  </data>
+  <data name="Settings.ClaudeCode.State.NotInstalled" xml:space="preserve">
+    <value>Claude Code غير مثبّت</value>
+  </data>
+  <data name="Settings.ClaudeCode.State.NotSignedIn" xml:space="preserve">
+    <value>مثبّت، دون تسجيل دخول</value>
+  </data>
+  <data name="Settings.ClaudeCode.State.SignedIn" xml:space="preserve">
+    <value>تم تسجيل الدخول</value>
+  </data>
+  <data name="Settings.ClaudeCode.State.UnsupportedInstall" xml:space="preserve">
+    <value>لم يُعثر إلا على مُشغّل نصي لـ Claude Code</value>
+  </data>
+  <data name="Settings.ClaudeCode.State.UsageLimited" xml:space="preserve">
+    <value>تم تسجيل الدخول · بلغتَ حد الاستخدام</value>
+  </data>
+  <data name="Settings.ClaudeCode.TextOnly" xml:space="preserve">
+    <value>عبر Claude Code يجيب هامور نصيًا فقط: يعمل Claude Code دون أي أدوات، وتحتاج أدوات هامور نفسها (الملفات وGit والمشاريع) إلى مزوّد مفتاح API.</value>
+  </data>
+  <data name="Settings.ClaudeCode.UpdateHint" xml:space="preserve">
+    <value>شغّل الأمر ‎'claude update'‎ في الطرفية، ثم اختر إعادة الفحص.</value>
+  </data>
+  <data name="Settings.ClaudeCode.Version" xml:space="preserve">
+    <value>Claude Code {0}</value>
+  </data>
+  <data name="Settings.ClaudeCode.Waiting" xml:space="preserve">
+    <value>أكمل تسجيل الدخول في نافذة Claude Code. سيتحقق هامور مجددًا عند إغلاق تلك النافذة.</value>
   </data>
   <data name="Settings.ClearKey" xml:space="preserve">
     <value>إزالة المفتاح</value>

@@ -75,6 +75,10 @@
                                     PlaceholderText="{loc:Loc Settings.ApiKeyPlaceholder}"
                                     PasswordChanged="OnAnthropicKeyChanged" />
 
+                    <TextBlock Style="{StaticResource SecondaryText}"
+                               Margin="{StaticResource StackGap}"
+                               Text="{loc:Loc FirstRun.ClaudeCodeHint}" />
+
                     <TextBlock Style="{StaticResource CaptionText}"
                                Margin="{StaticResource StackGap}"
                                Text="{loc:Loc Settings.SecretsNote}" />
