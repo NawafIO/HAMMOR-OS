@@ -53,6 +53,12 @@ Guardrails board.
 The P0 build has no camera, microphone, speech-to-text, pointer-follow, Success,
 Warning, Sleep or Wake. It contains no video, GIF, MP4, Lottie or SkiaSharp.
 
+**Step 4** (branch `claude/living-shell-sidebar`) made the idle motion
+visible within the approved design, added pointer attention in Idle and a
+frame budget, and is described in [LIVING-CORE-MOTION.md](LIVING-CORE-MOTION.md).
+Where the two documents differ on motion amplitudes or frame pacing, that
+one is current. There is still no camera, microphone or speech-to-text.
+
 ## Architecture
 
 ```
@@ -162,7 +168,8 @@ around the same `NAudioPlayer`.
 
   It draws once per WPF frame: at the display rate (target 60 fps) while the
   window is active, and throttled to 30 fps while it is inactive. When
-  minimised or hidden it does no work. It uses no timers, and the presenter's
+  minimised or hidden it does no work. (Step 4 refines this:
+  [LIVING-CORE-MOTION.md › Performance](LIVING-CORE-MOTION.md#performance).) It uses no timers, and the presenter's
   two one-shot timers run only during a release hold.
 - **Budget, against the Guardrails board:**
 

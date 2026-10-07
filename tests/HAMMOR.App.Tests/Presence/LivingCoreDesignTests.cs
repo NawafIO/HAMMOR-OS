@@ -94,6 +94,8 @@ public sealed class LivingCoreDesignTests
             LivingCoreEasings.Strike,
             LivingCoreEasings.Settle,
             LivingCoreEasings.InOut,
+            LivingCoreEasings.RingOut,
+            LivingCoreEasings.RingIn,
         ];
 
         foreach (var easing in tokens)

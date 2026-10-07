@@ -65,6 +65,12 @@ public struct InsideLook
     /// <summary>Field drift rate; 1 = one turn in 240 s.</summary>
     public double StarDriftSpeed;
 
+    /// <summary>
+    /// Depth parallax: the four star groups wander against each other on
+    /// their own slow clocks; 1 = the Idle reach (at most 2.6 units).
+    /// </summary>
+    public double StarParallax;
+
     public double CellOpacity;
 
     /// <summary>Cell school scale about the lens centre; below 1 leans in.</summary>
@@ -73,7 +79,7 @@ public struct InsideLook
     /// <summary>School drift rate; 1 = one turn in 140 s.</summary>
     public double CellDriftSpeed;
 
-    /// <summary>Per-cell bob strength; 0 stops random drifting.</summary>
+    /// <summary>Per-cell bob, wander and glow strength; 0 stops random drifting.</summary>
     public double CellBob;
 
     /// <summary>Processing links between cells (Thinking).</summary>
@@ -115,6 +121,7 @@ public struct InsideLook
         StarShimmerSpeed = LookMath.Mix(a.StarShimmerSpeed, b.StarShimmerSpeed, t),
         StarShimmerDepth = LookMath.Mix(a.StarShimmerDepth, b.StarShimmerDepth, t),
         StarDriftSpeed = LookMath.Mix(a.StarDriftSpeed, b.StarDriftSpeed, t),
+        StarParallax = LookMath.Mix(a.StarParallax, b.StarParallax, t),
         CellOpacity = LookMath.Mix(a.CellOpacity, b.CellOpacity, t),
         CellSpread = LookMath.Mix(a.CellSpread, b.CellSpread, t),
         CellDriftSpeed = LookMath.Mix(a.CellDriftSpeed, b.CellDriftSpeed, t),

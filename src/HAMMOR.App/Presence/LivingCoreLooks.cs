@@ -57,6 +57,7 @@ public static class LivingCoreLooks
             StarShimmerSpeed = 1.0,
             StarShimmerDepth = 1.0,
             StarDriftSpeed = 1.0,
+            StarParallax = 1.0,
             CellOpacity = 1.0,
             CellSpread = 1.0,
             CellDriftSpeed = 1.0,
@@ -139,6 +140,7 @@ public static class LivingCoreLooks
         look.Core.Opacity = 0.55;
         look.Core.Drift = 0.0;
         look.Inside.StarDriftSpeed = 240.0 / 60.0;
+        look.Inside.StarParallax = 0.6;
         look.Inside.CellBob = 0.0;
         look.Inside.LinkOpacity = 1.0;
         look.Inside.SignalOpacity = 1.0;
@@ -167,6 +169,7 @@ public static class LivingCoreLooks
         look.Core.Glow = 1.15;
         look.Core.SpeakRing = 1.0;
         look.Core.Drift = 0.0;
+        look.Inside.StarParallax = 0.5;
         look.Inside.CellDriftSpeed = 0.0;
         look.Inside.CellBob = 0.0;
         look.Inside.VoiceWave = 1.0;
@@ -196,6 +199,7 @@ public static class LivingCoreLooks
         look.Inside.StarShimmerSpeed = 0.5;
         look.Inside.StarShimmerDepth = 0.5;
         look.Inside.StarDriftSpeed = 0.25;
+        look.Inside.StarParallax = 0.25;
         look.Inside.CellDriftSpeed = 140.0 / 600.0;
         look.Inside.CellBob = 0.0;
         look.Inside.LensSway = 0.4;
@@ -229,6 +233,7 @@ public static class LivingCoreLooks
         look.Inside.StarShimmerSpeed = 0.7;
         look.Inside.StarShimmerDepth = 0.5;
         look.Inside.StarDriftSpeed = 0.5;
+        look.Inside.StarParallax = 0.5;
         look.Inside.CellOpacity = 0.5;
         look.Inside.CellSpread = 1.18;
         look.Inside.CellDriftSpeed = 0.5;
@@ -263,6 +268,7 @@ public static class LivingCoreLooks
         look.Core.Glow = 0.0;
         look.Inside.StarOpacity = 0.0;
         look.Inside.StarScale = 0.3;
+        look.Inside.StarParallax = 0.0;
         look.Inside.CellOpacity = 0.0;
         look.Inside.CellSpread = 0.3;
         look.Inside.LensOpacity = 0.0;

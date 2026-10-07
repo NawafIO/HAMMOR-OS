@@ -73,6 +73,17 @@
                                         </ComboBox.ItemTemplate>
                                     </ComboBox>
                                 </controls:SettingsRow>
+
+                                <!-- Read only: the Living Core follows Windows'
+                                     Animation effects; this says which way. -->
+                                <controls:SettingsRow Header="{loc:Loc Settings.Appearance.Motion}"
+                                                      Description="{loc:Loc Settings.Appearance.MotionDescription}">
+                                    <TextBlock x:Name="MotionStatusText"
+                                               MaxWidth="240"
+                                               VerticalAlignment="Center"
+                                               Style="{StaticResource BodyText}"
+                                               TextWrapping="Wrap" />
+                                </controls:SettingsRow>
                             </StackPanel>
                         </Border>
                     </StackPanel>

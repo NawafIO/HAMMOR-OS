@@ -60,12 +60,19 @@ public sealed class LivingCoreFrame
     public double StarsScale;
     public readonly double[] StarClockOpacity = new double[4];
 
+    /// <summary>Depth parallax offset of each star group, design units.</summary>
+    public readonly double[] StarGroupX = new double[4];
+    public readonly double[] StarGroupY = new double[4];
+
     // ---- Layer 6: floating cells ----
     public double CellsSpread;
     public double CellsOpacity;
     public double CellsAngle;
     public readonly double[] BobX = new double[3];
     public readonly double[] BobY = new double[3];
+
+    /// <summary>Light of each cell group, 0 to 1, on top of <see cref="CellsOpacity"/>.</summary>
+    public readonly double[] CellGlow = new double[3];
     public double LinkOpacity;
     public readonly double[] SignalX = new double[6];
     public readonly double[] SignalY = new double[6];

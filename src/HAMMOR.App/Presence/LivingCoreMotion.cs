@@ -18,7 +18,17 @@ namespace HAMMOR.App.Presence;
 /// 8 s, energy lines 90 and 140 s, halo rings 6.4 s a third apart, threads 14,
 /// 22, 30 and 42 s in alternating directions, stars 240 s with four shimmer
 /// clocks, cells 140 s with three bob clocks, lens sway 6.4 s and flow 3.2 s,
-/// white core drift 9.6 s with one unhurried glance about every 14 s.
+/// white core drift on two slow sines per axis with one unhurried glance
+/// about every 14 s.
+/// </para>
+/// <para>
+/// <b>Visible life (Step 4).</b> On top of those clocks, and only where the
+/// state allows it: the four star groups wander against each other (depth
+/// parallax), the cells wander and glow on their own clocks, the white core
+/// drifts on two slow sines per axis up to the hero board's 1.5%, the halo
+/// rings and threads breathe light, and in Idle the white core turns toward
+/// the pointer when it moves near HAMMOR, then settles back. Everything is
+/// a sine or a first-order follow, so nothing overshoots or bounces.
 /// </para>
 /// <para>
 /// <b>The white core has one owner</b>: this class. Its position is the
@@ -27,7 +37,8 @@ namespace HAMMOR.App.Presence;
 /// </para>
 /// <para>
 /// <b>Reduced motion</b> keeps every state's position, shape and light, and
-/// drops drift, orbit, shimmer and breathing. Pulses become a slow change of
+/// drops drift, wander, parallax, pointer attention, orbit, shimmer and
+/// breathing. Pulses become a slow change of
 /// light; state changes become a short blend.
 /// </para>
 /// </remarks>
@@ -56,12 +67,27 @@ public sealed class LivingCoreMotion
     private const double RequestGlanceDx = 9.0;
     private const double RequestGlanceDy = -2.0;
 
-    private static readonly CubicBezierEasing Linear = new(0.0, 0.0, 1.0, 1.0);
+    // Halo rings breathe ±2.2% in size and from 60% to full light.
+    private const double HaloBreathScale = 0.022;
+    private const double HaloBreathFloor = 0.6;
 
-    // Idle micro-drift, under 1.5% (hero board).
-    private static readonly double[] DriftTimes = [0.0, 0.25, 0.5, 0.75, 1.0];
-    private static readonly double[] DriftX = [0.0, 0.8, 0.2, -0.7, 0.0];
-    private static readonly double[] DriftY = [0.0, -0.5, 0.7, 0.2, 0.0];
+    // Threads breathe light, 16% deep, while the halo breathes.
+    private const double ThreadBreathDepth = 0.16;
+    private const double ThreadBreathPeriod = 5.2;
+
+    // Pointer attention (Idle only): the white core leans toward the pointer
+    // while it moves, holds a moment after it stops, then settles back.
+    private const double PointerHold = 2.4;
+    private const double PointerRise = 0.35;
+    private const double PointerFall = 0.9;
+    private const double PointerFollow = 0.3;
+    private const double PointerReachX = 0.55 * LivingCoreLooks.ZoneRadiusX;
+    private const double PointerReachY = 0.6 * LivingCoreLooks.ZoneRadiusY;
+    private const double PointerNear = 0.12;
+    private const double PointerFar = 1.1;
+    private const double GlanceAttentionLimit = 0.3;
+
+    private static readonly CubicBezierEasing Linear = new(0.0, 0.0, 1.0, 1.0);
 
     // Idle glances: targets relative to rest, all inside the zone, with the
     // approved hold of 0.6 to 1.2 s and an interval of about 14 s.
@@ -125,6 +151,18 @@ public sealed class LivingCoreMotion
     private double _envelope;
     private bool _hasVoiceLevel;
 
+    // Time the life clocks have run: advanced by clamped frame steps, so a
+    // pause (minimised, hidden) resumes where it left off.
+    private double _lifeTime;
+
+    private bool _hasPointer;
+    private double _pointerLeanX;
+    private double _pointerLeanY;
+    private double _pointerMovedAt = double.NegativeInfinity;
+    private double _attention;
+    private double _leanX;
+    private double _leanY;
+
     /// <param name="initialState">State to show.</param>
     /// <param name="now">Current time, seconds, from a monotonic clock.</param>
     /// <param name="fromDormant">
@@ -165,6 +203,49 @@ public sealed class LivingCoreMotion
     public bool ReducedMotion { get; set; }
 
     private double TransitionLength => ReducedMotion ? ReducedTransitionSeconds : CascadeSeconds;
+
+    /// <summary>How strongly the white core attends to the pointer, 0 to 1.</summary>
+    public double PointerAttention => _attention;
+
+    /// <summary>
+    /// Reports the pointer. Only Idle attends to it, and never under reduced
+    /// motion.
+    /// </summary>
+    /// <param name="x">
+    /// Pointer offset from the core's centre, physical left to right, in
+    /// half-sides of the control: 1 is the control's edge.
+    /// </param>
+    /// <param name="y">The same, top to bottom.</param>
+    /// <param name="now">Current time, same clock as <see cref="Advance"/>.</param>
+    public void SetPointer(double x, double y, double now)
+    {
+        if (double.IsNaN(x) || double.IsNaN(y) || double.IsInfinity(x) || double.IsInfinity(y))
+        {
+            return;
+        }
+
+        var distance = Math.Sqrt((x * x) + (y * y));
+        if (distance < 1e-9)
+        {
+            // On the core itself: look straight out.
+            _pointerLeanX = 0.0;
+            _pointerLeanY = 0.0;
+        }
+        else
+        {
+            // Close to the core it barely turns; farther out it turns fully
+            // toward the pointer's direction, never farther.
+            var reach = SmoothStep(PointerNear, PointerFar, distance);
+            _pointerLeanX = x / distance * PointerReachX * reach;
+            _pointerLeanY = y / distance * PointerReachY * reach;
+        }
+
+        _hasPointer = true;
+        _pointerMovedAt = now;
+    }
+
+    /// <summary>The pointer left HAMMOR's window; the white core settles back.</summary>
+    public void ClearPointer() => _hasPointer = false;
 
     /// <summary>
     /// Eased progress of each cascade group <paramref name="elapsed"/> seconds
@@ -268,6 +349,7 @@ public sealed class LivingCoreMotion
         if (!reduced)
         {
             AdvanceClocks(look, dt);
+            _lifeTime += dt;
         }
 
         WriteOutside(look, now, reduced, hasVoice, frame);
@@ -363,12 +445,12 @@ public sealed class LivingCoreMotion
         frame.Energy1Flow = _energy1Flow;
         frame.Energy2Flow = _energy2Flow;
 
-        // ---- Halo rings: ±1.4% over 6.4 s, a third apart ----
+        // ---- Halo rings: breathe over 6.4 s, a third apart ----
         for (var i = 0; i < 3; i++)
         {
             var b = reduced ? 0.5 : Swing((now - LivingCoreDesign.HaloDelays[i]) / LivingCoreDesign.HaloPeriod, LivingCoreEasings.Breath);
-            var scale = 1.0 + (look.Halo.HaloBreath * 0.014 * b);
-            var light = Mix(1.0, 0.75 + (0.25 * b), look.Halo.HaloBreath);
+            var scale = 1.0 + (look.Halo.HaloBreath * HaloBreathScale * b);
+            var light = Mix(1.0, HaloBreathFloor + ((1.0 - HaloBreathFloor) * b), look.Halo.HaloBreath);
 
             if (i == 0 && look.Halo.HaloIrregular > 0.0)
             {
@@ -478,13 +560,16 @@ public sealed class LivingCoreMotion
             frame.ThreadAngle[i] = _threadAngle[i];
         }
 
-        var threadLight = 1.0;
+        // Threads breathe light with the halo; reduced motion holds them.
+        var threadLight = reduced
+            ? 1.0
+            : 1.0 - (ThreadBreathDepth * look.Halo.HaloBreath * Swing(now / ThreadBreathPeriod, LivingCoreEasings.Breath));
         if (look.Halo.ThreadPulse > 0.0 && !reduced)
         {
             var pulse = hasVoice
                 ? 0.7 + (0.3 * _envelope)
                 : Keyframes(now / 1.6, ThreadPulseTimes, ThreadPulseLight, LivingCoreEasings.Breath);
-            threadLight = Mix(1.0, pulse, look.Halo.ThreadPulse);
+            threadLight = Mix(threadLight, pulse, look.Halo.ThreadPulse);
         }
 
         frame.ThreadsOpacity = Clamp01(look.Halo.ThreadOpacity * threadLight);
@@ -511,6 +596,12 @@ public sealed class LivingCoreMotion
             var dip = reduced ? 0.0 : Swing(_shimmerPhase[k], LivingCoreEasings.InOut);
             var shimmer = 1.0 - (look.Inside.StarShimmerDepth * 0.65 * dip);
             frame.StarClockOpacity[k] = Clamp01(look.Inside.StarOpacity * shimmer);
+
+            // Depth parallax: each group wanders against the others.
+            var wander = LivingCoreDesign.StarParallax[k];
+            var reach = reduced ? 0.0 : look.Inside.StarParallax;
+            frame.StarGroupX[k] = wander.X(_lifeTime) * reach;
+            frame.StarGroupY[k] = wander.Y(_lifeTime) * reach;
         }
 
         // ---- Floating cells: drift as a school, bob on three clocks ----
@@ -521,8 +612,16 @@ public sealed class LivingCoreMotion
         {
             var clock = LivingCoreDesign.BobClocks[j];
             var up = reduced ? 0.0 : Swing((now - clock.Delay) / clock.Period, LivingCoreEasings.InOut) * look.Inside.CellBob;
-            frame.BobX[j] = LivingCoreDesign.BobX * up;
-            frame.BobY[j] = LivingCoreDesign.BobY * up;
+
+            // Each group also wanders and glows on its own clocks.
+            var wander = LivingCoreDesign.CellWander[j];
+            var reach = reduced ? 0.0 : look.Inside.CellBob;
+            frame.BobX[j] = (LivingCoreDesign.BobX * up) + (wander.X(_lifeTime) * reach);
+            frame.BobY[j] = (LivingCoreDesign.BobY * up) + (wander.Y(_lifeTime) * reach);
+
+            var glowClock = LivingCoreDesign.CellGlowClocks[j];
+            var dim = reduced ? 0.0 : Swing((_lifeTime - glowClock.Delay) / glowClock.Period, LivingCoreEasings.Breath);
+            frame.CellGlow[j] = 1.0 - (LivingCoreDesign.CellGlowDepth * dim * look.Inside.CellBob);
         }
 
         // ---- Thinking: links, signals, orbit lanes ----
@@ -573,17 +672,37 @@ public sealed class LivingCoreMotion
         var x = look.Core.X;
         var y = look.Core.Y;
 
-        // Idle micro-drift.
+        // Idle micro-drift: two slow sines per axis, within 1.5%.
         if (!reduced && look.Core.Drift > 0.0)
         {
-            var phase = now / 9.6;
-            x += Keyframes(phase, DriftTimes, DriftX, LivingCoreEasings.InOut) * look.Core.Drift;
-            y += Keyframes(phase, DriftTimes, DriftY, LivingCoreEasings.InOut) * look.Core.Drift;
+            x += IdleDriftX(_lifeTime) * look.Core.Drift;
+            y += IdleDriftY(_lifeTime) * look.Core.Drift;
+        }
+
+        // Pointer attention: follows with a short lag, holds a moment after
+        // the pointer stops, then fades back. First-order, so it never
+        // overshoots the pointer's direction.
+        var idle = State == LivingCoreState.Idle && !reduced;
+        var attending = idle && _hasPointer && (now - _pointerMovedAt) <= PointerHold;
+        if (reduced)
+        {
+            _attention = 0.0;
+            _leanX = 0.0;
+            _leanY = 0.0;
+        }
+        else
+        {
+            var target = attending ? 1.0 : 0.0;
+            _attention = Smooth(_attention, target, dt, target > _attention ? PointerRise : PointerFall);
+            _leanX = Smooth(_leanX, _pointerLeanX, dt, PointerFollow);
+            _leanY = Smooth(_leanY, _pointerLeanY, dt, PointerFollow);
+            x += _leanX * _attention * look.Core.Drift;
+            y += _leanY * _attention * look.Core.Drift;
         }
 
         // Idle glance: out 0.45 s, hold, back 1.2 s. Gated so leaving Idle
-        // fades a glance in progress instead of cutting it.
-        var idle = State == LivingCoreState.Idle && !reduced;
+        // fades a glance in progress instead of cutting it. It waits while the
+        // core attends to the pointer.
         _glanceGate = Smooth(_glanceGate, idle ? 1.0 : 0.0, dt, GateTimeConstant);
         if (reduced)
         {
@@ -591,7 +710,7 @@ public sealed class LivingCoreMotion
         }
         else
         {
-            if (idle && double.IsNaN(_glanceStart) && now >= _nextGlanceAt)
+            if (idle && double.IsNaN(_glanceStart) && now >= _nextGlanceAt && _attention < GlanceAttentionLimit)
             {
                 _glanceStart = now;
                 _nextGlanceAt = now + GlanceInterval[_glanceIndex % GlanceInterval.Length];
@@ -608,8 +727,8 @@ public sealed class LivingCoreMotion
                 }
                 else
                 {
-                    x += GlanceDx[slot] * amount * _glanceGate;
-                    y += GlanceDy[slot] * amount * _glanceGate;
+                    x += GlanceDx[slot] * amount * _glanceGate * (1.0 - _attention);
+                    y += GlanceDy[slot] * amount * _glanceGate * (1.0 - _attention);
                 }
             }
         }
@@ -670,6 +789,14 @@ public sealed class LivingCoreMotion
         frame.AttentionOpacity = Clamp01(look.Core.AttentionRing * attention);
         frame.SpeakRingOpacity = Clamp01(look.Core.SpeakRing * look.Core.Opacity);
     }
+
+    /// <summary>The white core's idle drift at <paramref name="time"/>, X, design units.</summary>
+    internal static double IdleDriftX(double time) =>
+        LivingCoreDesign.CoreDrift[0].X(time) + LivingCoreDesign.CoreDrift[1].X(time);
+
+    /// <summary>The white core's idle drift at <paramref name="time"/>, Y, design units.</summary>
+    internal static double IdleDriftY(double time) =>
+        LivingCoreDesign.CoreDrift[0].Y(time) + LivingCoreDesign.CoreDrift[1].Y(time);
 
     /// <summary>
     /// Glance timeline: eased out, held, eased back. Returns the amount 0 to
@@ -755,6 +882,12 @@ public sealed class LivingCoreMotion
         dt <= 0.0 ? current : current + ((target - current) * (1.0 - Math.Exp(-dt / timeConstant)));
 
     private static double Mix(double a, double b, double t) => a + ((b - a) * t);
+
+    private static double SmoothStep(double edge0, double edge1, double value)
+    {
+        var t = Clamp01((value - edge0) / (edge1 - edge0));
+        return t * t * (3.0 - (2.0 * t));
+    }
 
     private static double Clamp01(double value) => Math.Clamp(value, 0.0, 1.0);
 

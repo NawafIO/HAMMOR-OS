@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
+using HAMMOR.App.Localization;
+using HAMMOR.App.Presence;
 using HAMMOR.App.ViewModels;
 
 namespace HAMMOR.App.Views;
@@ -26,6 +28,7 @@ public partial class SettingsPage : Page
 
         Loaded += async (_, _) =>
         {
+            ShowMotionStatus();
             await viewModel.LoadAsync().ConfigureAwait(true);
 
             // Any text left in the boxes after a save/clear round-trip is
@@ -34,6 +37,11 @@ public partial class SettingsPage : Page
             ElevenLabsKeyBox.Password = string.Empty;
         };
     }
+
+    /// <summary>Whether the Living Core moves fully or is held still by Windows' reduced motion.</summary>
+    private void ShowMotionStatus() =>
+        MotionStatusText.Text = LocalizationSource.Instance[
+            LivingCoreMotionStatus.KeyFor(LivingCore.SystemPrefersReducedMotion)];
 
     /// <summary>Back to the main HAMMOR navigation: the page Settings was opened from.</summary>
     private void OnBackClick(object sender, RoutedEventArgs e) =>

@@ -437,6 +437,18 @@
   <data name="Settings.Appearance.ThemeDescription" xml:space="preserve">
     <value>فاتح أو داكن أو حسب إعداد Windows.</value>
   </data>
+  <data name="Settings.Appearance.Motion" xml:space="preserve">
+    <value>حركة النواة الحية</value>
+  </data>
+  <data name="Settings.Appearance.MotionDescription" xml:space="preserve">
+    <value>يتبع هامور إعداد Windows: الإعدادات › إمكانية الوصول › التأثيرات المرئية › تأثيرات الحركة.</value>
+  </data>
+  <data name="Settings.Appearance.Motion.Full" xml:space="preserve">
+    <value>حركة كاملة.</value>
+  </data>
+  <data name="Settings.Appearance.Motion.Reduced" xml:space="preserve">
+    <value>حركة مخفّفة: تأثيرات الحركة متوقفة في Windows، لذا تبقى النواة الحية ساكنة.</value>
+  </data>
   <data name="Settings.Back" xml:space="preserve">
     <value>رجوع</value>
   </data>

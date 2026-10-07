@@ -40,7 +40,8 @@ internal static class MotionHarness
         f.ThreadAngle[0], f.ThreadAngle[1], f.ThreadAngle[2], f.ThreadAngle[3], f.ThreadsOpacity, f.ThreadsScale,
         f.ParkOpacity, f.FragmentOpacity, f.Fragment1Angle, f.CrackOpacity,
         f.StarsAngle, f.StarsScale, f.StarClockOpacity[0], f.StarClockOpacity[1], f.StarClockOpacity[2], f.StarClockOpacity[3],
-        f.CellsAngle, f.CellsSpread, f.CellsOpacity, f.BobX[0], f.BobY[0], f.BobY[2], f.LinkOpacity,
+        f.StarGroupX[0], f.StarGroupY[1], f.StarGroupX[2], f.StarGroupY[3],
+        f.CellsAngle, f.CellsSpread, f.CellsOpacity, f.BobX[0], f.BobY[0], f.BobY[2], f.CellGlow[0], f.CellGlow[2], f.LinkOpacity,
         f.SignalX[0], f.SignalY[0], f.SignalOpacity[0], f.SignalOpacity[5], f.OrbitOpacity, f.Orbit1Angle,
         f.LensOpacity, f.LensAngle, f.CrestAngle, f.LateralAOpacity, f.LateralFlow, f.VoiceWaveOpacity, f.VoiceWaveScaleY,
     ];

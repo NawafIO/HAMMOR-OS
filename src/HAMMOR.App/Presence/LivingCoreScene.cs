@@ -11,9 +11,10 @@ namespace HAMMOR.App.Presence;
 /// <remarks>
 /// <para>
 /// Every geometry, brush and pen is created and frozen here, at construction.
-/// <see cref="Apply"/> writes values into existing transform objects and
-/// skips any value that did not change, so a frame allocates nothing beyond
-/// the boxing WPF itself does for dependency-property doubles.
+/// <see cref="Apply"/> writes values into existing transforms, visual offsets
+/// and opacities, and skips any value that did not change, so a frame
+/// allocates nothing beyond the boxing WPF itself does for dependency-property
+/// doubles.
 /// </para>
 /// <para>
 /// No live blur: the design's blurred glows (inner halo ring, thread heads,
@@ -454,6 +455,7 @@ internal sealed class LivingCoreScene
         for (var k = 0; k < _starClock.Length; k++)
         {
             SetOpacity(_starClock[k], frame.StarClockOpacity[k]);
+            SetOffset(_starClock[k], frame.StarGroupX[k], frame.StarGroupY[k]);
         }
 
         // 6 · Floating cells
@@ -463,6 +465,7 @@ internal sealed class LivingCoreScene
         for (var j = 0; j < _bob.Length; j++)
         {
             SetOffset(_bob[j], frame.BobX[j], frame.BobY[j]);
+            SetOpacity(_bob[j], frame.CellGlow[j]);
         }
 
         SetOpacity(_links, frame.LinkOpacity);

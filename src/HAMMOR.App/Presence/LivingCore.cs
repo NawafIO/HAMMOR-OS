@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace HAMMOR.App.Presence;
@@ -14,11 +15,18 @@ namespace HAMMOR.App.Presence;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Cost.</b> The control only draws while it is loaded, visible and its
-/// window is not minimised. It renders at the display rate (60 fps target)
-/// while its window is active and at 30 fps while it is inactive; minimised or
-/// hidden it does no work at all. Under reduced motion it stops entirely once a
-/// still state has settled.
+/// <b>Cost.</b> <see cref="LivingCoreFramePolicy"/> decides: the control only
+/// draws while it is loaded, visible and its window is not minimised; up to
+/// 60 fps while its window is active, 30 fps for a small core or a window in
+/// the background, 20 fps once the window has been in the background for a
+/// while. Minimised or hidden it does no work at all. Under reduced motion it
+/// stops entirely once a still state has settled.
+/// </para>
+/// <para>
+/// <b>Pointer.</b> In Idle the white core turns toward the pointer while it
+/// moves over HAMMOR's window, then settles back. Only the pointer's position
+/// relative to the core is used, only while the core is animating, and
+/// nothing is stored or reported.
 /// </para>
 /// <para>
 /// <b>Reduced motion</b> follows the Windows "Animation effects" setting
@@ -51,7 +59,6 @@ public sealed class LivingCore : FrameworkElement
         typeof(LivingCore),
         new PropertyMetadata(-1.0));
 
-    private const double InactiveFrameInterval = 1.0 / 30.0;
     private const double DefaultSize = 240.0;
 
     private readonly LivingCoreScene _scene = new();
@@ -64,6 +71,7 @@ public sealed class LivingCore : FrameworkElement
     private bool _settingsHooked;
     private TimeSpan _lastRenderingTime = TimeSpan.MinValue;
     private double _lastFrameSeconds = double.NegativeInfinity;
+    private double _inactiveSince = double.NaN;
 
     public LivingCore()
     {
@@ -109,6 +117,12 @@ public sealed class LivingCore : FrameworkElement
     private double Now => _clock.Elapsed.TotalSeconds;
 
     private bool IsMirrored => FlowDirection == FlowDirection.RightToLeft;
+
+    /// <summary>
+    /// True when Windows asks for reduced motion: Settings › Accessibility ›
+    /// Visual effects › Animation effects is off.
+    /// </summary>
+    internal static bool SystemPrefersReducedMotion => !SystemParameters.ClientAreaAnimation;
 
     protected override Visual GetVisualChild(int index) =>
         index == 0 ? _scene.Root : throw new ArgumentOutOfRangeException(nameof(index));
@@ -169,7 +183,7 @@ public sealed class LivingCore : FrameworkElement
 
         // A core arrives through the cascade the first time it is shown:
         // the white core first, the aura last.
-        _motion ??= new LivingCoreMotion(State, Now, fromDormant: true, IsReducedMotion());
+        _motion ??= new LivingCoreMotion(State, Now, fromDormant: true, SystemPrefersReducedMotion);
 
         AttachWindow(Window.GetWindow(this));
         if (!_settingsHooked)
@@ -178,7 +192,7 @@ public sealed class LivingCore : FrameworkElement
             _settingsHooked = true;
         }
 
-        _motion.ReducedMotion = IsReducedMotion();
+        _motion.ReducedMotion = SystemPrefersReducedMotion;
         RenderFrame();
         UpdateRendering();
     }
@@ -210,15 +224,25 @@ public sealed class LivingCore : FrameworkElement
             _window.StateChanged -= OnWindowStateChanged;
             _window.Activated -= OnWindowActivationChanged;
             _window.Deactivated -= OnWindowActivationChanged;
+            _window.PreviewMouseMove -= OnWindowPointerMoved;
+            _window.MouseLeave -= OnWindowPointerLeft;
         }
 
         _window = window;
+        _motion?.ClearPointer();
 
         if (_window is not null)
         {
             _window.StateChanged += OnWindowStateChanged;
             _window.Activated += OnWindowActivationChanged;
             _window.Deactivated += OnWindowActivationChanged;
+            _window.PreviewMouseMove += OnWindowPointerMoved;
+            _window.MouseLeave += OnWindowPointerLeft;
+            _inactiveSince = _window.IsActive ? double.NaN : Now;
+        }
+        else
+        {
+            _inactiveSince = double.NaN;
         }
     }
 
@@ -226,11 +250,54 @@ public sealed class LivingCore : FrameworkElement
 
     private void OnWindowActivationChanged(object? sender, EventArgs e)
     {
+        var active = _window is null || _window.IsActive;
+        if (active)
+        {
+            _inactiveSince = double.NaN;
+        }
+        else if (double.IsNaN(_inactiveSince))
+        {
+            _inactiveSince = Now;
+        }
+
         // Re-read the system setting on activation as a fallback, in case the
         // change notification was missed while HAMMOR was in the background.
         SyncReducedMotion();
         UpdateRendering();
     }
+
+    /// <summary>
+    /// Pointer over the window: its offset from the core's centre, in
+    /// half-sides of the control, physical left to right. Ignored unless the
+    /// core is animating in Idle, so it costs nothing otherwise.
+    /// </summary>
+    private void OnWindowPointerMoved(object sender, MouseEventArgs e)
+    {
+        if (_motion is null
+            || !_renderingHooked
+            || _motion.ReducedMotion
+            || _motion.State != LivingCoreState.Idle)
+        {
+            return;
+        }
+
+        var size = RenderSize;
+        var half = Math.Min(size.Width, size.Height) / 2.0;
+        if (half <= 0.0)
+        {
+            return;
+        }
+
+        var position = e.GetPosition(this);
+        var x = (position.X - (size.Width / 2.0)) / half;
+        var y = (position.Y - (size.Height / 2.0)) / half;
+
+        // A right-to-left layout measures from the right; the drawing is not
+        // mirrored, so turn the offset back to physical left to right.
+        _motion.SetPointer(IsMirrored ? -x : x, y, Now);
+    }
+
+    private void OnWindowPointerLeft(object sender, MouseEventArgs e) => _motion?.ClearPointer();
 
     private void OnSystemParametersChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -257,7 +324,7 @@ public sealed class LivingCore : FrameworkElement
             return;
         }
 
-        var reduced = IsReducedMotion();
+        var reduced = SystemPrefersReducedMotion;
         if (reduced == _motion.ReducedMotion)
         {
             return;
@@ -268,18 +335,22 @@ public sealed class LivingCore : FrameworkElement
         UpdateRendering();
     }
 
-    private static bool IsReducedMotion() => !SystemParameters.ClientAreaAnimation;
+    /// <summary>What the frame policy needs to know right now.</summary>
+    private LivingCoreFrameContext FrameContext(double now) => new(
+        IsLoaded,
+        IsVisible,
+        _window is not null && _window.WindowState == WindowState.Minimized,
+        _window is null || _window.IsActive,
+        double.IsNaN(_inactiveSince) ? 0.0 : Math.Max(0.0, now - _inactiveSince),
+        Math.Min(RenderSize.Width, RenderSize.Height),
+        _motion is not null && _motion.NeedsContinuousFrames(now));
 
     /// <summary>
     /// Hooks the per-frame callback only when frames are actually needed.
     /// </summary>
     private void UpdateRendering()
     {
-        var shouldRender = _motion is not null
-            && IsLoaded
-            && IsVisible
-            && (_window is null || _window.WindowState != WindowState.Minimized)
-            && _motion.NeedsContinuousFrames(Now);
+        var shouldRender = _motion is not null && LivingCoreFramePolicy.ShouldRender(FrameContext(Now));
 
         if (shouldRender)
         {
@@ -327,8 +398,8 @@ public sealed class LivingCore : FrameworkElement
         }
 
         var now = Now;
-        var active = _window is null || _window.IsActive;
-        if (!active && (now - _lastFrameSeconds) < InactiveFrameInterval - 0.002)
+        var interval = LivingCoreFramePolicy.MinimumInterval(FrameContext(now));
+        if (!LivingCoreFramePolicy.IsFrameDue(now - _lastFrameSeconds, interval))
         {
             return;
         }

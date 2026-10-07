@@ -437,6 +437,18 @@
   <data name="Settings.Appearance.ThemeDescription" xml:space="preserve">
     <value>Light, dark, or follow Windows.</value>
   </data>
+  <data name="Settings.Appearance.Motion" xml:space="preserve">
+    <value>Living Core motion</value>
+  </data>
+  <data name="Settings.Appearance.MotionDescription" xml:space="preserve">
+    <value>HAMMOR follows Windows: Settings › Accessibility › Visual effects › Animation effects.</value>
+  </data>
+  <data name="Settings.Appearance.Motion.Full" xml:space="preserve">
+    <value>Full motion.</value>
+  </data>
+  <data name="Settings.Appearance.Motion.Reduced" xml:space="preserve">
+    <value>Reduced motion: Animation effects is off in Windows, so the Living Core holds still.</value>
+  </data>
   <data name="Settings.Back" xml:space="preserve">
     <value>Back</value>
   </data>
