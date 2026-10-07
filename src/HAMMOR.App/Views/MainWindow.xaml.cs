@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
+using System.Windows.Threading;
 using HAMMOR.App.Localization;
 using HAMMOR.App.Presence;
 using HAMMOR.App.ViewModels;
@@ -88,7 +89,13 @@ public partial class MainWindow : FluentWindow
     /// kept.
     /// </para>
     /// </remarks>
-    private void OnLanguageChanged(object? sender, LanguageChangedEventArgs e)
+    private void OnLanguageChanged(object? sender, LanguageChangedEventArgs e) =>
+        // On this window's thread, and after the work in progress: the switch
+        // may have started inside a Settings combo box whose page this rebuild
+        // replaces.
+        _ = Dispatcher.InvokeAsync(RebuildCurrentPage, DispatcherPriority.Loaded);
+
+    private void RebuildCurrentPage()
     {
         var target = _currentPageType;
 

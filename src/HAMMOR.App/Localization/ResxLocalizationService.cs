@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using System.Globalization;
 using System.Resources;
+using System.Windows;
+using System.Windows.Threading;
 using HAMMOR.Core.Configuration;
 using HAMMOR.Core.Localization;
 using Microsoft.Extensions.Logging;
@@ -32,15 +34,32 @@ public sealed class ResxLocalizationService : ILocalizationService
     private readonly IConfigurationStore _configurationStore;
     private readonly ILogger<ResxLocalizationService> _logger;
 
+    // The UI thread's dispatcher. Language changes are announced on it,
+    // because every listener updates WPF objects.
+    private readonly Dispatcher? _dispatcher;
+
     private CultureInfo _culture;
 
     public ResxLocalizationService(
         IConfigurationStore configurationStore,
         ILogger<ResxLocalizationService> logger)
+        : this(configurationStore, logger, Application.Current?.Dispatcher)
+    {
+    }
+
+    /// <param name="dispatcher">
+    /// The UI thread's dispatcher; <see langword="null"/> announces on the
+    /// calling thread.
+    /// </param>
+    internal ResxLocalizationService(
+        IConfigurationStore configurationStore,
+        ILogger<ResxLocalizationService> logger,
+        Dispatcher? dispatcher)
     {
         _configurationStore = configurationStore
                               ?? throw new ArgumentNullException(nameof(configurationStore));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _dispatcher = dispatcher;
 
         _resources = new ResourceManager(
             "HAMMOR.App.Localization.Strings", typeof(ResxLocalizationService).Assembly);
@@ -98,18 +117,46 @@ public sealed class ResxLocalizationService : ILocalizationService
             return;
         }
 
-        _culture = target;
-        ApplyCultureToThread(target);
-
-        // Persist so the choice survives a restart.
+        // Persist first, so the choice survives a restart and a choice that
+        // cannot be saved changes nothing on screen.
         var updated = _configurationStore.Current.Clone();
         updated.General.Language = target.TwoLetterISOLanguageName;
         await _configurationStore.SaveAsync(updated, cancellationToken).ConfigureAwait(false);
+
+        // The save completes on a thread-pool thread. The switch itself and its
+        // announcements belong on the UI thread: listeners rebuild pages and
+        // update bound WPF objects, and from any other thread WPF throws "The
+        // calling thread cannot access this object because a different thread
+        // owns it".
+        await OnUiThreadAsync(() => Apply(target)).ConfigureAwait(false);
+    }
+
+    private void Apply(CultureInfo target)
+    {
+        _culture = target;
+        ApplyCultureToThread(target);
 
         _logger.LogInformation("UI language switched to {Language}.", target.Name);
 
         RaiseAllStringsChanged();
         LanguageChanged?.Invoke(this, new LanguageChangedEventArgs(CurrentLanguage, IsRightToLeft));
+    }
+
+    /// <summary>
+    /// Runs <paramref name="action"/> on the UI thread and completes when it
+    /// has run; an exception it throws reaches the caller of
+    /// <see cref="SetLanguageAsync"/>.
+    /// </summary>
+    private Task OnUiThreadAsync(Action action)
+    {
+        var dispatcher = _dispatcher;
+        if (dispatcher is null || dispatcher.CheckAccess())
+        {
+            action();
+            return Task.CompletedTask;
+        }
+
+        return dispatcher.InvokeAsync(action).Task;
     }
 
     /// <summary>

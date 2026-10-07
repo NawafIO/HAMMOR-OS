@@ -53,6 +53,8 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         _draft = configurationStore.Current.Clone();
         ConfigurationFilePath = configurationStore.ConfigurationFilePath;
+
+        _localization.LanguageChanged += OnLanguageChanged;
     }
 
     /// <summary>Working copy. Nothing is persisted until Save runs.</summary>
@@ -249,17 +251,27 @@ public sealed partial class SettingsViewModel : ObservableObject
         try
         {
             await _localization.SetLanguageAsync(languageCode).ConfigureAwait(true);
-
-            // SetLanguageAsync persisted the language, so refresh the draft to
-            // avoid writing a stale value back on the next Save.
-            Draft.General.Language = _localization.CurrentLanguage;
-
-            OnPropertyChanged(nameof(SelectedLanguage));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Could not switch language to {Language}.", languageCode);
             StatusMessage = ex.Message;
+
+            // The selector already shows the language that failed to apply;
+            // put it back to the one in use.
+            OnPropertyChanged(nameof(SelectedLanguage));
         }
+    }
+
+    /// <summary>
+    /// Keeps the selector on the language actually in use, wherever the
+    /// switch came from: this page, the shell's quick toggle or first run.
+    /// </summary>
+    private void OnLanguageChanged(object? sender, LanguageChangedEventArgs e)
+    {
+        // SetLanguageAsync persisted the language; refresh the draft so the
+        // next Save does not write a stale value back.
+        Draft.General.Language = _localization.CurrentLanguage;
+        OnPropertyChanged(nameof(SelectedLanguage));
     }
 }
