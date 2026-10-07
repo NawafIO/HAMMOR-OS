@@ -160,10 +160,17 @@ public sealed class ClaudeCodeCommandLineTests
     [Fact]
     public void Other_systems_look_for_claude_without_an_extension()
     {
-        var bin = Path.Combine(Path.GetTempPath(), "hammor-bin");
+        // The simulated system separates PATH entries with ':', so its entries
+        // never hold a drive letter. System.IO.Path still follows the machine
+        // running the test, so the directories must be fully qualified there
+        // without a colon: UNC paths on Windows, absolute paths elsewhere.
+        var root = OperatingSystem.IsWindows() ? @"\\hammor-host\share" : "/opt/hammor";
+        var other = Path.Combine(root, "other");
+        var bin = Path.Combine(root, "bin");
         var executable = Path.Combine(bin, "claude");
         var host = new FakeClaudeCodeHost(isWindows: false);
-        host.Variables["PATH"] = bin;
+        host.Variables["PATH"] = other + ":" + bin;
+        host.Files.Add(Path.Combine(other, "claude.exe"));
         host.Files.Add(executable);
 
         Assert.Equal(executable, ClaudeCodeLocator.Locate(host).ExecutablePath);
