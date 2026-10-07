@@ -233,6 +233,9 @@
   <data name="Nav.Tasks" xml:space="preserve">
     <value>Tasks</value>
   </data>
+  <data name="Nav.Tasks.Attention" xml:space="preserve">
+    <value>Tasks waiting for your approval</value>
+  </data>
   <data name="Permission.Destructive" xml:space="preserve">
     <value>Destructive</value>
   </data>

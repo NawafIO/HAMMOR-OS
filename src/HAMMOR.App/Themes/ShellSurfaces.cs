@@ -34,6 +34,7 @@ public static class ShellSurfaces
     private const string ContentBorderKey = "NavigationViewContentGridBorderBrush";
     private const string ItemSelectedKey = "NavigationViewItemBackgroundSelected";
     private const string ItemPointerOverKey = "NavigationViewItemBackgroundPointerOver";
+    private const string ItemPressedKey = "NavigationViewItemBackgroundPressed";
     private const string IndicatorKey = "NavigationViewSelectionIndicatorForeground";
     private const string SeparatorKey = "LeftNavigationViewSeparatorBrush";
 
@@ -43,6 +44,7 @@ public static class ShellSurfaces
         ContentBorderKey,
         ItemSelectedKey,
         ItemPointerOverKey,
+        ItemPressedKey,
         IndicatorKey,
         SeparatorKey,
     ];
@@ -102,6 +104,7 @@ public static class ShellSurfaces
             resources[ContentBorderKey] = Solid(Color.FromArgb(0x10, 0xD6, 0xE8, 0xFF));
             resources[ItemSelectedKey] = Solid(Color.FromArgb(0x1A, LensTeal.R, LensTeal.G, LensTeal.B));
             resources[ItemPointerOverKey] = Solid(Color.FromArgb(0x0D, 0xD6, 0xE8, 0xFF));
+            resources[ItemPressedKey] = Solid(Color.FromArgb(0x14, 0xD6, 0xE8, 0xFF));
             resources[IndicatorKey] = Solid(LensTeal);
             resources[SeparatorKey] = Solid(Color.FromArgb(0x10, 0xD6, 0xE8, 0xFF));
             return;

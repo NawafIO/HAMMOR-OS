@@ -13,6 +13,7 @@
 
                 <!-- HAMMOR tokens come last so they can reference theme brushes. -->
                 <ResourceDictionary Source="pack://application:,,,/Themes/Tokens.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/Themes/Sidebar.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <converters:ProviderStateToBrushConverter x:Key="ProviderStateToBrush" />

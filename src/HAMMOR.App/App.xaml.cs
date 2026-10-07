@@ -4,6 +4,7 @@ using System.Windows.Threading;
 using HAMMOR.App.Localization;
 using HAMMOR.App.Presence;
 using HAMMOR.App.Services;
+using HAMMOR.App.Shell;
 using HAMMOR.App.Themes;
 using HAMMOR.App.ViewModels;
 using HAMMOR.App.Views;
@@ -197,6 +198,13 @@ public partial class App : Application
                 services.AddSingleton<IThemeService, WpfUiThemeService>();
                 services.AddSingleton<INavigationViewPageProvider, DependencyInjectionPageProvider>();
                 services.AddSingleton<ITaskEditorDialog, TaskEditorDialogService>();
+
+                // Shell: how the sidebar was left, and the Blocked-task count
+                // behind the dot on the Tasks row. Both are presentation only.
+                services.AddSingleton(sp => new ShellLayoutStore(
+                    Path.Combine(sp.GetRequiredService<HammorPaths>().DataRoot, "shell-layout.json"),
+                    sp.GetRequiredService<ILogger<ShellLayoutStore>>()));
+                services.AddSingleton<BlockedTaskTracker>();
 
                 // View models.
                 services.AddSingleton<ShellViewModel>();

@@ -233,6 +233,9 @@
   <data name="Nav.Tasks" xml:space="preserve">
     <value>المهام</value>
   </data>
+  <data name="Nav.Tasks.Attention" xml:space="preserve">
+    <value>مهام تنتظر موافقتك</value>
+  </data>
   <data name="Permission.Destructive" xml:space="preserve">
     <value>مدمّر</value>
   </data>

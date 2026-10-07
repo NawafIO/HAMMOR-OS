@@ -1,11 +1,14 @@
 using System.Globalization;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 using HAMMOR.App.Localization;
 using HAMMOR.App.Presence;
+using HAMMOR.App.Shell;
 using HAMMOR.App.Themes;
 using HAMMOR.App.ViewModels;
 using HAMMOR.Core.Localization;
@@ -18,8 +21,14 @@ namespace HAMMOR.App.Views;
 /// <summary>Application shell.</summary>
 public partial class MainWindow : FluentWindow
 {
+    /// <summary>Opens or closes the sidebar (Ctrl+B).</summary>
+    public static readonly RoutedUICommand ToggleSidebarCommand =
+        new("Toggle sidebar", nameof(ToggleSidebarCommand), typeof(MainWindow));
+
     private readonly ILocalizationService _localization;
     private readonly LivingCorePresenter _presence;
+    private readonly ShellLayoutStore _layoutStore;
+    private readonly BlockedTaskTracker _blockedTasks;
 
     private Type _currentPageType = typeof(ChatPage);
 
@@ -27,7 +36,9 @@ public partial class MainWindow : FluentWindow
         ShellViewModel viewModel,
         INavigationViewPageProvider pageProvider,
         ILocalizationService localization,
-        LivingCorePresenter presence)
+        LivingCorePresenter presence,
+        ShellLayoutStore layoutStore,
+        BlockedTaskTracker blockedTasks)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(pageProvider);
@@ -35,6 +46,8 @@ public partial class MainWindow : FluentWindow
         ViewModel = viewModel;
         _localization = localization ?? throw new ArgumentNullException(nameof(localization));
         _presence = presence ?? throw new ArgumentNullException(nameof(presence));
+        _layoutStore = layoutStore ?? throw new ArgumentNullException(nameof(layoutStore));
+        _blockedTasks = blockedTasks ?? throw new ArgumentNullException(nameof(blockedTasks));
 
         // The view model is the DataContext, not the window: binding the
         // window's own FlowDirection to a DataContext of `this` would be
@@ -49,6 +62,18 @@ public partial class MainWindow : FluentWindow
 
         RootNavigation.Navigated += OnNavigated;
         _localization.LanguageChanged += OnLanguageChanged;
+
+        // The sidebar opens the way the user left it. The handlers come after
+        // the restore so that putting it back is not saved again, and they
+        // cover every way the pane changes: its toggle button and Ctrl+B.
+        RootNavigation.SetCurrentValue(NavigationView.IsPaneOpenProperty, !_layoutStore.Load().SidebarCollapsed);
+        RootNavigation.PaneOpened += OnPaneStateChanged;
+        RootNavigation.PaneClosed += OnPaneStateChanged;
+        CommandBindings.Add(new CommandBinding(ToggleSidebarCommand, OnToggleSidebarExecuted));
+        InputBindings.Add(new KeyBinding(ToggleSidebarCommand, Key.B, ModifierKeys.Control));
+
+        // Blocked tasks put a dot on the Tasks row.
+        _blockedTasks.CountChanged += OnBlockedTasksChanged;
 
         Loaded += OnLoaded;
         Closed += OnWindowClosed;
@@ -90,6 +115,44 @@ public partial class MainWindow : FluentWindow
         // Open on Chat so the app lands somewhere useful rather than on an
         // empty navigation host.
         RootNavigation.Navigate(typeof(ChatPage));
+
+        // Reads the tasks that are already Blocked, then follows the store.
+        _ = _blockedTasks.StartAsync();
+    }
+
+    private void OnPaneStateChanged(NavigationView sender, RoutedEventArgs args) =>
+        _layoutStore.Save(new ShellLayout { SidebarCollapsed = !RootNavigation.IsPaneOpen });
+
+    private void OnToggleSidebarExecuted(object sender, ExecutedRoutedEventArgs e) =>
+        RootNavigation.SetCurrentValue(NavigationView.IsPaneOpenProperty, !RootNavigation.IsPaneOpen);
+
+    private void OnBlockedTasksChanged(object? sender, EventArgs e) =>
+        _ = Dispatcher.InvokeAsync(ApplyBlockedTaskIndicator);
+
+    /// <summary>
+    /// Shows a dot on the Tasks row while any task waits for approval: at the
+    /// end of the row when the sidebar is open, on the icon in the rail. The
+    /// row also says so to assistive technology.
+    /// </summary>
+    private void ApplyBlockedTaskIndicator()
+    {
+        var blocked = _blockedTasks.Count > 0;
+
+        if (blocked && TasksNavigationItem.InfoBadge is null)
+        {
+            TasksNavigationItem.InfoBadge = new InfoBadge
+            {
+                Style = (Style)FindResource("HammorAttentionBadgeStyle"),
+            };
+        }
+        else if (!blocked && TasksNavigationItem.InfoBadge is not null)
+        {
+            TasksNavigationItem.InfoBadge = null;
+        }
+
+        AutomationProperties.SetHelpText(
+            TasksNavigationItem,
+            blocked ? LocalizationSource.Instance["Nav.Tasks.Attention"] : string.Empty);
     }
 
     private void OnNavigated(NavigationView sender, NavigatedEventArgs args)
@@ -126,7 +189,13 @@ public partial class MainWindow : FluentWindow
         // On this window's thread, and after the work in progress: the switch
         // may have started inside a Settings combo box whose page this rebuild
         // replaces.
-        _ = Dispatcher.InvokeAsync(RebuildCurrentPage, DispatcherPriority.Loaded);
+        _ = Dispatcher.InvokeAsync(
+            () =>
+            {
+                RebuildCurrentPage();
+                ApplyBlockedTaskIndicator();
+            },
+            DispatcherPriority.Loaded);
 
     private void RebuildCurrentPage()
     {
@@ -145,6 +214,9 @@ public partial class MainWindow : FluentWindow
     private void OnWindowClosed(object? sender, EventArgs e)
     {
         _localization.LanguageChanged -= OnLanguageChanged;
+        _blockedTasks.CountChanged -= OnBlockedTasksChanged;
+        RootNavigation.PaneOpened -= OnPaneStateChanged;
+        RootNavigation.PaneClosed -= OnPaneStateChanged;
         ApplicationThemeManager.Changed -= OnThemeChanged;
         RootNavigation.Navigated -= OnNavigated;
     }
