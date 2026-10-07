@@ -86,6 +86,7 @@ public sealed class LivingHomeTests
     [InlineData("Settings.ClaudeCode.Waiting")]
     [InlineData("Settings.ClaudeCode.SignOutNote")]
     [InlineData("FirstRun.ClaudeCodeHint")]
+    [InlineData("Nav.Tasks.Attention")]
     public void Every_string_the_new_screens_read_exists(string key)
     {
         var resources = new ResourceManager("HAMMOR.App.Localization.Strings", typeof(ChatPage).Assembly);

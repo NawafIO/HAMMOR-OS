@@ -164,5 +164,7 @@ These are real and visible in the UI rather than hidden:
 - [docs/LIVING-CORE.md](docs/LIVING-CORE.md) — the Living Core, the Living
   Home and the V2 Lens mark: architecture, state mapping, budget, Windows
   checklist.
+- [docs/SHELL.md](docs/SHELL.md) — the shell and sidebar: patterns studied,
+  metrics, behaviour, Windows checklist.
 - [docs/adr/ADR-007-claude-code-account-provider.md](docs/adr/ADR-007-claude-code-account-provider.md)
   — Claude through your own Claude Code and Claude account.
