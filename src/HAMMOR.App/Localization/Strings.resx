@@ -363,7 +363,7 @@
     <value>Through Claude Code, HAMMOR answers in text only: Claude Code runs with no tools, and HAMMOR's own tools (files, Git, projects) need the API key provider.</value>
   </data>
   <data name="Settings.ClaudeCode.UpdateHint" xml:space="preserve">
-    <value>Run 'claude update' in a terminal, then choose Refresh.</value>
+    <value>Update Claude Code with 'claude update' in a terminal, or with 'winget upgrade Anthropic.ClaudeCode' if WinGet installed it, then choose Refresh.</value>
   </data>
   <data name="Settings.ClaudeCode.Version" xml:space="preserve">
     <value>Claude Code {0}</value>

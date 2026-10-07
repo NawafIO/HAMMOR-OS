@@ -363,7 +363,7 @@
     <value>عبر Claude Code يجيب هامور نصيًا فقط: يعمل Claude Code دون أي أدوات، وتحتاج أدوات هامور نفسها (الملفات وGit والمشاريع) إلى مزوّد مفتاح API.</value>
   </data>
   <data name="Settings.ClaudeCode.UpdateHint" xml:space="preserve">
-    <value>شغّل الأمر ‎'claude update'‎ في الطرفية، ثم اختر إعادة الفحص.</value>
+    <value>حدّث Claude Code بالأمر ‎'claude update'‎ في الطرفية، أو بالأمر ‎'winget upgrade Anthropic.ClaudeCode'‎ إن كان مثبّتًا عبر WinGet، ثم اختر إعادة الفحص.</value>
   </data>
   <data name="Settings.ClaudeCode.Version" xml:space="preserve">
     <value>Claude Code {0}</value>

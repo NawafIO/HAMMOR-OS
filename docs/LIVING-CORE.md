@@ -1,21 +1,33 @@
-# HAMMOR Living Core: P0
+# HAMMOR Living Core: P0 and the Living Home
 
-**Status: UNVERIFIED ON WINDOWS.** This was written in a Linux container
-without the .NET SDK, so it has not been compiled, run, tested or profiled. P0
-counts as done only after a Windows Release build, a passing
-`dotnet test -c Release`, the manual checklist under
-[Windows verification](#windows-verification), and real Idle CPU/GPU numbers.
+**Status.**
+
+- **Living Core P0:** verified on Windows for build and tests.
+  `dotnet build -c Release` succeeds with 0 errors and 2 pre-existing
+  warnings, and `dotnet test -c Release` passes 412/412. The manual P0
+  checklist and performance measurements are still open.
+- **Living Home, language-switch fix, Claude Code account provider
+  ([ADR-007](adr/ADR-007-claude-code-account-provider.md)):** branch
+  `claude/living-home-auth`, **UNVERIFIED ON WINDOWS**. They were written in a
+  Linux container without the .NET SDK, so they have not been compiled, run,
+  tested or profiled. They count as done only after a Windows Release build, a
+  passing `dotnet test -c Release`, and the 19-step checklist under
+  [Windows verification](#windows-verification).
 
 These checks were done instead:
 
-- **APIs.** Every WPF, WPF-UI, DI and xUnit member used was checked against
-  the metadata of the real reference assemblies.
+- **APIs.** Every WPF, WPF-UI, DI, process and xUnit member used was checked
+  against the metadata of the real reference assemblies.
 - **Syntax.** Every C# file was parsed with tree-sitter. Every XAML, csproj
   and resx file was checked as well-formed XML.
-- **Motion engine.** A line-by-line Python port of the engine runs every test
-  assertion; all 41 pass. Its looks, constants and design data match the C#.
-- **Visual check.** A browser render of the same scene was compared with the
-  approved hero.
+- **Motion engine (P0).** A line-by-line Python port runs every motion test
+  assertion.
+- **Living Home.** The layout was checked against page 1 of the approved PDF
+  with an HTML mock built from the same numbers, colours, font and core art.
+  The core art was compared with WPF's own rendering for P0, but the Home's
+  WPF rendering itself has not been seen.
+- **Claude Code.** The command lines and output shapes were checked by running
+  the installed Claude Code 2.1.292.
 
 None of these replace a compiler or a real screen.
 
@@ -189,6 +201,91 @@ around the same `NAudioPlayer`.
   words what it shows ("HAMMOR is thinking." / "هامور يفكّر."). The strings
   are in `Strings.resx` and `Strings.ar.resx`.
 
+## The Living Home
+
+Page 1 of the approved canvas ("The soul of HAMMOR") made into the empty
+Chat page, the app's home.
+
+- **Abyss, always.** The page is drawn on the canvas's own colour, `#03070A`,
+  measured from the PDF.
+  - A faint depth gradient runs over it, a hair lighter at the top.
+  - A static deep-teal light sits around the core, reaching 2.3 times the
+    core's size, beyond the core's own breathing aura.
+  - It is theme-independent: the Living Core and the mark are light drawn for
+    a dark field ("white on abyss in every theme").
+- **Living Core size strategy** (`ChatPage.HeroSizeFor`):
+  - The size is the smaller of 62% of the stage width and the stage height,
+    kept between 180 and 640 px on whole pixels.
+  - It is drawn as vectors at that exact size; there is no bitmap scaling.
+  - 640 px is the canvas hero's own scale (3.2 px per design unit), so strokes
+    and glows never get thicker or softer than the approved artwork.
+  - Typical results: about 450 px in the default 1180 × 780 window, 640 px on
+    large windows, and gradual shrinking in small ones.
+- **Greeting.**
+  - "Good morning / afternoon / evening." ("صباح الخير / طاب يومك / مساء
+    الخير.") is set in Alexandria Light, the canvas's display face, embedded
+    as a 76 KB Latin and Arabic subset under SIL OFL 1.1 with its licence
+    beside it.
+  - The existing body line sits under it.
+  - Both are live bindings, so switching language re-reads them.
+  - The text rises 5% of the core size into the faint lower aura through a
+    render transform, which never feeds back into the core's size.
+- **Composer.**
+  - **Surface:** dark glass (`#0A1117` at 77%) with the canvas's chip
+    hairline (rgba(214,232,255,.12)) and a 24 px radius.
+  - **Focus:** the border turns lens teal and a soft teal light appears
+    underneath; there is no glow ring.
+  - **Send button:** round, with an arrow that mirrors in Arabic.
+  - **Enter** sends and **Shift+Enter** adds a line; Enter is handled on
+    `PreviewKeyDown`, because a box that accepts returns consumes Enter.
+  - **Listening:** composer focus still drives the core's Listening state.
+- **Conversation mode.** Once there are messages:
+  - the hero gives way to the transcript;
+  - a 112 px compact core, the title in the display face and quiet icon
+    buttons form the header;
+  - bubbles are glass, the user's tinted lens teal.
+- **Shell** (`ShellSurfaces`, `WpfUiThemeService`).
+  - **No Mica.** WPF-UI re-applied Mica on every theme change.
+  - **Shell surface:** it sits on the window's root grid, because WPF-UI
+    resets `Window.Background` whenever it removes a backdrop. The window's
+    clear colour follows it, so a resize never flashes the system colour.
+  - **Dark-theme overrides:** the NavigationView pane (a lifted abyss),
+    content (abyss), hairlines, hover, and the selected item (lens-teal
+    indicator over a teal tint). The template and navigation are unchanged.
+    In light and high contrast the overrides are removed again.
+  - **Accent:** the lens teal; inked teal in light, system colours in high
+    contrast.
+  - **Sidebar mark:** clear space around it, never mirrored.
+
+## Language switching
+
+**Root cause of "The calling thread cannot access this object because a
+different thread owns it":**
+
+1. `ResxLocalizationService.SetLanguageAsync` saved the configuration with
+   `ConfigureAwait(false)`.
+2. `JsonConfigurationStore` writes through a synchronous `FileStream`, and
+   .NET 8 queues its asynchronous flush to the thread pool.
+3. So the save always finished off the UI thread, and the language-change
+   announcements ran there.
+4. `MainWindow.OnLanguageChanged` then called `NavigationView.Navigate`, which
+   throws from any thread but its own.
+5. Settings caught the exception, showed it as its status text and skipped
+   refreshing its selector, which is why the selector could disagree with the
+   language in use. The shell's quick toggle let it escape unhandled.
+
+**The fix:**
+
+- **Order:** the service persists first, then switches the culture and raises
+  every announcement on the UI dispatcher.
+- **Rebuild:** the shell rebuilds the page through its own dispatcher after
+  the input that started the switch.
+- **Selector:** Settings follows `LanguageChanged`, so its selector always
+  shows the language in use.
+
+No try/catch hides the error. Regression tests run a save that completes on
+the thread pool and switch EN → AR → EN → AR → EN.
+
 ## Visual compromises
 
 1. **No live blur.** Gaussian glows are replaced by baked equivalents:
@@ -216,29 +313,94 @@ around the same `NAudioPlayer`.
    look: the white core first, the aura last. The full 2.4 s Wake sequence is
    P1. The splash is a static image.
 6. **Placement.**
-   - **Hero, 240 px:** on the empty conversation.
+   - **Hero, 180 to 640 px:** on the empty conversation, sized by
+     `ChatPage.HeroSizeFor` (see [The Living Home](#the-living-home)).
    - **Compact core, 112 px:** in the chat header once messages exist, so
      Thinking and Speaking show at 112 px.
    - **Elsewhere:** other pages show only the static mark in the sidebar.
 7. **Title bar.** It uses the 20 px icon tile. The full lens needs more room
    than the title bar's 16 px.
 
+### Where the Home still differs from page 1 of the PDF
+
+Page 1 is a presentation board. These differences remain, some by choice:
+
+1. **One language at a time.** The board puts "The soul of HAMMOR." on the
+   left of the core and "روح هامور." on the right. The Home shows one greeting
+   in the current language, centred under the core, and gives the lower part
+   of the page to the composer. Both blocks at once would put a second
+   language in front of every user and squeeze the core in the default window.
+2. **Board chrome.** The board's top bar (the mark, "HAMMOR | هامور" and the
+   tracked mono "LIVING CORE · REFINED ANIMATED IDENTITY" label) and its row of
+   board chips are the canvas's own navigation. The app keeps its
+   NavigationView sidebar and status bar there instead.
+3. **Type.** Only the greeting uses the canvas's display face, Alexandria
+   Light. Body text is still Segoe UI rather than Readex Pro, and there are no
+   tracked mono labels (IBM Plex Mono).
+4. **Glow.** The baked gradients are tighter than the board's blurred glow
+   (compromise 1).
+5. **Not on the board.** The composer and conversation mode are not drawn on
+   page 1. They use its materials (glass, the chip hairline, lens teal) rather
+   than a drawn layout.
+6. **Theme.** The board is dark only. The Home stays abyss in every theme,
+   while the other pages follow Windows' Light mode.
+7. **Splash.** Static, not the board's Wake sequence (P1).
+
 ## Decisions to review
 
-- **New test project.** `tests/HAMMOR.App.Tests` (`net8.0-windows`, 41 cases)
-  tests the pure state model and motion engine.
-  - ADR-004's owner decision 3 ruled out a `net8.0-windows` test project *for
-    Phase 6*. This is the Living Core branch, not Phase 6, but the choice is
-    yours.
-  - To drop it, remove the folder, the `HAMMOR.App.Tests` entries in
-    `HAMMOR.sln`, and the `InternalsVisibleTo` line in `HAMMOR.App.csproj`.
-    The app does not depend on it.
+- **The App test project.** `tests/HAMMOR.App.Tests` (`net8.0-windows`, 91
+  cases: 41 from P0 and 50 from this branch) covers:
+  - the pure state model and motion engine;
+  - the Home's size and greeting rules;
+  - every string the new screens read;
+  - language switching on a real dispatcher.
+
+  ADR-004's owner decision 3 ruled out a `net8.0-windows` test project *for
+  Phase 6*. This is the Living Core work, not Phase 6, but the choice is
+  yours. To drop the project, remove:
+  - the folder;
+  - the `HAMMOR.App.Tests` entries in `HAMMOR.sln`;
+  - the `InternalsVisibleTo` line in `HAMMOR.App.csproj`.
+
+  The app does not depend on it.
 - **Task failures show Error until Tasks is opened.** A task failing while you
   watch the Tasks page doesn't raise it.
+- **The Home ignores the theme.** In Light theme the sidebar and other pages
+  turn light, but the Chat page stays abyss with light text. The core and the
+  mark are light drawn for a dark field, and the PDF defines no light Home. A
+  light Home would need a light variant of the core, which is not designed.
+- **No Mica, and a teal accent instead of the Windows accent.**
+  - The window has no backdrop.
+  - The accent is the lens teal, or an inked teal (`#0E7F79`) in Light theme
+    for contrast. High contrast keeps the system colours.
+  - To bring back the Windows accent, return `WpfUiThemeService` to WPF-UI's
+    defaults.
+- **The first embedded font.** The greeting's Alexandria Light subset (76 KB,
+  SIL OFL 1.1, licence shipped beside it). `scripts/subset-display-font.py`
+  rebuilds it.
+- **First run prefers Claude Code.** First run selects `claude-code` when no
+  API key is entered. An existing configuration keeps its provider, and
+  Core's default is still `claude`, so an existing install switches only in
+  Settings.
+- **Claude Code is text only.** HAMMOR's tools work only with the API-key
+  provider (ADR-007). Giving Claude Code HAMMOR's tools would mean an MCP
+  server inside HAMMOR, behind the permission engine. That needs its own ADR.
 
-## Remaining work (from the Guardrails board)
+## Remaining work
 
-- **P1.** All of it reuses the P0 state machine:
+- **Living Home follow-ups.**
+  - **Hairline floor.** The finest strokes are 0.3 design units. In the
+    112 px header core, and in heroes under about 330 px, they fall under half
+    a pixel and render faint or may shimmer. If they do on Windows, give
+    strokes a minimum width at small sizes.
+  - **Readex Pro.** Use it for the Home's body text if exact canvas type is
+    wanted.
+  - **Streamed replies.** Claude Code answers arrive whole. Streaming would
+    use `--output-format stream-json`.
+  - **Signature check.** Claude Code's Windows binaries are signed by
+    "Anthropic, PBC". HAMMOR could check that Authenticode signature before
+    starting `claude.exe`; today it relies on the install location.
+- **P1** (from the Guardrails board). All of it reuses the P0 state machine:
   - Success and Warning.
   - Sleep and Wake: minimise, restore, 10 minutes idle, 10 fps asleep.
   - Pointer follow with parallax: 450 ms lag, 24 px dead zone.
@@ -261,8 +423,8 @@ Run these from a PowerShell prompt in the repository root.
 ### Build and test
 
 ```powershell
-git fetch origin claude/living-core-p0
-git checkout claude/living-core-p0
+git fetch origin claude/living-home-auth
+git checkout claude/living-home-auth
 git log -1 --oneline
 dotnet build -c Release
 dotnet test -c Release
@@ -270,9 +432,14 @@ dotnet test -c Release
 
 Expected results:
 
-- **Build:** 0 errors.
-- **Tests:** `HAMMOR.Core.Tests` 371 passed, `HAMMOR.App.Tests` 41 passed:
-  412 in total, with 0 failed and 0 skipped. The 371 must be unchanged.
+- **Build:** 0 errors. The 2 pre-existing warnings may remain. Any new warning
+  is worth a look.
+- **Tests:** `HAMMOR.Core.Tests` 437 passed (371 before, plus 66 for Claude
+  Code), `HAMMOR.App.Tests` 91 passed (41 before, plus 50). That is 528 in
+  total, with 0 failed and 0 skipped.
+
+If the build fails, send the first error with its file and line. Nothing on
+this branch has been compiled yet.
 
 ### Run
 
@@ -280,79 +447,187 @@ Expected results:
 .\src\HAMMOR.App\bin\Release\net8.0-windows\HAMMOR.exe
 ```
 
+### Prepare Claude Code (for steps 16 to 18)
+
+Install it with Anthropic's native installer (or `winget install
+Anthropic.ClaudeCode`), open a new terminal, and check what HAMMOR will see:
+
+```powershell
+irm https://claude.ai/install.ps1 | iex
+$claude = "$env:USERPROFILE\.local\bin\claude.exe"
+& $claude --version
+& $claude auth status
+Get-AuthenticodeSignature $claude | Format-List Status, SignerCertificate
+```
+
+Expect a version such as `2.1.292 (Claude Code)` and a signature from
+"Anthropic, PBC". A WinGet install puts `claude.exe` on PATH instead; check it
+with `(Get-Command claude.exe).Source`.
+
+Then, in HAMMOR, open **Settings → AI provider**, choose **Claude Code — your
+Claude account (recommended)**, and choose **Save**. An existing configuration
+stays on the API-key provider until you do.
+
 ### Manual checklist
 
-Logs are under `%LOCALAPPDATA%\HAMMOR\logs`. Chat steps need a Claude key, and
-Speaking needs an ElevenLabs key with voice output on.
+Logs are under `%LOCALAPPDATA%\HAMMOR\logs`. Steps 5 to 8 need a working
+provider, and Speaking needs an ElevenLabs key with voice output on.
 
 1. **Launch.**
    - The splash (lens, HAMMOR and هامور) shows and closes when the window
      opens.
+   - The window opens straight onto the abyss: no Mica, no grey or white
+     flash, no system-colour edge while resizing.
    - The taskbar and Alt+Tab icon is the lens orb, and the title bar shows the
      icon tile.
-   - The sidebar shows the mark and wordmark; collapsed, it shows the compact
-     lens.
    - The core arrives core-first, aura-last, in about 1.6 s.
-2. **Idle, 5 minutes or more** (empty conversation, hero core).
+2. **Language, EN → AR → EN, repeatedly.** Switch at least five times each
+   way, first with the status bar's quick toggle, then with **Settings →
+   Language**, including once while on the Settings page.
+   - No error dialog, no crash, and no "different thread" text in the
+     Settings status line.
+   - Each switch is instant: the page rebuilds in the new language and
+     direction.
+   - The Settings language selector always shows the language in use.
+   - Restart HAMMOR: the last language is kept.
+   - Then search the logs (expect no output):
+
+     ```powershell
+     Select-String -Path "$env:LOCALAPPDATA\HAMMOR\logs\*" -Pattern 'different thread owns it' -SimpleMatch
+     ```
+3. **Home hero** (empty conversation, default window size). Compare with
+   page 1 of the PDF.
+   - The core is the centre of the page, with a soft teal light around it.
+     In the default window its box is about 450 px and its outer energy lines
+     span about 370 px.
+   - Under it, the greeting for the time of day in Alexandria Light, then the
+     body line.
+   - At the bottom, the glass composer, quieter than the core.
+   - Reject it if the core looks small, the background reads as flat black,
+     the glow is weak or green-cyan rather than lens teal, or the composer
+     looks pasted on.
+4. **Idle, 5 minutes or more** (empty conversation, hero core).
    - It is quietly alive: stars shimmer on their own clocks and cells bob.
    - Four threads orbit, never in sync.
    - About every 13–16 s the core glances unhurriedly, holds, and returns to
      rest.
    - There is no stutter and nothing pulses in step.
-3. **Thinking.** Send a message.
-   - The compact core moves inward, about 78% size and about 55% brightness.
+5. **Thinking.** Send a message.
+   - The hero gives way to the transcript and the 112 px header core.
+   - The core moves inward, about 78% size and about 55% brightness.
    - Cells link up with signals travelling, and the lens turns slowly.
    - The aura holds steady.
-4. **Speaking.** With voice on, get a spoken reply.
+6. **Speaking.** With voice on, get a spoken reply.
    - The core centres at 125% and pulses.
    - The static halo gives way to rings pulsing outward, and a voice line runs
      along the lower membrane.
    - The threads brighten.
    - It returns to Idle about 0.8 s after the audio stops.
-5. **Blocked.** Follow ADR-004 checklist step 9: a task asking for a file
+7. **Blocked.** Follow ADR-004 checklist step 9: a task asking for a file
    outside its folder.
    - The core glances once toward the sidebar.
    - It then waits low and centred, with the threads gathered at the top and
      a gap in the ring there.
    - There is no red. It ends when the task is resumed or cancelled.
-6. **Error.** Set an invalid Claude key in Settings, then send.
+8. **Error.** With the API-key provider, set an invalid key and send. With
+   Claude Code, sign out in a terminal (`claude auth logout`) and send.
    - The core dims and lowers, and a hairline split appears in the membrane.
    - Cells drift to the rim and most stars go out.
    - The halo stutters unevenly and the threads become fragments.
-   - There is no shake, flash or red flood. Sending again clears it.
-7. **Listening.** Click into the composer and type.
-   - The core centres and holds, with a thin attention ring.
-   - There are no glances and no voice rings.
+   - There is no shake, flash or red flood. A successful send clears it.
+9. **Composer focus.** Click into the composer and type.
+   - The border turns lens teal and a soft teal light appears beneath it;
+     there is no hard glow ring and no dotted focus rectangle.
+   - The core goes to Listening: it centres and holds, with a thin attention
+     ring, no glances and no voice rings.
+   - **Enter** sends; **Shift+Enter** adds a line.
    - It settles about 1.2 s after you click away or clear the text, and ends
      at once on send.
-8. **Reduced motion.** Turn Windows **Animation effects** off while HAMMOR
-   runs, then repeat steps 2–7.
-   - Drift, orbit, shimmer and breathing stop.
-   - Every state still reads by position, shape and light.
-   - Changes blend in about 0.4 s.
-   - Turn it back on and motion resumes.
-9. **Resize.** Drag the window from minimum to maximised. The core stays
-   crisp, round and uncropped.
-10. **Minimise and restore.** While minimised, the CPU sample (below) drops to
-    the no-core baseline. Restoring resumes without a jump or flash.
-11. **Arabic (RTL).** Switch the language to Arabic.
-    - The layout mirrors, and the sidebar shows هامور.
-    - The core itself is not mirrored, and the Blocked glance goes toward the
-      right.
-    - The tooltips are in Arabic.
-12. **English (LTR).** Switch back. The Blocked glance goes toward the left,
-    and the strings are in English.
-13. **No glitches.** Across all steps, check for:
-    - no flicker or tearing;
-    - no halo or aura clipped at the control's edge;
-    - no pop at state changes;
-    - no frozen core while the window is active.
+10. **Sidebar, expanded and collapsed.**
+    - Expanded: the full mark and wordmark with clear space, on a pane a
+      shade lighter than the page, separated by a faint hairline.
+    - The selected item has a lens-teal indicator over a faint teal tint;
+      hover is a faint light, not a grey block.
+    - Collapsed: the compact lens only.
+11. **Arabic (RTL).**
+    - The layout mirrors: the sidebar moves right, text aligns right, and the
+      send arrow points left.
+    - The greeting and body are in Arabic, and the sidebar shows هامور.
+    - The core and the mark are not mirrored, and the Blocked glance goes
+      toward the right.
+    - Tooltips are in Arabic.
+12. **English (LTR).** Switch back. Everything returns, the Blocked glance
+    goes toward the left, and the strings are in English.
+13. **Resize.** Drag the window from minimum to maximised.
+    - The core grows to 640 px at most and shrinks smoothly, never below
+      180 px.
+    - It stays crisp, round and uncropped, with the greeting under it and
+      never overlapping it.
+    - No black or white flashes at the edges.
+14. **Minimise and restore.** While minimised, the CPU sample (below) drops
+    to the no-core baseline. Restoring resumes without a jump or flash.
+15. **Reduced motion.** Turn Windows **Animation effects** off while HAMMOR
+    runs, then repeat steps 4 to 9.
+    - Drift, orbit, shimmer and breathing stop.
+    - Every state still reads by position, shape and light.
+    - Changes blend in about 0.4 s.
+    - Turn it back on and motion resumes.
+16. **Claude Code, not signed in.** Run `claude auth logout` in a terminal,
+    then choose **Refresh** in Settings.
+    - The panel says "Installed, not signed in" with the version, and offers
+      **Sign in**.
+    - The status bar's Claude item is not ready, and sending fails with a
+      plain message rather than an exception.
+    - Also check "Claude Code is not installed" by temporarily renaming
+      `claude.exe`, then **Refresh**. Rename it back.
+17. **Claude Code, signed in.** Choose **Sign in**.
+    - Claude Code's own console window opens. Sign in there, in your browser.
+      HAMMOR shows "Finish signing in in the Claude Code window" and never
+      asks for a password, code or token.
+    - When that window closes, the panel says "Signed in" with the method
+      (for example "Signed in with Claude subscription").
+    - Send a message: the reply arrives, in Arabic if you wrote in Arabic.
+    - **Sign out** returns to step 16's state, and **Reconnect** opens the
+      sign-in window again.
+18. **Claude Code, usage limit.** This can only be checked when your plan
+    really reaches a limit; nothing fakes it.
+    - When Claude Code reports a limit, the reply area shows Claude Code's own
+      message (for example "You've hit your session limit · resets 3:45pm").
+    - Settings shows "Signed in · usage limit reached".
+    - The next successful reply clears it.
+    - If you never hit a limit, record this step as not observed. The unit
+      tests cover the parsing from Claude Code's real message shape.
+19. **No secrets in logs.** After the steps above, search the logs and the
+    configuration (expect no output):
+
+    ```powershell
+    $files = @(Get-ChildItem "$env:LOCALAPPDATA\HAMMOR\logs\*") + @(Get-Item "$env:LOCALAPPDATA\HAMMOR\hammor.config.json")
+    Select-String -Path $files -Pattern 'sk-ant-', 'sk_[0-9a-f]{20}', 'Bearer\s', 'oauth', 'accessToken', 'refreshToken' -AllMatches
+    ```
+
+    Also confirm that HAMMOR's Claude Code folder holds nothing of Claude
+    Code's:
+
+    ```powershell
+    Get-ChildItem "$env:LOCALAPPDATA\HAMMOR\claude-code" -Force -Recurse
+    ```
+
+    It should be empty: Claude Code keeps its own sign-in, and HAMMOR never
+    reads it.
+
+Across all steps, check for:
+
+- no flicker or tearing;
+- no halo or aura clipped at the control's edge;
+- no pop at state changes;
+- no frozen core while the window is active.
 
 ### Performance
 
-Record real numbers; nothing has been measured yet. Board target: Idle CPU
-under 3% on a mid-range laptop, 60 fps focused, 30 fps unfocused, 0 when
-minimised.
+Record real numbers; nothing has been measured yet. The Home's hero is now
+up to 640 px, so measure it at the default size and maximised. Board target:
+Idle CPU under 3% on a mid-range laptop, 60 fps focused, 30 fps unfocused, 0
+when minimised.
 
 ```powershell
 # Idle CPU over 2 minutes: empty conversation, hero core on screen, hands off.
@@ -367,16 +642,17 @@ $gpu = $g | ForEach-Object { ($_.CounterSamples | Measure-Object CookedValue -Su
 'GPU avg {0:N2}%  max {1:N2}%' -f ($gpu | Measure-Object -Average).Average, ($gpu | Measure-Object -Maximum).Maximum
 ```
 
-Run the CPU sample four times:
+Run the CPU sample five times:
 
-1. the hero on screen with the window focused;
-2. the same, with another window focused (30 fps path);
-3. HAMMOR minimised;
-4. the Settings page, which has no core: this is the baseline.
+1. the hero at the default window size, with the window focused;
+2. the same, maximised (the 640 px hero);
+3. the same, with another window focused (30 fps path);
+4. HAMMOR minimised;
+5. the Settings page, which has no core: this is the baseline.
 
-Subtract the baseline from the first run to get the core's own cost. For frame
-pacing, an external tool such as PresentMon is needed; WPF exposes no frame
-counter.
+Subtract the baseline from the first two runs to get the core's own cost. For
+frame pacing, an external tool such as PresentMon is needed; WPF exposes no
+frame counter.
 
 ## Regenerating the brand assets
 
@@ -389,5 +665,16 @@ node scripts/render-brand-assets.js
 ```
 
 The Arabic and Latin wordmarks are outlines from Alexandria (SIL Open Font
-License 1.1), shaped once and stored as path data, so no font ships with the
-app.
+License 1.1), shaped once and stored as path data.
+
+The Home's greeting is the one place that uses a font file:
+`Assets/Fonts/AlexandriaLight.ttf`, a Latin and Arabic subset of Alexandria
+pinned at Light, with its licence in `OFL-Alexandria.txt`. To rebuild it from
+Google Fonts' variable Alexandria, you need Python with fontTools:
+
+```powershell
+pip install fonttools
+python scripts/subset-display-font.py "Alexandria[wght].ttf"
+```
+
+The result matches the committed file except for the font's modified date.

@@ -22,9 +22,16 @@ resumes them under a new grant, and cancels tasks
 *not* implemented yet and are labelled as such in the UI — see
 [Current limitations](#current-limitations).
 
-The Living Core P0 is also **pending Windows verification**. It covers the
-animated presence on the chat page and the static V2 Lens mark used for the
-app icon, splash and sidebar. See [docs/LIVING-CORE.md](docs/LIVING-CORE.md).
+The Living Core P0 (the animated presence and the static V2 Lens mark) builds
+on Windows and passes its tests (412/412). Three newer changes are **pending
+Windows verification**:
+
+- the Living Home, which turns the home screen into the approved canvas;
+- the language-switch fix;
+- the Claude Code account provider, which uses Claude without a required API
+  key ([ADR-007](docs/adr/ADR-007-claude-code-account-provider.md)).
+
+See [docs/LIVING-CORE.md](docs/LIVING-CORE.md).
 
 ---
 
@@ -34,7 +41,7 @@ app icon, splash and sidebar. See [docs/LIVING-CORE.md](docs/LIVING-CORE.md).
 |---|---|
 | OS | Windows 11 (Windows 10 1809+ should also work) |
 | SDK | .NET **8** SDK (the repo pins `8.0.130` via `global.json`) |
-| Accounts | Anthropic API key (required for chat) · ElevenLabs API key (optional, for speech) |
+| Accounts | A Claude account with [Claude Code](https://code.claude.com/docs/en/setup) installed (recommended), or an Anthropic API key · ElevenLabs API key (optional, for speech) |
 
 > The solution targets `net8.0` / `net8.0-windows` because the .NET 8 SDK is the
 > only one installed on the development machine. Two package pins follow from
@@ -141,6 +148,7 @@ These are real and visible in the UI rather than hidden:
 
 | Area | State |
 |---|---|
+| **Claude via Claude Code** | **Text only, pending Windows verification.** HAMMOR runs your own `claude.exe` in print mode with every tool disabled and never sees your Claude credentials ([ADR-007](docs/adr/ADR-007-claude-code-account-provider.md)). HAMMOR's own tools (files, Git, projects) need the API-key provider. Only the native `claude.exe` is started, never the npm `claude.cmd`. |
 | **Speech-to-text** | **Not implemented.** No recogniser is wired up; `UnavailableSpeechToTextProvider` reports itself unavailable and the chat page says so. Voice *output* works. |
 | **TTS streaming** | Not implemented. The ElevenLabs provider buffers the full response before playback and reports `SupportsStreaming = false`. |
 | **Semantic memory** | **Not implemented.** The abstraction exists; search is keyword-based and the Memory page states this. |
@@ -153,5 +161,8 @@ These are real and visible in the UI rather than hidden:
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — layering, agent loop, providers,
   voice pipeline, tools and permissions, memory, tasks, engineering decisions.
-- [docs/LIVING-CORE.md](docs/LIVING-CORE.md) — the Living Core and the V2 Lens
-  mark: architecture, state mapping, budget, Windows checklist.
+- [docs/LIVING-CORE.md](docs/LIVING-CORE.md) — the Living Core, the Living
+  Home and the V2 Lens mark: architecture, state mapping, budget, Windows
+  checklist.
+- [docs/adr/ADR-007-claude-code-account-provider.md](docs/adr/ADR-007-claude-code-account-provider.md)
+  — Claude through your own Claude Code and Claude account.

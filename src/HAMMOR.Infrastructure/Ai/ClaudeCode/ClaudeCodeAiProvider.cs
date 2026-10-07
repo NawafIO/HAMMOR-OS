@@ -138,7 +138,8 @@ public sealed class ClaudeCodeAiProvider : IAiProvider
                 + "). HAMMOR runs the native claude.exe; install it with the native installer or WinGet."),
 
             ClaudeCodeState.NeedsUpdate => ProviderAvailability.Error(
-                "Claude Code rejected an option HAMMOR uses; update it with 'claude update'. " + status.Detail),
+                "Claude Code rejected an option HAMMOR uses; update it with 'claude update' "
+                + "(or 'winget upgrade Anthropic.ClaudeCode' for a WinGet install). " + status.Detail),
 
             ClaudeCodeState.Error => ProviderAvailability.Error(
                 "Claude Code could not be checked: " + (status.Detail ?? "no details.")),
