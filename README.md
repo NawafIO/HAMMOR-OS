@@ -164,6 +164,8 @@ These are real and visible in the UI rather than hidden:
 - [docs/LIVING-CORE.md](docs/LIVING-CORE.md) — the Living Core, the Living
   Home and the V2 Lens mark: architecture, state mapping, budget, Windows
   checklist.
+- [docs/CHAT-PROJECTS-SEARCH.md](docs/CHAT-PROJECTS-SEARCH.md) — Step 3: chat,
+  projects and global search, and what HAMMOR's data supports.
 - [docs/SETTINGS.md](docs/SETTINGS.md) — Settings v2: categories, navigation,
   where every setting moved, Windows checklist.
 - [docs/SHELL.md](docs/SHELL.md) — the shell and sidebar: patterns studied,
