@@ -27,7 +27,7 @@ Apache-2.0; nothing from it is redistributed here.
 | Sidebar open/closed remembered; `Ctrl+B` toggles | **Taken.** |
 | Settings kept at the bottom, apart from the main rows | Already so; unchanged. |
 | Resizable sidebar (200 to 420 px, snaps shut below 100, double-click resets) | **Not in Step 1:** see [Why no resize](#why-no-resize-yet). |
-| Settings as a second navigation surface that slides over the first | Deferred (Settings structure step). |
+| Settings as a second navigation surface that slides over the first | Done in Settings v2 ([SETTINGS.md](SETTINGS.md)). |
 | Projects and Chats sections with hover actions and recents | Deferred: HAMMOR does not store conversations, and its projects screen has no creation UI yet. |
 | A search view with grouped results and keyboard navigation | Deferred (search step; needs a backend first). |
 
@@ -95,7 +95,7 @@ Step 1 is confirmed on Windows.
 - **Search.** Needs a backend and an agreed scope (memory? tasks? settings?).
   BERD's search view, its grouped results card, recents and keyboard model
   are the reference.
-- **Settings structure.** BERD slides a second navigation (the settings
+- **Settings structure.** Since done as Settings v2 ([SETTINGS.md](SETTINGS.md)). BERD slides a second navigation (the settings
   sections) over the main one, with a back row. HAMMOR's Settings page is one
   long scroll today.
 - **Projects and chats.** HAMMOR keeps no conversation history, so there is
