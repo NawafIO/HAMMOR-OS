@@ -62,6 +62,10 @@ public sealed class LivingCoreMotionTests
 
         motion.Advance(2.0, NoVoice, Leading, frame);
         Assert.True(frame.AuraOpacity > 0.7, $"aura {frame.AuraOpacity}");
+
+        // Since Step 4 the arrived threads breathe light on a 5.2 s clock, so
+        // full light is sampled at the breath's peak, after the cascade.
+        motion.Advance(5.2, NoVoice, Leading, frame);
         Assert.Equal(1.0, frame.ThreadsOpacity);
     }
 
