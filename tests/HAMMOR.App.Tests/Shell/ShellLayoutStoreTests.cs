@@ -1,3 +1,4 @@
+using System.IO;
 using HAMMOR.App.Shell;
 using Xunit;
 
