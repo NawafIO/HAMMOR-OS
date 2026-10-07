@@ -86,6 +86,10 @@
                                        Icon="{ui:SymbolIcon ChatMultiple24}"
                                        TargetPageType="{x:Type views:ChatPage}" />
                 <ui:NavigationViewItem Style="{StaticResource HammorNavItemStyle}"
+                                       Content="{loc:Loc Nav.Search}"
+                                       Icon="{ui:SymbolIcon Search24}"
+                                       TargetPageType="{x:Type views:SearchPage}" />
+                <ui:NavigationViewItem Style="{StaticResource HammorNavItemStyle}"
                                        Content="{loc:Loc Nav.Activity}"
                                        Icon="{ui:SymbolIcon DocumentBulletList24}"
                                        TargetPageType="{x:Type views:ActivityPage}" />

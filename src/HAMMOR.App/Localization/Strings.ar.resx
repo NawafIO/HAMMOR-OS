@@ -92,20 +92,35 @@
   <data name="Chat.Clear" xml:space="preserve">
     <value>مسح المحادثة</value>
   </data>
+  <data name="Chat.Copy" xml:space="preserve">
+    <value>نسخ</value>
+  </data>
   <data name="Chat.EmptyBody" xml:space="preserve">
     <value>اكتب رسالة في الأسفل. يرد هامور باللغة التي تكتب بها.</value>
   </data>
   <data name="Chat.EmptyTitle" xml:space="preserve">
     <value>ابدأ محادثة</value>
   </data>
+  <data name="Chat.InProject" xml:space="preserve">
+    <value>في المشروع</value>
+  </data>
   <data name="Chat.InputPlaceholder" xml:space="preserve">
     <value>اسأل هامور عن أي شيء…</value>
+  </data>
+  <data name="Chat.LeaveProject" xml:space="preserve">
+    <value>التوقف عن استخدام هذا المشروع</value>
+  </data>
+  <data name="Chat.NewChat" xml:space="preserve">
+    <value>محادثة جديدة</value>
   </data>
   <data name="Chat.Send" xml:space="preserve">
     <value>إرسال</value>
   </data>
   <data name="Chat.Speak" xml:space="preserve">
     <value>نطق الرد</value>
+  </data>
+  <data name="Chat.Stop" xml:space="preserve">
+    <value>إيقاف</value>
   </data>
   <data name="Chat.StopSpeaking" xml:space="preserve">
     <value>إيقاف النطق</value>
@@ -227,6 +242,9 @@
   <data name="Nav.Projects" xml:space="preserve">
     <value>المشاريع</value>
   </data>
+  <data name="Nav.Search" xml:space="preserve">
+    <value>البحث</value>
+  </data>
   <data name="Nav.Settings" xml:space="preserve">
     <value>الإعدادات</value>
   </data>
@@ -251,14 +269,128 @@
   <data name="Projects.Add" xml:space="preserve">
     <value>إضافة مشروع</value>
   </data>
+  <data name="Projects.All" xml:space="preserve">
+    <value>كل المحادثات</value>
+  </data>
+  <data name="Projects.All.Description" xml:space="preserve">
+    <value>كل سؤال وجواب حفظه هامور، الأحدث أولًا. يحفظ هامور كل تبادل على حدة، ولا يحتفظ بجلسات محادثة.</value>
+  </data>
+  <data name="Projects.All.Detail" xml:space="preserve">
+    <value>كل ما حفظه هامور من محادثات</value>
+  </data>
+  <data name="Projects.ChatHere" xml:space="preserve">
+    <value>محادثة في هذا المشروع</value>
+  </data>
+  <data name="Projects.Context" xml:space="preserve">
+    <value>السياق الدائم</value>
+  </data>
+  <data name="Projects.Conversations" xml:space="preserve">
+    <value>المحادثات</value>
+  </data>
+  <data name="Projects.CopyPath" xml:space="preserve">
+    <value>نسخ مسار المجلد</value>
+  </data>
+  <data name="Projects.CreateNotBuilt" xml:space="preserve">
+    <value>إنشاء المشاريع وتعديلها غير متاح بعد. المشاريع المعروضة من مخزن مشاريع هامور.</value>
+  </data>
+  <data name="Projects.Created" xml:space="preserve">
+    <value>أُنشئ في {0}</value>
+  </data>
   <data name="Projects.Empty" xml:space="preserve">
     <value>لا توجد مشاريع بعد.</value>
+  </data>
+  <data name="Projects.Kind.General" xml:space="preserve">
+    <value>مشروع عام</value>
+  </data>
+  <data name="Projects.Kind.Research" xml:space="preserve">
+    <value>مشروع بحثي</value>
+  </data>
+  <data name="Projects.Kind.Software" xml:space="preserve">
+    <value>مشروع برمجي</value>
+  </data>
+  <data name="Projects.LastOpened" xml:space="preserve">
+    <value>آخر فتح {0}</value>
+  </data>
+  <data name="Projects.LoadFailed" xml:space="preserve">
+    <value>تعذّرت قراءة المشاريع. التفاصيل في السجل.</value>
+  </data>
+  <data name="Projects.MemoryKind.Conversation" xml:space="preserve">
+    <value>محادثة</value>
+  </data>
+  <data name="Projects.MemoryKind.Fact" xml:space="preserve">
+    <value>معلومة</value>
+  </data>
+  <data name="Projects.MemoryKind.Note" xml:space="preserve">
+    <value>ملاحظة</value>
+  </data>
+  <data name="Projects.MemoryKind.Preference" xml:space="preserve">
+    <value>تفضيل</value>
+  </data>
+  <data name="Projects.MemoryKind.ProjectContext" xml:space="preserve">
+    <value>سياق المشروع</value>
+  </data>
+  <data name="Projects.NoConversations" xml:space="preserve">
+    <value>لا توجد محادثات محفوظة بعد.</value>
+  </data>
+  <data name="Projects.NoTasks" xml:space="preserve">
+    <value>لا توجد مهام في هذا المشروع.</value>
   </data>
   <data name="Projects.NotImplemented" xml:space="preserve">
     <value>لم يتم تنفيذ إنشاء المشاريع وفحص git بعد. مخزن المشاريع ونموذج البيانات موجودان ويُستخدمان لتحديد نطاق الذاكرة والمهام.</value>
   </data>
+  <data name="Projects.Notes" xml:space="preserve">
+    <value>الملاحظات</value>
+  </data>
+  <data name="Projects.ShowArchived" xml:space="preserve">
+    <value>إظهار المشاريع المؤرشفة</value>
+  </data>
+  <data name="Projects.Tasks" xml:space="preserve">
+    <value>المهام</value>
+  </data>
   <data name="Projects.Title" xml:space="preserve">
     <value>المشاريع</value>
+  </data>
+  <data name="Search.Group.Conversations" xml:space="preserve">
+    <value>المحادثات المحفوظة</value>
+  </data>
+  <data name="Search.Group.Memory" xml:space="preserve">
+    <value>الذاكرة</value>
+  </data>
+  <data name="Search.Group.Pages" xml:space="preserve">
+    <value>الصفحات</value>
+  </data>
+  <data name="Search.Group.Projects" xml:space="preserve">
+    <value>المشاريع</value>
+  </data>
+  <data name="Search.Group.Settings" xml:space="preserve">
+    <value>الإعدادات</value>
+  </data>
+  <data name="Search.Group.Tasks" xml:space="preserve">
+    <value>المهام</value>
+  </data>
+  <data name="Search.Group.ThisChat" xml:space="preserve">
+    <value>هذه المحادثة</value>
+  </data>
+  <data name="Search.NoResults" xml:space="preserve">
+    <value>لا توجد نتائج مطابقة.</value>
+  </data>
+  <data name="Search.NothingRecent" xml:space="preserve">
+    <value>لا يوجد شيء حديث بعد. تظهر هنا المحادثات المحفوظة والمشاريع.</value>
+  </data>
+  <data name="Search.Placeholder" xml:space="preserve">
+    <value>ابحث في الصفحات والإعدادات والمشاريع والمهام والذاكرة والمحادثات…</value>
+  </data>
+  <data name="Search.Results" xml:space="preserve">
+    <value>نتائج البحث</value>
+  </data>
+  <data name="Search.Scope" xml:space="preserve">
+    <value>يبحث في صفحات هامور وإعداداته، ومشاريعك ومهامك وذاكرتك والمحادثات المحفوظة، وهذه المحادثة. تُطابق الذاكرة بالكلمات. يفتح Ctrl+K البحث من أي مكان.</value>
+  </data>
+  <data name="Search.SomeFailed" xml:space="preserve">
+    <value>تعذّرت قراءة بعض المصادر، فقد تنقص النتائج. التفاصيل في السجل.</value>
+  </data>
+  <data name="Search.Title" xml:space="preserve">
+    <value>البحث</value>
   </data>
   <data name="Settings.Ai" xml:space="preserve">
     <value>مزود الذكاء الاصطناعي</value>

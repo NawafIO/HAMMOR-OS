@@ -44,10 +44,23 @@
                                      ToolTip="{Binding Description}"
                                      AutomationProperties.Name="{Binding Description}" />
 
-                <TextBlock Grid.Column="1"
-                           VerticalAlignment="Center"
-                           Style="{StaticResource HomeTitleText}"
-                           Text="{loc:Loc Chat.Title}" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock VerticalAlignment="Center"
+                               Style="{StaticResource HomeTitleText}"
+                               Text="{loc:Loc Chat.Title}" />
+                    <!-- The project these turns belong to. -->
+                    <Border Margin="12,2,0,0"
+                            Style="{StaticResource ChatProjectChip}"
+                            Visibility="{Binding HasActiveProject, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Folder24" FontSize="13" Foreground="{StaticResource LensTealBrush}" />
+                            <TextBlock Margin="6,0,0,0"
+                                       VerticalAlignment="Center"
+                                       Style="{StaticResource HomeCaptionText}"
+                                       Text="{Binding ActiveProjectName}" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Style="{StaticResource GhostIconButton}"
@@ -66,9 +79,9 @@
                     <Button Margin="4,0,0,0"
                             Style="{StaticResource GhostIconButton}"
                             Command="{Binding ClearCommand}"
-                            ToolTip="{loc:Loc Chat.Clear}"
-                            AutomationProperties.Name="{loc:Loc Chat.Clear}">
-                        <ui:SymbolIcon Symbol="Broom24" FontSize="17" />
+                            ToolTip="{loc:Loc Chat.NewChat}"
+                            AutomationProperties.Name="{loc:Loc Chat.NewChat}">
+                        <ui:SymbolIcon Symbol="Compose24" FontSize="17" />
                     </Button>
                 </StackPanel>
             </Grid>
@@ -126,7 +139,12 @@
                               HorizontalAlignment="Stretch">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:ChatMessageViewModel}">
-                            <Grid>
+                            <Grid x:Name="MessageRow" Background="Transparent">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
                                 <!-- User bubble -->
                                 <Border Style="{StaticResource UserMessageBubble}"
                                         Visibility="{Binding IsUser, Converter={StaticResource BoolToVisibility}}">
@@ -159,7 +177,44 @@
                                                    Foreground="{StaticResource PearlBrush}" />
                                     </StackPanel>
                                 </Border>
+
+                                <!-- Time and copy: under the bubble, on its side, shown
+                                     while the message is hovered or focused. -->
+                                <StackPanel x:Name="MessageActions"
+                                            Grid.Row="1"
+                                            Margin="6,-6,6,10"
+                                            Orientation="Horizontal"
+                                            Opacity="0">
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="HorizontalAlignment" Value="Left" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsUser}" Value="True">
+                                                    <Setter Property="HorizontalAlignment" Value="Right" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <TextBlock VerticalAlignment="Center"
+                                               Style="{StaticResource HomeCaptionText}"
+                                               Text="{Binding TimeLabel}" />
+                                    <Button Margin="6,0,0,0"
+                                            Style="{StaticResource MessageActionButton}"
+                                            Click="OnCopyMessageClick"
+                                            ToolTip="{loc:Loc Chat.Copy}"
+                                            AutomationProperties.Name="{loc:Loc Chat.Copy}">
+                                        <ui:SymbolIcon Symbol="Copy24" FontSize="13" />
+                                    </Button>
+                                </StackPanel>
                             </Grid>
+                            <DataTemplate.Triggers>
+                                <Trigger SourceName="MessageRow" Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="MessageActions" Property="Opacity" Value="1" />
+                                </Trigger>
+                                <Trigger SourceName="MessageRow" Property="IsKeyboardFocusWithin" Value="True">
+                                    <Setter TargetName="MessageActions" Property="Opacity" Value="1" />
+                                </Trigger>
+                            </DataTemplate.Triggers>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
@@ -185,10 +240,35 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <!-- Focus light, shown while the composer has focus. -->
+                <!-- Project scope: these turns use the project's context and
+                     are saved under it. The cross returns to no project. -->
                 <Border Grid.Row="0"
+                        Margin="12,0,0,10"
+                        HorizontalAlignment="Left"
+                        Style="{StaticResource ChatProjectChip}"
+                        Visibility="{Binding HasActiveProject, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Symbol="Folder24" FontSize="13" Foreground="{StaticResource LensTealBrush}" />
+                        <TextBlock Margin="6,0,8,0"
+                                   VerticalAlignment="Center"
+                                   Style="{StaticResource HomeCaptionText}">
+                            <Run Text="{loc:Loc Chat.InProject}" />
+                            <Run Text="{Binding ActiveProjectName, Mode=OneWay}" Foreground="{StaticResource PearlBrush}" />
+                        </TextBlock>
+                        <Button Style="{StaticResource MessageActionButton}"
+                                Command="{Binding ClearProjectCommand}"
+                                ToolTip="{loc:Loc Chat.LeaveProject}"
+                                AutomationProperties.Name="{loc:Loc Chat.LeaveProject}">
+                            <ui:SymbolIcon Symbol="Dismiss16" FontSize="11" />
+                        </Button>
+                    </StackPanel>
+                </Border>
+
+                <!-- Focus light, shown while the composer has focus. -->
+                <Border Grid.Row="1"
                         Margin="-28,-18"
                         CornerRadius="48"
                         Background="{StaticResource ComposerFocusBrush}"
@@ -205,7 +285,7 @@
                     </Border.Style>
                 </Border>
 
-                <Border x:Name="ComposerShell" Grid.Row="0" Style="{StaticResource ComposerShell}">
+                <Border x:Name="ComposerShell" Grid.Row="1" Style="{StaticResource ComposerShell}">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -244,10 +324,23 @@
                             </TextBlock.Style>
                         </TextBlock>
 
+                        <!-- While a turn runs, the same place stops it. -->
                         <Button Grid.Column="1"
                                 Margin="12,0,0,0"
                                 VerticalAlignment="Bottom"
                                 Style="{StaticResource ComposerSendButton}"
+                                Command="{Binding CancelTurnCommand}"
+                                ToolTip="{loc:Loc Chat.Stop}"
+                                AutomationProperties.Name="{loc:Loc Chat.Stop}"
+                                Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}">
+                            <ui:SymbolIcon Symbol="Stop24" FontSize="16" />
+                        </Button>
+
+                        <Button Grid.Column="1"
+                                Margin="12,0,0,0"
+                                VerticalAlignment="Bottom"
+                                Style="{StaticResource ComposerSendButton}"
+                                Visibility="{Binding IsBusy, Converter={StaticResource InverseBoolToVisibility}}"
                                 Command="{Binding SendCommand}"
                                 ToolTip="{loc:Loc Chat.Send}"
                                 AutomationProperties.Name="{loc:Loc Chat.Send}">
@@ -275,7 +368,7 @@
                 </Border>
 
                 <!-- Honest statement about voice input rather than a dead button -->
-                <TextBlock Grid.Row="1"
+                <TextBlock Grid.Row="2"
                            Margin="0,10,0,0"
                            HorizontalAlignment="Center"
                            TextAlignment="Center"

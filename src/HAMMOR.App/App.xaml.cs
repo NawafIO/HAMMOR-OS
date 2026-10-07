@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Threading;
 using HAMMOR.App.Localization;
 using HAMMOR.App.Presence;
+using HAMMOR.App.Search;
 using HAMMOR.App.Services;
 using HAMMOR.App.Shell;
 using HAMMOR.App.Themes;
@@ -214,6 +215,12 @@ public partial class App : Application
                 services.AddSingleton<MemoryViewModel>();
                 services.AddSingleton<ProjectsViewModel>();
                 services.AddSingleton<SettingsViewModel>();
+                services.AddSingleton<SearchViewModel>();
+
+                // Global Search over what HAMMOR keeps (read only), and the
+                // navigator Search and Projects use to open what they find.
+                services.AddSingleton<SearchService>();
+                services.AddSingleton<ShellNavigator>();
                 services.AddTransient<FirstRunViewModel>();
 
                 // Views. Pages are transient so navigating back to one gets a
@@ -225,6 +232,7 @@ public partial class App : Application
                 services.AddTransient<MemoryPage>();
                 services.AddTransient<ProjectsPage>();
                 services.AddTransient<SettingsPage>();
+                services.AddTransient<SearchPage>();
             })
             .Build();
 

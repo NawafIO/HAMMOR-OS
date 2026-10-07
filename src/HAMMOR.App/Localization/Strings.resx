@@ -92,20 +92,35 @@
   <data name="Chat.Clear" xml:space="preserve">
     <value>Clear conversation</value>
   </data>
+  <data name="Chat.Copy" xml:space="preserve">
+    <value>Copy</value>
+  </data>
   <data name="Chat.EmptyBody" xml:space="preserve">
     <value>Type a message below. HAMMOR replies in the language you write in.</value>
   </data>
   <data name="Chat.EmptyTitle" xml:space="preserve">
     <value>Start a conversation</value>
   </data>
+  <data name="Chat.InProject" xml:space="preserve">
+    <value>In project</value>
+  </data>
   <data name="Chat.InputPlaceholder" xml:space="preserve">
     <value>Ask HAMMOR anything…</value>
+  </data>
+  <data name="Chat.LeaveProject" xml:space="preserve">
+    <value>Stop using this project</value>
+  </data>
+  <data name="Chat.NewChat" xml:space="preserve">
+    <value>New chat</value>
   </data>
   <data name="Chat.Send" xml:space="preserve">
     <value>Send</value>
   </data>
   <data name="Chat.Speak" xml:space="preserve">
     <value>Speak reply</value>
+  </data>
+  <data name="Chat.Stop" xml:space="preserve">
+    <value>Stop</value>
   </data>
   <data name="Chat.StopSpeaking" xml:space="preserve">
     <value>Stop speaking</value>
@@ -227,6 +242,9 @@
   <data name="Nav.Projects" xml:space="preserve">
     <value>Projects</value>
   </data>
+  <data name="Nav.Search" xml:space="preserve">
+    <value>Search</value>
+  </data>
   <data name="Nav.Settings" xml:space="preserve">
     <value>Settings</value>
   </data>
@@ -251,14 +269,128 @@
   <data name="Projects.Add" xml:space="preserve">
     <value>Add project</value>
   </data>
+  <data name="Projects.All" xml:space="preserve">
+    <value>All conversations</value>
+  </data>
+  <data name="Projects.All.Description" xml:space="preserve">
+    <value>Every question and answer HAMMOR saved, newest first. HAMMOR saves each exchange on its own; it does not keep chat sessions.</value>
+  </data>
+  <data name="Projects.All.Detail" xml:space="preserve">
+    <value>Every exchange HAMMOR saved</value>
+  </data>
+  <data name="Projects.ChatHere" xml:space="preserve">
+    <value>Chat in this project</value>
+  </data>
+  <data name="Projects.Context" xml:space="preserve">
+    <value>Standing context</value>
+  </data>
+  <data name="Projects.Conversations" xml:space="preserve">
+    <value>Conversations</value>
+  </data>
+  <data name="Projects.CopyPath" xml:space="preserve">
+    <value>Copy folder path</value>
+  </data>
+  <data name="Projects.CreateNotBuilt" xml:space="preserve">
+    <value>Creating and editing projects isn't built yet. The projects listed come from HAMMOR's project store.</value>
+  </data>
+  <data name="Projects.Created" xml:space="preserve">
+    <value>Created {0}</value>
+  </data>
   <data name="Projects.Empty" xml:space="preserve">
     <value>No projects yet.</value>
+  </data>
+  <data name="Projects.Kind.General" xml:space="preserve">
+    <value>General project</value>
+  </data>
+  <data name="Projects.Kind.Research" xml:space="preserve">
+    <value>Research project</value>
+  </data>
+  <data name="Projects.Kind.Software" xml:space="preserve">
+    <value>Software project</value>
+  </data>
+  <data name="Projects.LastOpened" xml:space="preserve">
+    <value>last opened {0}</value>
+  </data>
+  <data name="Projects.LoadFailed" xml:space="preserve">
+    <value>Projects could not be read. The log has the details.</value>
+  </data>
+  <data name="Projects.MemoryKind.Conversation" xml:space="preserve">
+    <value>Conversation</value>
+  </data>
+  <data name="Projects.MemoryKind.Fact" xml:space="preserve">
+    <value>Fact</value>
+  </data>
+  <data name="Projects.MemoryKind.Note" xml:space="preserve">
+    <value>Note</value>
+  </data>
+  <data name="Projects.MemoryKind.Preference" xml:space="preserve">
+    <value>Preference</value>
+  </data>
+  <data name="Projects.MemoryKind.ProjectContext" xml:space="preserve">
+    <value>Project context</value>
+  </data>
+  <data name="Projects.NoConversations" xml:space="preserve">
+    <value>No saved conversations yet.</value>
+  </data>
+  <data name="Projects.NoTasks" xml:space="preserve">
+    <value>No tasks in this project.</value>
   </data>
   <data name="Projects.NotImplemented" xml:space="preserve">
     <value>Project creation and git inspection are not implemented yet. The project store and data model exist and are used to scope memory and tasks.</value>
   </data>
+  <data name="Projects.Notes" xml:space="preserve">
+    <value>Notes</value>
+  </data>
+  <data name="Projects.ShowArchived" xml:space="preserve">
+    <value>Show archived projects</value>
+  </data>
+  <data name="Projects.Tasks" xml:space="preserve">
+    <value>Tasks</value>
+  </data>
   <data name="Projects.Title" xml:space="preserve">
     <value>Projects</value>
+  </data>
+  <data name="Search.Group.Conversations" xml:space="preserve">
+    <value>Saved conversations</value>
+  </data>
+  <data name="Search.Group.Memory" xml:space="preserve">
+    <value>Memory</value>
+  </data>
+  <data name="Search.Group.Pages" xml:space="preserve">
+    <value>Pages</value>
+  </data>
+  <data name="Search.Group.Projects" xml:space="preserve">
+    <value>Projects</value>
+  </data>
+  <data name="Search.Group.Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Search.Group.Tasks" xml:space="preserve">
+    <value>Tasks</value>
+  </data>
+  <data name="Search.Group.ThisChat" xml:space="preserve">
+    <value>This chat</value>
+  </data>
+  <data name="Search.NoResults" xml:space="preserve">
+    <value>Nothing matches.</value>
+  </data>
+  <data name="Search.NothingRecent" xml:space="preserve">
+    <value>Nothing recent yet. Saved conversations and projects appear here.</value>
+  </data>
+  <data name="Search.Placeholder" xml:space="preserve">
+    <value>Search pages, settings, projects, tasks, memory and conversations…</value>
+  </data>
+  <data name="Search.Results" xml:space="preserve">
+    <value>Search results</value>
+  </data>
+  <data name="Search.Scope" xml:space="preserve">
+    <value>Searches HAMMOR's pages and settings, your projects, tasks, memory and saved conversations, and this chat. Memory is matched by keywords. Ctrl+K opens Search from anywhere.</value>
+  </data>
+  <data name="Search.SomeFailed" xml:space="preserve">
+    <value>Some sources could not be read, so results may be missing. The log has the details.</value>
+  </data>
+  <data name="Search.Title" xml:space="preserve">
+    <value>Search</value>
   </data>
   <data name="Settings.Ai" xml:space="preserve">
     <value>AI provider</value>

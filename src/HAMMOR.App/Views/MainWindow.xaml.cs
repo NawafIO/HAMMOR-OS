@@ -25,12 +25,28 @@ public partial class MainWindow : FluentWindow
     public static readonly RoutedUICommand ToggleSidebarCommand =
         new("Toggle sidebar", nameof(ToggleSidebarCommand), typeof(MainWindow));
 
+    /// <summary>Opens Search, or puts the caret back in its box (Ctrl+K).</summary>
+    public static readonly RoutedUICommand OpenSearchCommand =
+        new("Search", nameof(OpenSearchCommand), typeof(MainWindow));
+
+    private static readonly Dictionary<ShellPage, Type> PageTypes = new()
+    {
+        [ShellPage.Chat] = typeof(ChatPage),
+        [ShellPage.Search] = typeof(SearchPage),
+        [ShellPage.Activity] = typeof(ActivityPage),
+        [ShellPage.Tasks] = typeof(TasksPage),
+        [ShellPage.Memory] = typeof(MemoryPage),
+        [ShellPage.Projects] = typeof(ProjectsPage),
+        [ShellPage.Settings] = typeof(SettingsPage),
+    };
+
     private readonly ILocalizationService _localization;
     private readonly LivingCorePresenter _presence;
     private readonly ShellLayoutStore _layoutStore;
     private readonly BlockedTaskTracker _blockedTasks;
 
     private Type _currentPageType = typeof(ChatPage);
+    private FrameworkElement? _currentPage;
 
     // Settings v2: the page Settings was opened from, whether Settings is
     // showing, and guards so the sidebar's resting state while in Settings is
@@ -46,7 +62,8 @@ public partial class MainWindow : FluentWindow
         ILocalizationService localization,
         LivingCorePresenter presence,
         ShellLayoutStore layoutStore,
-        BlockedTaskTracker blockedTasks)
+        BlockedTaskTracker blockedTasks,
+        ShellNavigator navigator)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(pageProvider);
@@ -56,6 +73,7 @@ public partial class MainWindow : FluentWindow
         _presence = presence ?? throw new ArgumentNullException(nameof(presence));
         _layoutStore = layoutStore ?? throw new ArgumentNullException(nameof(layoutStore));
         _blockedTasks = blockedTasks ?? throw new ArgumentNullException(nameof(blockedTasks));
+        ArgumentNullException.ThrowIfNull(navigator);
 
         // The view model is the DataContext, not the window: binding the
         // window's own FlowDirection to a DataContext of `this` would be
@@ -79,6 +97,11 @@ public partial class MainWindow : FluentWindow
         RootNavigation.PaneClosed += OnPaneStateChanged;
         CommandBindings.Add(new CommandBinding(ToggleSidebarCommand, OnToggleSidebarExecuted));
         InputBindings.Add(new KeyBinding(ToggleSidebarCommand, Key.B, ModifierKeys.Control));
+        CommandBindings.Add(new CommandBinding(OpenSearchCommand, OnOpenSearchExecuted));
+        InputBindings.Add(new KeyBinding(OpenSearchCommand, Key.K, ModifierKeys.Control));
+
+        // Search and Projects move around the shell through the navigator.
+        navigator.Attach(page => RootNavigation.Navigate(PageTypes[page]));
 
         // Blocked tasks put a dot on the Tasks row.
         _blockedTasks.CountChanged += OnBlockedTasksChanged;
@@ -168,6 +191,18 @@ public partial class MainWindow : FluentWindow
         }
     }
 
+    private void OnOpenSearchExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+        if (_currentPage is SearchPage search)
+        {
+            search.FocusQuery();
+        }
+        else
+        {
+            RootNavigation.Navigate(typeof(SearchPage));
+        }
+    }
+
     private void OnToggleSidebarExecuted(object sender, ExecutedRoutedEventArgs e) =>
         RootNavigation.SetCurrentValue(NavigationView.IsPaneOpenProperty, !RootNavigation.IsPaneOpen);
 
@@ -205,6 +240,7 @@ public partial class MainWindow : FluentWindow
         if (args.Page is FrameworkElement page)
         {
             _currentPageType = page.GetType();
+            _currentPage = page;
 
             if (page is not SettingsPage && !_rebuilding)
             {

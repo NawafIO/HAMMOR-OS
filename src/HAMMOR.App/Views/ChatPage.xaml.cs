@@ -1,4 +1,5 @@
 using System.Collections.Specialized;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -141,6 +142,24 @@ public partial class ChatPage : Page
         if (e.Action is NotifyCollectionChangedAction.Add)
         {
             TranscriptScroll.ScrollToEnd();
+        }
+    }
+
+    /// <summary>Copies one message's text.</summary>
+    private void OnCopyMessageClick(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not ChatMessageViewModel message)
+        {
+            return;
+        }
+
+        try
+        {
+            Clipboard.SetText(message.Text);
+        }
+        catch (ExternalException)
+        {
+            // Another program holds the clipboard; copying again will work.
         }
     }
 

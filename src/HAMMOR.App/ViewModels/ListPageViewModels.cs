@@ -5,7 +5,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HAMMOR.Core.Audit;
 using HAMMOR.Core.Memory;
-using HAMMOR.Core.Projects;
 using HAMMOR.Core.Storage;
 using Microsoft.Extensions.Logging;
 
@@ -92,6 +91,28 @@ public sealed partial class MemoryViewModel(
 
     public bool IsEmpty => Entries.Count == 0 && !IsLoading;
 
+    /// <summary>
+    /// A search to run when the page next opens, set by global Search so an
+    /// opened result is in view. Used once.
+    /// </summary>
+    public string? PendingQuery { get; set; }
+
+    /// <summary>What the page runs on load: a pending search, or recent entries.</summary>
+    public async Task OpenAsync()
+    {
+        var pending = PendingQuery;
+        PendingQuery = null;
+
+        if (string.IsNullOrWhiteSpace(pending))
+        {
+            await LoadAsync().ConfigureAwait(true);
+            return;
+        }
+
+        SearchQuery = pending;
+        await SearchAsync().ConfigureAwait(true);
+    }
+
     [RelayCommand]
     public async Task LoadAsync()
     {
@@ -172,51 +193,6 @@ public sealed partial class MemoryViewModel(
         foreach (var entry in entries)
         {
             Entries.Add(entry);
-        }
-    }
-}
-
-/// <summary>Lists projects.</summary>
-public sealed partial class ProjectsViewModel(
-    IProjectStore projectStore,
-    ILogger<ProjectsViewModel> logger) : ObservableObject
-{
-    private readonly IProjectStore _projectStore =
-        projectStore ?? throw new ArgumentNullException(nameof(projectStore));
-
-    private readonly ILogger<ProjectsViewModel> _logger =
-        logger ?? throw new ArgumentNullException(nameof(logger));
-
-    public ObservableCollection<HammorProject> Projects { get; } = [];
-
-    [ObservableProperty]
-    private bool _isLoading;
-
-    public bool IsEmpty => Projects.Count == 0 && !IsLoading;
-
-    [RelayCommand]
-    public async Task LoadAsync()
-    {
-        IsLoading = true;
-
-        try
-        {
-            var projects = await _projectStore.ListAsync().ConfigureAwait(true);
-
-            Projects.Clear();
-            foreach (var project in projects)
-            {
-                Projects.Add(project);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Could not load projects.");
-        }
-        finally
-        {
-            IsLoading = false;
-            OnPropertyChanged(nameof(IsEmpty));
         }
     }
 }
