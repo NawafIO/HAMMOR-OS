@@ -14,6 +14,7 @@
                 <!-- HAMMOR tokens come last so they can reference theme brushes. -->
                 <ResourceDictionary Source="pack://application:,,,/Themes/Tokens.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/Themes/Sidebar.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/Themes/Settings.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <converters:ProviderStateToBrushConverter x:Key="ProviderStateToBrush" />
@@ -23,6 +24,7 @@
             <converters:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
             <converters:TaskStateToBrushConverter x:Key="TaskStateToBrush" />
             <converters:EnumToLocalizedTextConverter x:Key="EnumToLocalizedText" />
+            <converters:EnumMatchToVisibilityConverter x:Key="EnumMatchToVisibility" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

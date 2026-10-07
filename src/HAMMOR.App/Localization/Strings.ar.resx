@@ -272,6 +272,12 @@
   <data name="Settings.Ai.Effort" xml:space="preserve">
     <value>مستوى التفكير</value>
   </data>
+  <data name="Settings.Ai.Group.ApiKey" xml:space="preserve">
+    <value>Anthropic API</value>
+  </data>
+  <data name="Settings.Ai.Group.ClaudeCode" xml:space="preserve">
+    <value>Claude Code</value>
+  </data>
   <data name="Settings.Ai.MaxTokens" xml:space="preserve">
     <value>الحد الأقصى لرموز الإخراج</value>
   </data>
@@ -295,6 +301,15 @@
   </data>
   <data name="Settings.ApiKeyStored" xml:space="preserve">
     <value>تم تخزين مفتاح.</value>
+  </data>
+  <data name="Settings.Appearance.ThemeDescription" xml:space="preserve">
+    <value>فاتح أو داكن أو حسب إعداد Windows.</value>
+  </data>
+  <data name="Settings.Back" xml:space="preserve">
+    <value>رجوع</value>
+  </data>
+  <data name="Settings.Back.Name" xml:space="preserve">
+    <value>العودة إلى هامور</value>
   </data>
   <data name="Settings.ClaudeCode.Description" xml:space="preserve">
     <value>يتحدث هامور إلى Claude عبر Claude Code المثبّت على هذا الجهاز، باستخدام حساب Claude الذي تسجّل الدخول إليه هناك. لا يرى هامور بيانات اعتمادك أبدًا: يتم تسجيل الدخول في نافذة Claude Code نفسها.</value>
@@ -404,8 +419,14 @@
   <data name="Settings.Memory.Reindex" xml:space="preserve">
     <value>إعادة الفهرسة الآن</value>
   </data>
+  <data name="Settings.Navigation" xml:space="preserve">
+    <value>أقسام الإعدادات</value>
+  </data>
   <data name="Settings.Save" xml:space="preserve">
     <value>حفظ التغييرات</value>
+  </data>
+  <data name="Settings.SaveHint" xml:space="preserve">
+    <value>الحفظ يحفظ تغييرات كل الأقسام. اللغة والمفاتيح تُطبَّق فورًا.</value>
   </data>
   <data name="Settings.SaveKey" xml:space="preserve">
     <value>حفظ المفتاح</value>
@@ -415,6 +436,48 @@
   </data>
   <data name="Settings.SecretsNote" xml:space="preserve">
     <value>تُشفَّر المفاتيح باستخدام Windows DPAPI لحسابك. ولا تُكتب أبدًا في ملف الإعدادات أو في السجلات.</value>
+  </data>
+  <data name="Settings.Section.Ai" xml:space="preserve">
+    <value>الذكاء الاصطناعي والنماذج</value>
+  </data>
+  <data name="Settings.Section.Ai.Description" xml:space="preserve">
+    <value>بمن يفكّر هامور: حسابك في Claude عبر Claude Code، أو مفتاح Anthropic API.</value>
+  </data>
+  <data name="Settings.Section.Appearance" xml:space="preserve">
+    <value>المظهر</value>
+  </data>
+  <data name="Settings.Section.Appearance.Description" xml:space="preserve">
+    <value>مظهر هامور. تبقى الشاشة الرئيسية والنواة الحية على خلفية الأعماق في كل السمات.</value>
+  </data>
+  <data name="Settings.Section.Memory" xml:space="preserve">
+    <value>الذاكرة</value>
+  </data>
+  <data name="Settings.Section.Memory.Description" xml:space="preserve">
+    <value>أين يحفظ هامور ملاحظاته، ومتى يفهرسها.</value>
+  </data>
+  <data name="Settings.Section.Security" xml:space="preserve">
+    <value>الأمان</value>
+  </data>
+  <data name="Settings.Section.Security.Description" xml:space="preserve">
+    <value>ما يمكن لهامور فعله دون أن يسأل. الإجراءات المدمّرة تطلب موافقتك دائمًا.</value>
+  </data>
+  <data name="Settings.Section.System" xml:space="preserve">
+    <value>النظام</value>
+  </data>
+  <data name="Settings.Section.System.Description" xml:space="preserve">
+    <value>اللغة وبدء التشغيل والاتصالات ومكان حفظ الإعدادات.</value>
+  </data>
+  <data name="Settings.Section.Tasks" xml:space="preserve">
+    <value>المهام والجدولة</value>
+  </data>
+  <data name="Settings.Section.Tasks.Description" xml:space="preserve">
+    <value>القواعد التي تعمل بها المهام غير المراقَبة.</value>
+  </data>
+  <data name="Settings.Section.Voice" xml:space="preserve">
+    <value>الصوت</value>
+  </data>
+  <data name="Settings.Section.Voice.Description" xml:space="preserve">
+    <value>الردود المنطوقة عبر ElevenLabs، وأجهزة الصوت التي يستخدمها هامور.</value>
   </data>
   <data name="Settings.Security" xml:space="preserve">
     <value>الأمان</value>
@@ -431,8 +494,56 @@
   <data name="Settings.Security.DestructiveLocked" xml:space="preserve">
     <value>تتطلب الإجراءات المدمّرة تأكيدًا دائمًا ولا يمكن الموافقة عليها تلقائيًا.</value>
   </data>
+  <data name="Settings.Security.Secrets" xml:space="preserve">
+    <value>المفاتيح والأسرار</value>
+  </data>
   <data name="Settings.StartMinimised" xml:space="preserve">
     <value>البدء مصغرًا في شريط المهام</value>
+  </data>
+  <data name="Settings.System.Connections.Description" xml:space="preserve">
+    <value>يسأل Claude وElevenLabs إن كانا جاهزين الآن. تظهر الإجابة أسفل الصفحة.</value>
+  </data>
+  <data name="Settings.System.Connections.Header" xml:space="preserve">
+    <value>فحص الاتصالات</value>
+  </data>
+  <data name="Settings.System.Group.Connections" xml:space="preserve">
+    <value>الاتصالات</value>
+  </data>
+  <data name="Settings.System.Group.Startup" xml:space="preserve">
+    <value>بدء التشغيل</value>
+  </data>
+  <data name="Settings.System.Group.Storage" xml:space="preserve">
+    <value>التخزين</value>
+  </data>
+  <data name="Settings.Tasks.Fixed" xml:space="preserve">
+    <value>لا يمكن تغيير شيء هنا: هذه الحدود جزء من نموذج أمان هامور.</value>
+  </data>
+  <data name="Settings.Tasks.Group.Rules" xml:space="preserve">
+    <value>كيف تعمل المهام</value>
+  </data>
+  <data name="Settings.Tasks.Open" xml:space="preserve">
+    <value>فتح المهام</value>
+  </data>
+  <data name="Settings.Tasks.Open.Description" xml:space="preserve">
+    <value>أنشئ المهام أو استأنفها أو ألغها من صفحة المهام.</value>
+  </data>
+  <data name="Settings.Tasks.Open.Header" xml:space="preserve">
+    <value>إدارة المهام</value>
+  </data>
+  <data name="Settings.Tasks.Rule.Blocked" xml:space="preserve">
+    <value>المهمة التي تحتاج أكثر من تصريحها تتوقف بحالة «محظورة» وتنتظرك لتستأنفها بتصريح جديد أو تلغيها.</value>
+  </data>
+  <data name="Settings.Tasks.Rule.Grant" xml:space="preserve">
+    <value>تعمل كل مهمة بتصريح خاص بها توافق عليه عند إنشائها، وينتهي خلال 30 يومًا على الأكثر.</value>
+  </data>
+  <data name="Settings.Tasks.Rule.NoRecurrence" xml:space="preserve">
+    <value>لا تتكرر المهام وفق جدول بعد.</value>
+  </data>
+  <data name="Settings.Tasks.Rule.OneAtATime" xml:space="preserve">
+    <value>تعمل المهام واحدة تلو الأخرى. يُعاد تشغيل المحاولة الفاشلة عددًا محدودًا من المرات، ولا تُعاد المحظورة.</value>
+  </data>
+  <data name="Settings.Tasks.Rule.ReadOnly" xml:space="preserve">
+    <value>المهام غير المراقَبة تقرأ فقط: لا تكتب ولا تحذف ولا تشغّل برامج.</value>
   </data>
   <data name="Settings.TestConnection" xml:space="preserve">
     <value>اختبار الاتصال</value>
@@ -458,6 +569,12 @@
   <data name="Settings.Voice.ApiKey" xml:space="preserve">
     <value>مفتاح واجهة ElevenLabs</value>
   </data>
+  <data name="Settings.Voice.Group.ElevenLabs" xml:space="preserve">
+    <value>ElevenLabs</value>
+  </data>
+  <data name="Settings.Voice.Group.Playback" xml:space="preserve">
+    <value>التشغيل</value>
+  </data>
   <data name="Settings.Voice.InputDevice" xml:space="preserve">
     <value>جهاز الإدخال</value>
   </data>
@@ -475,6 +592,12 @@
   </data>
   <data name="Settings.Voice.SystemDefault" xml:space="preserve">
     <value>افتراضي النظام</value>
+  </data>
+  <data name="Settings.Voice.Test.Description" xml:space="preserve">
+    <value>ينطق عبارة قصيرة بالصوت والجهاز المحدَّدين أعلاه، بعد أن يحفظ تغييراتك.</value>
+  </data>
+  <data name="Settings.Voice.Test.Header" xml:space="preserve">
+    <value>جرّب الصوت</value>
   </data>
   <data name="Settings.Voice.TestPhrase" xml:space="preserve">
     <value>هامور جاهز.</value>

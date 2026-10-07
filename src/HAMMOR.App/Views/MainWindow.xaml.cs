@@ -32,6 +32,14 @@ public partial class MainWindow : FluentWindow
 
     private Type _currentPageType = typeof(ChatPage);
 
+    // Settings v2: the page Settings was opened from, whether Settings is
+    // showing, and guards so the sidebar's resting state while in Settings is
+    // never saved as the user's choice.
+    private Type _pageBeforeSettings = typeof(ChatPage);
+    private bool _inSettings;
+    private bool _rebuilding;
+    private bool _adjustingPane;
+
     public MainWindow(
         ShellViewModel viewModel,
         INavigationViewPageProvider pageProvider,
@@ -120,8 +128,45 @@ public partial class MainWindow : FluentWindow
         _ = _blockedTasks.StartAsync();
     }
 
-    private void OnPaneStateChanged(NavigationView sender, RoutedEventArgs args) =>
-        _layoutStore.Save(new ShellLayout { SidebarCollapsed = !RootNavigation.IsPaneOpen });
+    private void OnPaneStateChanged(NavigationView sender, RoutedEventArgs args)
+    {
+        if (!_adjustingPane)
+        {
+            _layoutStore.Save(new ShellLayout { SidebarCollapsed = !RootNavigation.IsPaneOpen });
+        }
+    }
+
+    /// <summary>Leaves Settings for the page it was opened from.</summary>
+    public void LeaveSettings() => RootNavigation.Navigate(_pageBeforeSettings);
+
+    /// <summary>Shows one of the shell's pages.</summary>
+    public void NavigateTo(Type pageType) => RootNavigation.Navigate(pageType);
+
+    /// <summary>
+    /// While Settings is open its own navigation leads, so the main sidebar
+    /// rests as its icon rail (still usable); leaving Settings puts it back
+    /// the way the user last left it. Neither move is saved as a choice.
+    /// </summary>
+    private void SyncSidebarWithSettings(bool inSettings)
+    {
+        if (_rebuilding || inSettings == _inSettings)
+        {
+            return;
+        }
+
+        _inSettings = inSettings;
+        var open = !inSettings && !_layoutStore.Load().SidebarCollapsed;
+
+        _adjustingPane = true;
+        try
+        {
+            RootNavigation.SetCurrentValue(NavigationView.IsPaneOpenProperty, open);
+        }
+        finally
+        {
+            _adjustingPane = false;
+        }
+    }
 
     private void OnToggleSidebarExecuted(object sender, ExecutedRoutedEventArgs e) =>
         RootNavigation.SetCurrentValue(NavigationView.IsPaneOpenProperty, !RootNavigation.IsPaneOpen);
@@ -160,6 +205,13 @@ public partial class MainWindow : FluentWindow
         if (args.Page is FrameworkElement page)
         {
             _currentPageType = page.GetType();
+
+            if (page is not SettingsPage && !_rebuilding)
+            {
+                _pageBeforeSettings = _currentPageType;
+            }
+
+            SyncSidebarWithSettings(page is SettingsPage);
 
             // A failed task shown on the Tasks page counts as seen, which
             // releases the Living Core's Error state.
@@ -202,12 +254,21 @@ public partial class MainWindow : FluentWindow
         var target = _currentPageType;
 
         // Navigating to the page that is already shown is a no-op, so clear
-        // the host first to force a genuine rebuild.
-        RootNavigation.Navigate(typeof(ChatPage));
-
-        if (target != typeof(ChatPage))
+        // the host first to force a genuine rebuild. The detour through Chat
+        // is not a visit: it must not move the sidebar or the Back target.
+        _rebuilding = true;
+        try
         {
-            RootNavigation.Navigate(target);
+            RootNavigation.Navigate(typeof(ChatPage));
+
+            if (target != typeof(ChatPage))
+            {
+                RootNavigation.Navigate(target);
+            }
+        }
+        finally
+        {
+            _rebuilding = false;
         }
     }
 

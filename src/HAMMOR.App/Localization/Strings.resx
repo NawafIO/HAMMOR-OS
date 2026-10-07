@@ -272,6 +272,12 @@
   <data name="Settings.Ai.Effort" xml:space="preserve">
     <value>Reasoning effort</value>
   </data>
+  <data name="Settings.Ai.Group.ApiKey" xml:space="preserve">
+    <value>Anthropic API</value>
+  </data>
+  <data name="Settings.Ai.Group.ClaudeCode" xml:space="preserve">
+    <value>Claude Code</value>
+  </data>
   <data name="Settings.Ai.MaxTokens" xml:space="preserve">
     <value>Maximum output tokens</value>
   </data>
@@ -295,6 +301,15 @@
   </data>
   <data name="Settings.ApiKeyStored" xml:space="preserve">
     <value>A key is stored.</value>
+  </data>
+  <data name="Settings.Appearance.ThemeDescription" xml:space="preserve">
+    <value>Light, dark, or follow Windows.</value>
+  </data>
+  <data name="Settings.Back" xml:space="preserve">
+    <value>Back</value>
+  </data>
+  <data name="Settings.Back.Name" xml:space="preserve">
+    <value>Back to HAMMOR</value>
   </data>
   <data name="Settings.ClaudeCode.Description" xml:space="preserve">
     <value>HAMMOR talks to Claude through Claude Code installed on this PC, with the Claude account you sign in to there. HAMMOR never sees your credentials: you sign in in Claude Code's own window.</value>
@@ -404,8 +419,14 @@
   <data name="Settings.Memory.Reindex" xml:space="preserve">
     <value>Re-index now</value>
   </data>
+  <data name="Settings.Navigation" xml:space="preserve">
+    <value>Settings categories</value>
+  </data>
   <data name="Settings.Save" xml:space="preserve">
     <value>Save changes</value>
+  </data>
+  <data name="Settings.SaveHint" xml:space="preserve">
+    <value>Save keeps the changes from every category. Language and keys apply at once.</value>
   </data>
   <data name="Settings.SaveKey" xml:space="preserve">
     <value>Save key</value>
@@ -415,6 +436,48 @@
   </data>
   <data name="Settings.SecretsNote" xml:space="preserve">
     <value>Keys are encrypted with Windows DPAPI for your user account. They are never written to the configuration file or to logs.</value>
+  </data>
+  <data name="Settings.Section.Ai" xml:space="preserve">
+    <value>AI &amp; models</value>
+  </data>
+  <data name="Settings.Section.Ai.Description" xml:space="preserve">
+    <value>Who HAMMOR thinks with: your Claude account through Claude Code, or an Anthropic API key.</value>
+  </data>
+  <data name="Settings.Section.Appearance" xml:space="preserve">
+    <value>Appearance</value>
+  </data>
+  <data name="Settings.Section.Appearance.Description" xml:space="preserve">
+    <value>How HAMMOR looks. The home screen and the Living Core stay on the abyss in every theme.</value>
+  </data>
+  <data name="Settings.Section.Memory" xml:space="preserve">
+    <value>Memory</value>
+  </data>
+  <data name="Settings.Section.Memory.Description" xml:space="preserve">
+    <value>Where HAMMOR keeps its notes, and when it indexes them.</value>
+  </data>
+  <data name="Settings.Section.Security" xml:space="preserve">
+    <value>Security</value>
+  </data>
+  <data name="Settings.Section.Security.Description" xml:space="preserve">
+    <value>What HAMMOR may do without asking. Destructive actions always ask.</value>
+  </data>
+  <data name="Settings.Section.System" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="Settings.Section.System.Description" xml:space="preserve">
+    <value>Language, startup, connections and where settings are stored.</value>
+  </data>
+  <data name="Settings.Section.Tasks" xml:space="preserve">
+    <value>Tasks &amp; scheduler</value>
+  </data>
+  <data name="Settings.Section.Tasks.Description" xml:space="preserve">
+    <value>The rules unattended tasks run under.</value>
+  </data>
+  <data name="Settings.Section.Voice" xml:space="preserve">
+    <value>Voice</value>
+  </data>
+  <data name="Settings.Section.Voice.Description" xml:space="preserve">
+    <value>Spoken replies through ElevenLabs, and the audio devices HAMMOR uses.</value>
   </data>
   <data name="Settings.Security" xml:space="preserve">
     <value>Security</value>
@@ -431,8 +494,56 @@
   <data name="Settings.Security.DestructiveLocked" xml:space="preserve">
     <value>Destructive actions always require confirmation and cannot be auto-approved.</value>
   </data>
+  <data name="Settings.Security.Secrets" xml:space="preserve">
+    <value>Keys and secrets</value>
+  </data>
   <data name="Settings.StartMinimised" xml:space="preserve">
     <value>Start minimised to the system tray</value>
+  </data>
+  <data name="Settings.System.Connections.Description" xml:space="preserve">
+    <value>Asks Claude and ElevenLabs whether they are ready now. The answer appears at the bottom of the page.</value>
+  </data>
+  <data name="Settings.System.Connections.Header" xml:space="preserve">
+    <value>Check connections</value>
+  </data>
+  <data name="Settings.System.Group.Connections" xml:space="preserve">
+    <value>Connections</value>
+  </data>
+  <data name="Settings.System.Group.Startup" xml:space="preserve">
+    <value>Startup</value>
+  </data>
+  <data name="Settings.System.Group.Storage" xml:space="preserve">
+    <value>Storage</value>
+  </data>
+  <data name="Settings.Tasks.Fixed" xml:space="preserve">
+    <value>Nothing here can be changed: these limits are part of HAMMOR's security model.</value>
+  </data>
+  <data name="Settings.Tasks.Group.Rules" xml:space="preserve">
+    <value>How tasks run</value>
+  </data>
+  <data name="Settings.Tasks.Open" xml:space="preserve">
+    <value>Open Tasks</value>
+  </data>
+  <data name="Settings.Tasks.Open.Description" xml:space="preserve">
+    <value>Create, resume or cancel tasks on the Tasks page.</value>
+  </data>
+  <data name="Settings.Tasks.Open.Header" xml:space="preserve">
+    <value>Manage tasks</value>
+  </data>
+  <data name="Settings.Tasks.Rule.Blocked" xml:space="preserve">
+    <value>A task that needs more than its grant stops as Blocked and waits for you to resume it under a new grant or cancel it.</value>
+  </data>
+  <data name="Settings.Tasks.Rule.Grant" xml:space="preserve">
+    <value>Each task runs under its own grant, which you approve when you create it and which expires within 30 days.</value>
+  </data>
+  <data name="Settings.Tasks.Rule.NoRecurrence" xml:space="preserve">
+    <value>Tasks do not repeat on a schedule yet.</value>
+  </data>
+  <data name="Settings.Tasks.Rule.OneAtATime" xml:space="preserve">
+    <value>Tasks run one at a time. A failed run is retried a limited number of times; a Blocked one is not.</value>
+  </data>
+  <data name="Settings.Tasks.Rule.ReadOnly" xml:space="preserve">
+    <value>Unattended tasks can only read: they cannot write, delete or run programs.</value>
   </data>
   <data name="Settings.TestConnection" xml:space="preserve">
     <value>Test connection</value>
@@ -458,6 +569,12 @@
   <data name="Settings.Voice.ApiKey" xml:space="preserve">
     <value>ElevenLabs API key</value>
   </data>
+  <data name="Settings.Voice.Group.ElevenLabs" xml:space="preserve">
+    <value>ElevenLabs</value>
+  </data>
+  <data name="Settings.Voice.Group.Playback" xml:space="preserve">
+    <value>Playback</value>
+  </data>
   <data name="Settings.Voice.InputDevice" xml:space="preserve">
     <value>Input device</value>
   </data>
@@ -475,6 +592,12 @@
   </data>
   <data name="Settings.Voice.SystemDefault" xml:space="preserve">
     <value>System default</value>
+  </data>
+  <data name="Settings.Voice.Test.Description" xml:space="preserve">
+    <value>Speaks a short phrase with the voice and device above. Saves your changes first.</value>
+  </data>
+  <data name="Settings.Voice.Test.Header" xml:space="preserve">
+    <value>Try the voice</value>
   </data>
   <data name="Settings.Voice.TestPhrase" xml:space="preserve">
     <value>HAMMOR is ready.</value>
