@@ -1,12 +1,16 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
+using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Threading;
 using HAMMOR.App.Localization;
 using HAMMOR.App.Presence;
+using HAMMOR.App.Themes;
 using HAMMOR.App.ViewModels;
 using HAMMOR.Core.Localization;
 using Wpf.Ui.Abstractions;
+using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
 
 namespace HAMMOR.App.Views;
@@ -51,6 +55,35 @@ public partial class MainWindow : FluentWindow
     }
 
     public ShellViewModel ViewModel { get; }
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+
+        PaintClearColour();
+        ApplicationThemeManager.Changed += OnThemeChanged;
+    }
+
+    /// <summary>
+    /// WPF-UI resets the window's clear colour while it applies a theme; set
+    /// the shell's colour again once it has finished.
+    /// </summary>
+    private void OnThemeChanged(ApplicationTheme currentApplicationTheme, Color systemAccent) =>
+        _ = Dispatcher.InvokeAsync(PaintClearColour, DispatcherPriority.Background);
+
+    /// <summary>
+    /// The colour DirectX clears the window to before drawing: the shell
+    /// surface, so a resize never flashes the system window colour at the
+    /// edges.
+    /// </summary>
+    private void PaintClearColour()
+    {
+        if (PresentationSource.FromVisual(this) is HwndSource { CompositionTarget: { } target }
+            && TryFindResource(ShellSurfaces.ShellBackgroundKey) is SolidColorBrush shell)
+        {
+            target.BackgroundColor = shell.Color;
+        }
+    }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
@@ -112,6 +145,7 @@ public partial class MainWindow : FluentWindow
     private void OnWindowClosed(object? sender, EventArgs e)
     {
         _localization.LanguageChanged -= OnLanguageChanged;
+        ApplicationThemeManager.Changed -= OnThemeChanged;
         RootNavigation.Navigated -= OnNavigated;
     }
 }

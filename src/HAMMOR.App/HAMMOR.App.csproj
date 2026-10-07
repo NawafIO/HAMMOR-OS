@@ -20,6 +20,10 @@
   <ItemGroup>
     <!-- Startup splash: the static mark, shown while the host starts. -->
     <Resource Include="Assets\Splash.png" />
+    <!-- Display face of the Living Home: Alexandria Light, Latin and Arabic
+         subset (SIL Open Font License 1.1; licence shipped beside it). -->
+    <Resource Include="Assets\Fonts\AlexandriaLight.ttf" />
+    <None Update="Assets\Fonts\OFL-Alexandria.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

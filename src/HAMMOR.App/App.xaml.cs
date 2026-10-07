@@ -236,8 +236,10 @@ public partial class App : Application
         services.GetRequiredService<IThemeService>()
             .Apply(configurationStore.Current.General.Theme);
 
-        // The static mark for the title bar and sidebar, matched to the theme.
+        // The static mark for the title bar and sidebar, and the shell's
+        // surfaces, matched to the theme.
         BrandMarks.Register(Current);
+        ShellSurfaces.Register(Current);
 
         services.GetRequiredService<SqliteDatabase>().Migrate();
 

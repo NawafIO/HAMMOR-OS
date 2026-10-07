@@ -106,26 +106,230 @@
         <Setter Property="Margin" Value="{StaticResource StackGap}" />
     </Style>
 
-    <!-- Chat bubbles. Direction-neutral margins: the shell's FlowDirection
-         mirrors them automatically for Arabic. -->
+    <!-- ===== Living palette =====
+         Measured from page 1 of the approved HAMMOR Living Core canvas. The
+         Living Home is always drawn on the abyss, whatever the app theme: the
+         Living Core and the mark are designed as light on the abyss ("white on
+         abyss in every theme"), so these colours are fixed on purpose. -->
+    <Color x:Key="AbyssColor">#03070A</Color>
+    <Color x:Key="PearlColor">#EFF3F8</Color>
+    <Color x:Key="MistColor">#AAB7C0</Color>
+    <Color x:Key="FogColor">#828B94</Color>
+    <Color x:Key="LensTealColor">#3ED0C8</Color>
+
+    <SolidColorBrush x:Key="AbyssBrush" Color="{StaticResource AbyssColor}" />
+    <SolidColorBrush x:Key="PearlBrush" Color="{StaticResource PearlColor}" />
+    <SolidColorBrush x:Key="MistBrush" Color="{StaticResource MistColor}" />
+    <SolidColorBrush x:Key="FogBrush" Color="{StaticResource FogColor}" />
+    <SolidColorBrush x:Key="LensTealBrush" Color="{StaticResource LensTealColor}" />
+
+    <!-- Shell surfaces. ShellSurfaces replaces these per theme at startup;
+         these values only serve the designer and the first frame. -->
+    <SolidColorBrush x:Key="HammorShellBackgroundBrush" Color="#060B0F" />
+    <SolidColorBrush x:Key="HammorChromeStrokeBrush" Color="#10D6E8FF" />
+
+    <!-- Dark glass and its hairline: the canvas's chips, rgba(214,232,255,.12). -->
+    <SolidColorBrush x:Key="GlassFillBrush" Color="#C40A1117" />
+    <SolidColorBrush x:Key="GlassStrokeBrush" Color="#1FD6E8FF" />
+    <SolidColorBrush x:Key="GlassStrokeFocusBrush" Color="#8C3ED0C8" />
+    <SolidColorBrush x:Key="GlassHoverBrush" Color="#14D6E8FF" />
+
+    <!-- The abyss, a hair lighter at the top, as if light comes from far above. -->
+    <LinearGradientBrush x:Key="AbyssDepthBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Offset="0" Color="#050B0F" />
+        <GradientStop Offset="0.55" Color="#03070A" />
+        <GradientStop Offset="1" Color="#020407" />
+    </LinearGradientBrush>
+
+    <!-- Light the Living Core casts on the page beyond its own aura: deep teal,
+         very low, falling to nothing. Static; the aura itself breathes. -->
+    <RadialGradientBrush x:Key="CoreAmbientBrush" Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+        <GradientStop Offset="0" Color="#2E147078" />
+        <GradientStop Offset="0.38" Color="#17147078" />
+        <GradientStop Offset="0.7" Color="#08147078" />
+        <GradientStop Offset="1" Color="#00147078" />
+    </RadialGradientBrush>
+
+    <!-- Focus light under the composer: teal, soft, never a glow ring. -->
+    <RadialGradientBrush x:Key="ComposerFocusBrush" Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+        <GradientStop Offset="0" Color="#243ED0C8" />
+        <GradientStop Offset="0.6" Color="#0F3ED0C8" />
+        <GradientStop Offset="1" Color="#003ED0C8" />
+    </RadialGradientBrush>
+
+    <!-- Display face: Alexandria Light (SIL Open Font License 1.1), as on the
+         canvas. Missing glyphs fall back to the system font. -->
+    <FontFamily x:Key="DisplayFont">pack://application:,,,/Assets/Fonts/#Alexandria Light</FontFamily>
+    <system:Double x:Key="FontSizeHero">36</system:Double>
+
+    <Style x:Key="HomeGreetingText" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource DisplayFont}" />
+        <Setter Property="FontWeight" Value="Light" />
+        <Setter Property="FontSize" Value="{StaticResource FontSizeHero}" />
+        <Setter Property="Foreground" Value="{StaticResource PearlBrush}" />
+        <Setter Property="TextAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <Style x:Key="HomeBodyText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="LineHeight" Value="24" />
+        <Setter Property="Foreground" Value="{StaticResource MistBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="TextAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="MaxWidth" Value="540" />
+    </Style>
+
+    <Style x:Key="HomeTitleText" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource DisplayFont}" />
+        <Setter Property="FontWeight" Value="Light" />
+        <Setter Property="FontSize" Value="22" />
+        <Setter Property="Foreground" Value="{StaticResource PearlBrush}" />
+    </Style>
+
+    <Style x:Key="HomeCaptionText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource FontSizeCaption}" />
+        <Setter Property="Foreground" Value="{StaticResource FogBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <!-- ===== Composer: dark glass, quieter than the Living Core ===== -->
+    <Style x:Key="ComposerShell" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource GlassFillBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource GlassStrokeBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="24" />
+        <Setter Property="Padding" Value="20,7,7,7" />
+        <Style.Triggers>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                <Setter Property="BorderBrush" Value="{StaticResource GlassStrokeFocusBrush}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Focus is shown by the composer's own border, not a dashed rectangle. -->
+    <Style x:Key="ComposerTextBox" TargetType="TextBox">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{StaticResource PearlBrush}" />
+        <Setter Property="CaretBrush" Value="{StaticResource LensTealBrush}" />
+        <Setter Property="SelectionBrush" Value="{StaticResource LensTealBrush}" />
+        <Setter Property="SelectionOpacity" Value="0.35" />
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="Padding" Value="0,6" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <ScrollViewer x:Name="PART_ContentHost"
+                                  Margin="{TemplateBinding Padding}"
+                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                  Focusable="False"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="{TemplateBinding VerticalScrollBarVisibility}" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="ComposerSendButton" TargetType="Button">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Width" Value="40" />
+        <Setter Property="Height" Value="40" />
+        <Setter Property="Foreground" Value="{StaticResource LensTealBrush}" />
+        <Setter Property="Background" Value="#1F3ED0C8" />
+        <Setter Property="BorderBrush" Value="#4D3ED0C8" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Chrome"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="20">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="#333ED0C8" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="#4D3ED0C8" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource LensTealBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.35" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Quiet round icon button for the conversation header. -->
+    <Style x:Key="GhostIconButton" TargetType="Button">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Width" Value="34" />
+        <Setter Property="Height" Value="34" />
+        <Setter Property="Foreground" Value="{StaticResource MistBrush}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Chrome"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="Transparent"
+                            BorderThickness="1"
+                            CornerRadius="17">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource GlassHoverBrush}" />
+                            <Setter Property="Foreground" Value="{StaticResource PearlBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource GlassStrokeFocusBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Chat bubbles: glass on the abyss, the user's tinted with the lens
+         teal. Direction-neutral margins: the shell's FlowDirection mirrors
+         them automatically for Arabic. -->
     <Style x:Key="UserMessageBubble" TargetType="Border">
-        <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}" />
-        <Setter Property="CornerRadius" Value="{StaticResource RadiusLg}" />
-        <Setter Property="Padding" Value="12,8" />
+        <Setter Property="Background" Value="#1A3ED0C8" />
+        <Setter Property="BorderBrush" Value="#403ED0C8" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="16" />
+        <Setter Property="Padding" Value="14,10" />
         <Setter Property="HorizontalAlignment" Value="Right" />
         <Setter Property="MaxWidth" Value="620" />
-        <Setter Property="Margin" Value="48,4,0,4" />
+        <Setter Property="Margin" Value="48,5,0,5" />
     </Style>
 
     <Style x:Key="AssistantMessageBubble" TargetType="Border">
-        <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorSecondaryBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
+        <Setter Property="Background" Value="{StaticResource GlassFillBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource GlassStrokeBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="{StaticResource RadiusLg}" />
-        <Setter Property="Padding" Value="12,8" />
+        <Setter Property="CornerRadius" Value="16" />
+        <Setter Property="Padding" Value="14,10" />
         <Setter Property="HorizontalAlignment" Value="Left" />
         <Setter Property="MaxWidth" Value="620" />
-        <Setter Property="Margin" Value="0,4,48,4" />
+        <Setter Property="Margin" Value="0,5,48,5" />
     </Style>
 
     <Style x:Key="ErrorMessageBubble" TargetType="Border" BasedOn="{StaticResource AssistantMessageBubble}">

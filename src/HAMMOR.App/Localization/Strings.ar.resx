@@ -164,6 +164,15 @@
   <data name="Confirm.Tool" xml:space="preserve">
     <value>الأداة</value>
   </data>
+  <data name="Home.Greeting.Afternoon" xml:space="preserve">
+    <value>طاب يومك.</value>
+  </data>
+  <data name="Home.Greeting.Evening" xml:space="preserve">
+    <value>مساء الخير.</value>
+  </data>
+  <data name="Home.Greeting.Morning" xml:space="preserve">
+    <value>صباح الخير.</value>
+  </data>
   <data name="LivingCore.Blocked" xml:space="preserve">
     <value>مهمة بانتظار موافقتك في صفحة المهام.</value>
   </data>

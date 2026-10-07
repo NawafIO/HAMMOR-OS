@@ -9,12 +9,15 @@
                  Height="780"
                  MinWidth="840"
                  MinHeight="560"
-                 WindowBackdropType="Mica"
+                 WindowBackdropType="None"
                  WindowCornerPreference="Round"
                  ExtendsContentIntoTitleBar="True"
                  FlowDirection="{Binding FlowDirection}">
 
-    <Grid>
+    <!-- The shell surface lives on the root grid, not on Window.Background:
+         WPF-UI resets the window background whenever it removes a backdrop
+         (at start-up and on every theme change). -->
+    <Grid Background="{DynamicResource HammorShellBackgroundBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -44,9 +47,10 @@
 
             <!-- Sidebar mark (Logo board): the full mark with its seal ring and
                  the wordmark while the pane is open, the compact lens while it
-                 is collapsed. Marks are never mirrored, hence LeftToRight. -->
+                 is collapsed, with clear space around it. Marks are never
+                 mirrored, hence LeftToRight. -->
             <ui:NavigationView.PaneHeader>
-                <Grid Margin="6,2,0,10" HorizontalAlignment="Left">
+                <Grid Margin="8,6,0,18" HorizontalAlignment="Left">
                     <StackPanel Orientation="Horizontal"
                                 Visibility="{Binding IsPaneOpen, ElementName=RootNavigation, Converter={StaticResource BoolToVisibility}}">
                         <Image Width="28"
@@ -100,10 +104,11 @@
             </ui:NavigationView.FooterMenuItems>
         </ui:NavigationView>
 
-        <!-- Status bar: honest readiness signals for every provider and device. -->
+        <!-- Status bar: honest readiness signals for every provider and device,
+             on the shell's own surface behind a hairline. -->
         <Border Grid.Row="2"
-                Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}"
-                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                Background="Transparent"
+                BorderBrush="{DynamicResource HammorChromeStrokeBrush}"
                 BorderThickness="0,1,0,0"
                 Padding="16,8">
             <Grid>

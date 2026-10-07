@@ -164,6 +164,15 @@
   <data name="Confirm.Tool" xml:space="preserve">
     <value>Tool</value>
   </data>
+  <data name="Home.Greeting.Afternoon" xml:space="preserve">
+    <value>Good afternoon.</value>
+  </data>
+  <data name="Home.Greeting.Evening" xml:space="preserve">
+    <value>Good evening.</value>
+  </data>
+  <data name="Home.Greeting.Morning" xml:space="preserve">
+    <value>Good morning.</value>
+  </data>
   <data name="LivingCore.Blocked" xml:space="preserve">
     <value>A task is waiting for your approval in Tasks.</value>
   </data>
