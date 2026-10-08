@@ -71,54 +71,6 @@ internal static class LivingCoreDesign
 
     public const double BobY = -1.3;
 
-    // ---- Idle life (Step 4) ----
-    // Slow, smooth wanders on clocks that share no period with each other or
-    // with the clocks above, so the inside never repeats in step. Sines only:
-    // nothing accelerates sharply, overshoots or bounces.
-
-    /// <summary>
-    /// Star depth parallax, one wander per shimmer group: the groups drift
-    /// against each other, so the field reads as depth rather than one
-    /// turning disc.
-    /// </summary>
-    public static readonly WanderSpec[] StarParallax =
-    [
-        new(1.6, 1.2, 12.7, 17.3, 0.00, 0.31),
-        new(2.2, 1.6, 10.1, 14.9, 0.42, 0.07),
-        new(2.6, 1.9, 15.7, 9.3, 0.18, 0.66),
-        new(1.9, 2.4, 19.1, 13.1, 0.73, 0.55),
-    ];
-
-    /// <summary>Cell wander, one per bob group, on top of the bob.</summary>
-    public static readonly WanderSpec[] CellWander =
-    [
-        new(1.8, 1.2, 9.7, 12.3, 0.00, 0.25),
-        new(1.4, 1.6, 11.9, 8.3, 0.50, 0.10),
-        new(2.0, 1.0, 13.7, 10.9, 0.30, 0.80),
-    ];
-
-    /// <summary>Cell glow: each bob group dims and recovers on its own clock.</summary>
-    public static readonly ClockSpec[] CellGlowClocks =
-    [
-        new(5.8, 0.0), new(7.4, -2.6), new(9.2, -5.1),
-    ];
-
-    /// <summary>How far a cell group dims at the bottom of its glow, 0 to 1.</summary>
-    public const double CellGlowDepth = 0.22;
-
-    /// <summary>
-    /// White core idle drift: two slow sines per axis. Each axis stays under
-    /// the hero board's 1.5% of the 120-unit box (1.8 units).
-    /// </summary>
-    public static readonly WanderSpec[] CoreDrift =
-    [
-        new(1.3, 0.8, 11.3, 8.9, 0.00, 0.17),
-        new(0.4, 0.3, 4.7, 3.9, 0.20, 0.60),
-    ];
-
-    /// <summary>The hero board's limit on idle drift, per axis, design units.</summary>
-    public const double CoreDriftLimit = 1.8;
-
     /// <summary>Thinking links between cells, with each signal's CSS delay.</summary>
     public static readonly LinkSpec[] Links =
     [
@@ -197,23 +149,6 @@ internal enum CellTone
 
 /// <summary>A periodic clock: period and CSS animation delay, seconds.</summary>
 internal readonly record struct ClockSpec(double Period, double Delay);
-
-/// <summary>
-/// A smooth two-axis wander: <c>x = AmplitudeX · sin 2π(t / PeriodX + PhaseX)</c>,
-/// and the same for y. Design units and seconds.
-/// </summary>
-internal readonly record struct WanderSpec(
-    double AmplitudeX,
-    double AmplitudeY,
-    double PeriodX,
-    double PeriodY,
-    double PhaseX,
-    double PhaseY)
-{
-    public double X(double time) => AmplitudeX * Math.Sin(2.0 * Math.PI * ((time / PeriodX) + PhaseX));
-
-    public double Y(double time) => AmplitudeY * Math.Sin(2.0 * Math.PI * ((time / PeriodY) + PhaseY));
-}
 
 /// <summary>A Thinking link between two cell centres.</summary>
 internal readonly record struct LinkSpec(double X1, double Y1, double X2, double Y2, double Delay)

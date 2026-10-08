@@ -110,6 +110,9 @@ public static class LivingCoreEasings
     /// <summary>ease.settle (.22, 1, .36, 1): returns and state changes.</summary>
     public static readonly CubicBezierEasing Settle = new(0.22, 1.0, 0.36, 1.0);
 
+    /// <summary>ease.sink (.45, 0, .55, 1): sleep.</summary>
+    public static readonly CubicBezierEasing Sink = new(0.45, 0.0, 0.55, 1.0);
+
     /// <summary>CSS ease-in-out (.42, 0, .58, 1): shimmer, bob, drift.</summary>
     public static readonly CubicBezierEasing InOut = new(0.42, 0.0, 0.58, 1.0);
 

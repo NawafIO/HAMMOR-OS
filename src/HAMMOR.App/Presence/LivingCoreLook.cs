@@ -23,14 +23,20 @@ public struct CoreLook
     /// <summary>Glow intensity relative to Idle.</summary>
     public double Glow;
 
+    /// <summary>Glow size relative to Idle; below 1 the glow narrows (Warning).</summary>
+    public double GlowSize;
+
     /// <summary>Thin attention ring (Listening), 0 to 1.</summary>
     public double AttentionRing;
 
     /// <summary>Speech ring around the core (Speaking), 0 to 1.</summary>
     public double SpeakRing;
 
-    /// <summary>Idle micro-drift strength, 0 to 1.</summary>
+    /// <summary>Idle micro-drift strength, 0 to 1. Idle glances and the pointer need it too.</summary>
     public double Drift;
+
+    /// <summary>A dim warm ember instead of white (Sleep), 0 to 1.</summary>
+    public double Ember;
 
     public static CoreLook Lerp(in CoreLook a, in CoreLook b, double t) => new()
     {
@@ -39,9 +45,11 @@ public struct CoreLook
         Scale = LookMath.Mix(a.Scale, b.Scale, t),
         Opacity = LookMath.Mix(a.Opacity, b.Opacity, t),
         Glow = LookMath.Mix(a.Glow, b.Glow, t),
+        GlowSize = LookMath.Mix(a.GlowSize, b.GlowSize, t),
         AttentionRing = LookMath.Mix(a.AttentionRing, b.AttentionRing, t),
         SpeakRing = LookMath.Mix(a.SpeakRing, b.SpeakRing, t),
         Drift = LookMath.Mix(a.Drift, b.Drift, t),
+        Ember = LookMath.Mix(a.Ember, b.Ember, t),
     };
 }
 
@@ -53,7 +61,7 @@ public struct InsideLook
 {
     public double StarOpacity;
 
-    /// <summary>Star field scale about the centre (bloom on entrance).</summary>
+    /// <summary>Star field scale about the centre.</summary>
     public double StarScale;
 
     /// <summary>Shimmer clock rate; 2 doubles the tempo.</summary>
@@ -65,21 +73,24 @@ public struct InsideLook
     /// <summary>Field drift rate; 1 = one turn in 240 s.</summary>
     public double StarDriftSpeed;
 
-    /// <summary>
-    /// Depth parallax: the four star groups wander against each other on
-    /// their own slow clocks; 1 = the Idle reach (at most 2.6 units).
-    /// </summary>
-    public double StarParallax;
-
     public double CellOpacity;
 
     /// <summary>Cell school scale about the lens centre; below 1 leans in.</summary>
     public double CellSpread;
 
+    /// <summary>Vertical squash of the school; below 1 it settles like sediment (Sleep).</summary>
+    public double CellSquash;
+
+    /// <summary>Horizontal narrowing of the school, so the sediment stays inside the membrane (Sleep).</summary>
+    public double CellNarrow;
+
+    /// <summary>How far the school sinks, design units (Sleep).</summary>
+    public double CellDrop;
+
     /// <summary>School drift rate; 1 = one turn in 140 s.</summary>
     public double CellDriftSpeed;
 
-    /// <summary>Per-cell bob, wander and glow strength; 0 stops random drifting.</summary>
+    /// <summary>Per-cell bob strength; 0 stops random drifting.</summary>
     public double CellBob;
 
     /// <summary>Processing links between cells (Thinking).</summary>
@@ -98,6 +109,12 @@ public struct InsideLook
 
     /// <summary>Deliberate lens turn; 1 = ±5° (Thinking).</summary>
     public double LensPrecession;
+
+    /// <summary>Lens height; 0.8 narrows it (Warning).</summary>
+    public double LensNarrow;
+
+    /// <summary>Crest offset, design units; negative rises (Warning: −4).</summary>
+    public double CrestLift;
 
     /// <summary>Outer lateral line opacity.</summary>
     public double LateralA;
@@ -121,9 +138,11 @@ public struct InsideLook
         StarShimmerSpeed = LookMath.Mix(a.StarShimmerSpeed, b.StarShimmerSpeed, t),
         StarShimmerDepth = LookMath.Mix(a.StarShimmerDepth, b.StarShimmerDepth, t),
         StarDriftSpeed = LookMath.Mix(a.StarDriftSpeed, b.StarDriftSpeed, t),
-        StarParallax = LookMath.Mix(a.StarParallax, b.StarParallax, t),
         CellOpacity = LookMath.Mix(a.CellOpacity, b.CellOpacity, t),
         CellSpread = LookMath.Mix(a.CellSpread, b.CellSpread, t),
+        CellSquash = LookMath.Mix(a.CellSquash, b.CellSquash, t),
+        CellNarrow = LookMath.Mix(a.CellNarrow, b.CellNarrow, t),
+        CellDrop = LookMath.Mix(a.CellDrop, b.CellDrop, t),
         CellDriftSpeed = LookMath.Mix(a.CellDriftSpeed, b.CellDriftSpeed, t),
         CellBob = LookMath.Mix(a.CellBob, b.CellBob, t),
         LinkOpacity = LookMath.Mix(a.LinkOpacity, b.LinkOpacity, t),
@@ -132,6 +151,8 @@ public struct InsideLook
         LensOpacity = LookMath.Mix(a.LensOpacity, b.LensOpacity, t),
         LensSway = LookMath.Mix(a.LensSway, b.LensSway, t),
         LensPrecession = LookMath.Mix(a.LensPrecession, b.LensPrecession, t),
+        LensNarrow = LookMath.Mix(a.LensNarrow, b.LensNarrow, t),
+        CrestLift = LookMath.Mix(a.CrestLift, b.CrestLift, t),
         LateralA = LookMath.Mix(a.LateralA, b.LateralA, t),
         LateralB = LookMath.Mix(a.LateralB, b.LateralB, t),
         LateralFlowSpeed = LookMath.Mix(a.LateralFlowSpeed, b.LateralFlowSpeed, t),
@@ -141,13 +162,14 @@ public struct InsideLook
 }
 
 /// <summary>
-/// Halo rings and light threads. Third cascade group (0.4 to 1.2 s).
+/// Halo rings, light threads and the body of the core. Third cascade group
+/// (0.4 to 1.2 s).
 /// </summary>
 public struct HaloLook
 {
     public double HaloOpacity;
 
-    /// <summary>Halo and thread scale about the centre (arrival on entrance).</summary>
+    /// <summary>Halo and thread scale about the centre.</summary>
     public double HaloScale;
 
     /// <summary>Ring breathing strength; 1 = ±1.4% over 6.4 s.</summary>
@@ -156,8 +178,23 @@ public struct HaloLook
     /// <summary>Uneven inner-ring rhythm (Error), 0 to 1.</summary>
     public double HaloIrregular;
 
-    /// <summary>Rim and inner ring shift from accent to the danger tone.</summary>
+    /// <summary>The inner ring tightens and holds (Warning), 0 to 1.</summary>
+    public double HaloTight;
+
+    /// <summary>The inner ring moves with the user's input (Listening), 0 to 1.</summary>
+    public double Vox;
+
+    /// <summary>Rim and inner ring shift from accent to the danger tone (Error).</summary>
     public double RimDanger;
+
+    /// <summary>Rim and inner ring shift to the success tone (Success).</summary>
+    public double RimSuccess;
+
+    /// <summary>Rim and inner ring shift to the warning tone (Warning).</summary>
+    public double RimWarning;
+
+    /// <summary>The amber segment that marks a concern (Warning).</summary>
+    public double WarningMark;
 
     public double ThreadOpacity;
 
@@ -188,11 +225,20 @@ public struct HaloLook
     /// <summary>Rings pulsing outward (Speaking), 0 to 1.</summary>
     public double OutwardRings;
 
-    /// <summary>
-    /// Gain for rings drawing inward with the user's voice (Listening). Only
-    /// visible when a real voice envelope is connected; never faked.
-    /// </summary>
+    /// <summary>Rings drawing inward toward the core (Listening), 0 to 1.</summary>
     public double InwardRings;
+
+    /// <summary>Scale of the whole body about the centre (Sleep: 86%).</summary>
+    public double BodyScale;
+
+    /// <summary>How far the whole body sinks, design units (Sleep: 9).</summary>
+    public double BodyDrop;
+
+    /// <summary>Light of the whole body (Sleep: 60%).</summary>
+    public double BodyOpacity;
+
+    /// <summary>The body's slow sleeping breath, 0 to 1.</summary>
+    public double BodyBreath;
 
     public static HaloLook Lerp(in HaloLook a, in HaloLook b, double t) => new()
     {
@@ -200,7 +246,12 @@ public struct HaloLook
         HaloScale = LookMath.Mix(a.HaloScale, b.HaloScale, t),
         HaloBreath = LookMath.Mix(a.HaloBreath, b.HaloBreath, t),
         HaloIrregular = LookMath.Mix(a.HaloIrregular, b.HaloIrregular, t),
+        HaloTight = LookMath.Mix(a.HaloTight, b.HaloTight, t),
+        Vox = LookMath.Mix(a.Vox, b.Vox, t),
         RimDanger = LookMath.Mix(a.RimDanger, b.RimDanger, t),
+        RimSuccess = LookMath.Mix(a.RimSuccess, b.RimSuccess, t),
+        RimWarning = LookMath.Mix(a.RimWarning, b.RimWarning, t),
+        WarningMark = LookMath.Mix(a.WarningMark, b.WarningMark, t),
         ThreadOpacity = LookMath.Mix(a.ThreadOpacity, b.ThreadOpacity, t),
         ThreadSpeed1 = LookMath.Mix(a.ThreadSpeed1, b.ThreadSpeed1, t),
         ThreadSpeed2 = LookMath.Mix(a.ThreadSpeed2, b.ThreadSpeed2, t),
@@ -212,6 +263,10 @@ public struct HaloLook
         FragmentOpacity = LookMath.Mix(a.FragmentOpacity, b.FragmentOpacity, t),
         OutwardRings = LookMath.Mix(a.OutwardRings, b.OutwardRings, t),
         InwardRings = LookMath.Mix(a.InwardRings, b.InwardRings, t),
+        BodyScale = LookMath.Mix(a.BodyScale, b.BodyScale, t),
+        BodyDrop = LookMath.Mix(a.BodyDrop, b.BodyDrop, t),
+        BodyOpacity = LookMath.Mix(a.BodyOpacity, b.BodyOpacity, t),
+        BodyBreath = LookMath.Mix(a.BodyBreath, b.BodyBreath, t),
     };
 }
 
@@ -246,7 +301,7 @@ public struct AuraLook
 /// <summary>
 /// One complete look: the numbers a state is made of. States differ only in
 /// these values, which is what lets a new state be added without touching the
-/// engine or the renderer.
+/// renderer.
 /// </summary>
 public struct LivingCoreLook
 {

@@ -106,6 +106,15 @@ public partial class MainWindow : FluentWindow
         // Blocked tasks put a dot on the Tasks row.
         _blockedTasks.CountChanged += OnBlockedTasksChanged;
 
+        // The Living Core sleeps after ten quiet minutes or when minimised,
+        // and wakes when the user comes back. Preview events reach the window
+        // first, so every key, click and move counts.
+        PreviewKeyDown += OnUserActivity;
+        PreviewMouseDown += OnUserActivity;
+        PreviewMouseWheel += OnUserActivity;
+        PreviewMouseMove += OnUserActivity;
+        StateChanged += OnWindowStateChanged;
+
         Loaded += OnLoaded;
         Closed += OnWindowClosed;
     }
@@ -156,8 +165,20 @@ public partial class MainWindow : FluentWindow
         if (!_adjustingPane)
         {
             _layoutStore.Save(new ShellLayout { SidebarCollapsed = !RootNavigation.IsPaneOpen });
+
+            // The user opened the navigation pane beside the Living Core: it
+            // glances toward the pane and its light leans that way.
+            if (RootNavigation.IsPaneOpen && _currentPage is ChatPage)
+            {
+                _presence.NotifyPanelOpened();
+            }
         }
     }
+
+    private void OnUserActivity(object sender, InputEventArgs e) => _presence.ReportUserActivity();
+
+    private void OnWindowStateChanged(object? sender, EventArgs e) =>
+        _presence.SetWindowMinimized(WindowState == WindowState.Minimized);
 
     /// <summary>Leaves Settings for the page it was opened from.</summary>
     public void LeaveSettings() => RootNavigation.Navigate(_pageBeforeSettings);
@@ -310,6 +331,11 @@ public partial class MainWindow : FluentWindow
 
     private void OnWindowClosed(object? sender, EventArgs e)
     {
+        PreviewKeyDown -= OnUserActivity;
+        PreviewMouseDown -= OnUserActivity;
+        PreviewMouseWheel -= OnUserActivity;
+        PreviewMouseMove -= OnUserActivity;
+        StateChanged -= OnWindowStateChanged;
         _localization.LanguageChanged -= OnLanguageChanged;
         _blockedTasks.CountChanged -= OnBlockedTasksChanged;
         RootNavigation.PaneOpened -= OnPaneStateChanged;

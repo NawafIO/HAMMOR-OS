@@ -203,6 +203,18 @@
   <data name="LivingCore.Listening" xml:space="preserve">
     <value>هامور منتبه إليك.</value>
   </data>
+  <data name="LivingCore.Success" xml:space="preserve">
+    <value>أنجز هامور ما بدأه.</value>
+  </data>
+  <data name="LivingCore.Warning" xml:space="preserve">
+    <value>هامور ينتظر تأكيدك لإجراء حساس.</value>
+  </data>
+  <data name="LivingCore.Sleep" xml:space="preserve">
+    <value>هامور في راحة.</value>
+  </data>
+  <data name="LivingCore.Wake" xml:space="preserve">
+    <value>هامور يستيقظ.</value>
+  </data>
   <data name="LivingCore.Speaking" xml:space="preserve">
     <value>هامور يتحدث.</value>
   </data>

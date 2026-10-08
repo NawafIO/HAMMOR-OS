@@ -60,12 +60,12 @@ public sealed class LivingCoreMotionTests
         Assert.Equal(0.0, frame.AuraOpacity);
         Assert.Equal(0.0, frame.ThreadsOpacity);
 
+        // The app opens with the reference's Wake ignition: 2.4 s, the aura
+        // and the threads arriving last, at its end.
         motion.Advance(2.0, NoVoice, Leading, frame);
+        Assert.True(frame.AuraOpacity < 0.7, $"aura at 2.0 s {frame.AuraOpacity}");
+        motion.Advance(LivingCoreMotion.WakeSeconds, NoVoice, Leading, frame);
         Assert.True(frame.AuraOpacity > 0.7, $"aura {frame.AuraOpacity}");
-
-        // Since Step 4 the arrived threads breathe light on a 5.2 s clock, so
-        // full light is sampled at the breath's peak, after the cascade.
-        motion.Advance(5.2, NoVoice, Leading, frame);
         Assert.Equal(1.0, frame.ThreadsOpacity);
     }
 
@@ -193,9 +193,8 @@ public sealed class LivingCoreMotionTests
             Assert.InRange(ends[i] - starts[i], 0.5, 3.0);
         }
 
-        // Step 4: the drift reaches 1.7 by 1.1 units, still well short of a glance.
         Assert.Equal(4, restSamples.Count);
-        Assert.All(restSamples, d => Assert.InRange(d, 0.0, 2.1));
+        Assert.All(restSamples, d => Assert.InRange(d, 0.0, 1.0));
     }
 
     [Fact]
@@ -294,13 +293,14 @@ public sealed class LivingCoreMotionTests
     }
 
     [Fact]
-    public void Listening_without_a_microphone_holds_the_core_and_shows_no_voice_rings()
+    public void Listening_holds_the_core_and_draws_the_halo_inward()
     {
         var motion = new LivingCoreMotion(LivingCoreState.Idle, 0.0, fromDormant: false);
         var frame = new LivingCoreFrame();
         MotionHarness.Run(motion, frame, 0.0, 3.0);
         motion.SetState(LivingCoreState.Listening, 3.0);
 
+        var maxInward = 0.0;
         MotionHarness.Run(motion, frame, 3.0, 8.0, (t, f) =>
         {
             if (t < 5.0)
@@ -312,8 +312,12 @@ public sealed class LivingCoreMotionTests
             Assert.Equal(LivingCoreLooks.ZoneY, f.CoreY, 1e-9);
             Assert.Equal(1.12, f.CoreScale, 1e-9);
             Assert.InRange(f.AttentionOpacity, 0.55 - 1e-9, 1.0);
-            Assert.All(f.InwardOpacity, o => Assert.Equal(0.0, o));
+            maxInward = Math.Max(maxInward, f.InwardOpacity.Max());
         });
+
+        // As the prototype: the rings draw in while it listens. Without input
+        // they hold at their resting strength; typing lifts them.
+        Assert.InRange(maxInward, 0.5, 0.55 + 1e-9);
     }
 
     [Theory]
@@ -435,14 +439,16 @@ public sealed class LivingCoreMotionTests
         Assert.NotEqual(glowAtOne, frame.GlowOpacity, 1e-3);
 
         // Listening drops the attention ring's breathing and, without a real
-        // voice level, settles to a still frame.
+        // voice level or typing, settles to a still frame: the rings held in
+        // place at their resting light.
         var listening = new LivingCoreMotion(LivingCoreState.Listening, 0.0, fromDormant: false, reducedMotion: true);
         listening.Advance(1.0, NoVoice, Leading, frame);
         Assert.Equal(1.12, frame.CoreScale, 1e-9);
         Assert.Equal(1.0, frame.AttentionOpacity);
         listening.Advance(2.6, NoVoice, Leading, frame);
         Assert.Equal(1.0, frame.AttentionOpacity);
-        Assert.All(frame.InwardOpacity, o => Assert.Equal(0.0, o));
+        Assert.All(frame.InwardOpacity, o => Assert.Equal(0.55, o, 1e-9));
+        Assert.Equal(new[] { 1.22, 1.12, 1.03 }, frame.InwardScale);
         Assert.False(listening.NeedsContinuousFrames(2.6));
 
         // A real voice level shows the voice rings as light, held in place.

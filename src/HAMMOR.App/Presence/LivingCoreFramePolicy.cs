@@ -8,6 +8,7 @@ namespace HAMMOR.App.Presence;
 /// <param name="InactiveSeconds">How long the window has been in the background; 0 while active.</param>
 /// <param name="Side">The control's drawn size in device-independent pixels.</param>
 /// <param name="MotionNeedsFrames">The motion engine still changes the picture.</param>
+/// <param name="IsResting">The core is settled in Sleep: only its slow breath moves.</param>
 public readonly record struct LivingCoreFrameContext(
     bool IsLoaded,
     bool IsVisible,
@@ -15,7 +16,8 @@ public readonly record struct LivingCoreFrameContext(
     bool IsWindowActive,
     double InactiveSeconds,
     double Side,
-    bool MotionNeedsFrames);
+    bool MotionNeedsFrames,
+    bool IsResting = false);
 
 /// <summary>
 /// The Living Core's frame budget. Pure, so it is tested without WPF.
@@ -29,6 +31,8 @@ public readonly record struct LivingCoreFrameContext(
 /// size a frame moves nothing by more than half a pixel.</item>
 /// <item>30 fps while the window is in the background, then 20 fps after
 /// <see cref="BackgroundAfterSeconds"/>.</item>
+/// <item>10 fps in Sleep once settled (Guardrails board: "10 asleep"): a
+/// 9.6 s breath of a few percent needs no more.</item>
 /// </list>
 /// </remarks>
 public static class LivingCoreFramePolicy
@@ -41,6 +45,9 @@ public static class LivingCoreFramePolicy
 
     /// <summary>Frame interval for a window left in the background: 20 fps.</summary>
     public const double BackgroundInterval = 1.0 / 20.0;
+
+    /// <summary>Frame interval for a core settled in Sleep: 10 fps.</summary>
+    public const double RestingInterval = 1.0 / 10.0;
 
     /// <summary>How long a window stays in the background before it drops to 20 fps.</summary>
     public const double BackgroundAfterSeconds = 45.0;
@@ -66,12 +73,17 @@ public static class LivingCoreFramePolicy
     /// <summary>The shortest time between two drawn frames.</summary>
     public static double MinimumInterval(in LivingCoreFrameContext context)
     {
+        double interval;
         if (!context.IsWindowActive)
         {
-            return context.InactiveSeconds >= BackgroundAfterSeconds ? BackgroundInterval : ReducedInterval;
+            interval = context.InactiveSeconds >= BackgroundAfterSeconds ? BackgroundInterval : ReducedInterval;
+        }
+        else
+        {
+            interval = context.Side > 0.0 && context.Side <= SmallSide ? ReducedInterval : ActiveInterval;
         }
 
-        return context.Side > 0.0 && context.Side <= SmallSide ? ReducedInterval : ActiveInterval;
+        return context.IsResting ? Math.Max(interval, RestingInterval) : interval;
     }
 
     /// <summary>Whether a frame is due <paramref name="sinceLast"/> seconds after the last one.</summary>

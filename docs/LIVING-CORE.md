@@ -53,11 +53,18 @@ Guardrails board.
 The P0 build has no camera, microphone, speech-to-text, pointer-follow, Success,
 Warning, Sleep or Wake. It contains no video, GIF, MP4, Lottie or SkiaSharp.
 
-**Step 4** (branch `claude/living-shell-sidebar`) made the idle motion
-visible within the approved design, added pointer attention in Idle and a
-frame budget, and is described in [LIVING-CORE-MOTION.md](LIVING-CORE-MOTION.md).
-Where the two documents differ on motion amplitudes or frame pacing, that
-one is current. There is still no camera, microphone or speech-to-text.
+**Step 4** (branch `claude/living-shell-sidebar`) reworks the motion to the
+approved reference prototype, and is described in
+[LIVING-CORE-MOTION.md](LIVING-CORE-MOTION.md). It covers:
+
+- all ten states, including Success, Warning, Sleep and Wake;
+- reactions to new messages and to the navigation pane;
+- pointer follow in Idle, with depth;
+- the collision rules;
+- the frame budget.
+
+Where the two documents differ on states, motion or frame pacing, that one is
+current. There is still no camera, microphone or speech-to-text.
 
 ## Architecture
 
@@ -318,7 +325,8 @@ the thread pool and switch EN → AR → EN → AR → EN.
    panel beside the core, so the glance goes toward the navigation pane.
 5. **Startup.** The core arrives through the normal cascade from a dormant
    look: the white core first, the aura last. The full 2.4 s Wake sequence is
-   P1. The splash is a static image.
+   P1. The splash is a static image. (Step 4 replaces this arrival with the
+   Wake ignition.)
 6. **Placement.**
    - **Hero, 180 to 640 px:** on the empty conversation, sized by
      `ChatPage.HeroSizeFor` (see [The Living Home](#the-living-home)).
@@ -407,7 +415,8 @@ Page 1 is a presentation board. These differences remain, some by choice:
   - **Signature check.** Claude Code's Windows binaries are signed by
     "Anthropic, PBC". HAMMOR could check that Authenticode signature before
     starting `claude.exe`; today it relies on the install location.
-- **P1** (from the Guardrails board). All of it reuses the P0 state machine:
+- **P1** (from the Guardrails board). Step 4 implements all of it, unverified
+  on Windows ([LIVING-CORE-MOTION.md](LIVING-CORE-MOTION.md)):
   - Success and Warning.
   - Sleep and Wake: minimise, restore, 10 minutes idle, 10 fps asleep.
   - Pointer follow with parallax: 450 ms lag, 24 px dead zone.

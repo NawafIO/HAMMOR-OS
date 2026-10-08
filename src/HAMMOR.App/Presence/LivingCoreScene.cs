@@ -6,15 +6,21 @@ namespace HAMMOR.App.Presence;
 /// <summary>
 /// The Living Core's retained visual tree: nine layers drawn once, in design
 /// units, then moved every frame only through transforms, opacity, offsets
-/// and two dash offsets.
+/// and dash offsets.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Every geometry, brush and pen is created and frozen here, at construction.
-/// <see cref="Apply"/> writes values into existing transforms, visual offsets
-/// and opacities, and skips any value that did not change, so a frame
-/// allocates nothing beyond the boxing WPF itself does for dependency-property
-/// doubles.
+/// Every geometry and brush is created and frozen here, at construction, and
+/// every pen except the five whose dashes move (two energy lines, two lateral
+/// lines, and the rim line Wake draws around). <see cref="Apply"/>
+/// writes values into existing transforms, visual offsets and opacities, and
+/// skips any value that did not change, so a frame allocates nothing beyond
+/// the boxing WPF itself does for dependency-property doubles.
+/// </para>
+/// <para>
+/// Everything from the halo inward sits in one body container, as in the
+/// approved prototype, so Sleep can sink, shrink and dim the core as one. The
+/// aura, energy lines and state rings stay outside it.
 /// </para>
 /// <para>
 /// No live blur: the design's blurred glows (inner halo ring, thread heads,
@@ -33,15 +39,27 @@ internal sealed class LivingCoreScene
     private static readonly Color Danger = Color.FromRgb(0xED, 0x53, 0x50);
     private static readonly Color White = Color.FromRgb(0xFF, 0xFF, 0xFF);
 
+    // ---- State tones of the approved prototype ----
+    private static readonly Color SuccessTone = Color.FromRgb(0x6A, 0xD8, 0x95);
+    private static readonly Color WarningTone = Color.FromRgb(0xE9, 0x9B, 0x2A);
+    private static readonly Color EmberTone = Color.FromRgb(0xE9, 0xC9, 0xA8);
+    private static readonly Color WarmTone = Color.FromRgb(0x9B, 0x6A, 0x4A);
+
     private const double Energy1Width = 0.45;
     private const double Energy2Width = 0.4;
     private const double LateralWidth = 0.6;
+    private const double RimWidth = 0.7;
+    private const double RimLength = 2.0 * Math.PI * LivingCoreDesign.MembraneRadius;
 
     private readonly ContainerVisual _root = new();
     private readonly MatrixTransform _rootTransform = new();
 
+    // 0 · Aura and the Success bloom; both lean toward an opening panel.
+    private readonly ContainerVisual _auraGroup = new();
     private readonly DrawingVisual _aura;
     private readonly ScaleTransform _auraScale = Centred(1.0);
+    private readonly DrawingVisual _warm;
+    private readonly ScaleTransform _warmScale = Centred(1.0);
 
     private readonly DrawingVisual _energy1;
     private readonly DrawingVisual _energy2;
@@ -54,12 +72,22 @@ internal sealed class LivingCoreScene
     private readonly ScaleTransform[] _inwardScale = [Centred(1.0), Centred(1.0), Centred(1.0)];
     private readonly DrawingVisual[] _outward = new DrawingVisual[3];
     private readonly ScaleTransform[] _outwardScale = [Centred(1.0), Centred(1.0), Centred(1.0)];
+    private readonly DrawingVisual _successRing;
+    private readonly ScaleTransform _successRingScale = Centred(1.0);
     private readonly DrawingVisual _gapRing;
+    private readonly DrawingVisual _warningMark;
+
+    // The body: everything from the halo inward.
+    private readonly ContainerVisual _body = new();
+    private readonly ScaleTransform _bodyScale = Centred(1.0);
+    private readonly TranslateTransform _bodyShift = new();
 
     private readonly DrawingVisual[] _halo = new DrawingVisual[3];
     private readonly ScaleTransform[] _haloScale = [Centred(1.0), Centred(1.0), Centred(1.0)];
     private readonly DrawingVisual _haloDanger;
-    private readonly ScaleTransform _haloDangerScale = Centred(1.0);
+    private readonly DrawingVisual _haloSuccess;
+    private readonly DrawingVisual _haloWarning;
+    private readonly ScaleTransform _haloToneScale = Centred(1.0);
 
     private readonly ContainerVisual _threads = new();
     private readonly ScaleTransform _threadsScale = Centred(1.0);
@@ -70,7 +98,11 @@ internal sealed class LivingCoreScene
     private readonly RotateTransform _fragment2Rotate = Rotation();
 
     private readonly DrawingVisual _rimAccent;
+    private readonly DrawingVisual _rimAccentLine;
+    private readonly DashStyle _rimDash = new([RimLength / RimWidth, RimLength / RimWidth], 0.0);
     private readonly DrawingVisual _rimDanger;
+    private readonly DrawingVisual _rimSuccess;
+    private readonly DrawingVisual _rimWarning;
     private readonly DrawingVisual _crack;
 
     private readonly ContainerVisual _stars = new();
@@ -80,6 +112,7 @@ internal sealed class LivingCoreScene
 
     private readonly ContainerVisual _cellsWrap = new();
     private readonly ScaleTransform _cellsSpread = new(1.0, 1.0, LivingCoreLooks.ZoneX, LivingCoreLooks.ZoneY);
+    private readonly TranslateTransform _cellsDrop = new();
     private readonly ContainerVisual _cellsTurn = new();
     private readonly RotateTransform _cellsRotate = Rotation();
     private readonly DrawingVisual _links;
@@ -96,11 +129,16 @@ internal sealed class LivingCoreScene
     private readonly DashStyle _lateralBDash = new([1.6 / LateralWidth, 2.0 / LateralWidth], 0.0);
 
     private readonly ContainerVisual _lens = new();
+    private readonly ScaleTransform _lensScale = Centred(1.0);
     private readonly RotateTransform _lensRotate = Rotation();
     private readonly RotateTransform _crestRotate = Rotation();
+    private readonly TranslateTransform _crestShift = new();
 
     private readonly DrawingVisual _voiceWave;
     private readonly ScaleTransform _voiceWaveScale = new(1.0, 1.0, 60.0, 92.0);
+
+    private readonly DrawingVisual _ripple;
+    private readonly ScaleTransform _rippleScale = Centred(1.0);
 
     private readonly ContainerVisual _core = new();
     private readonly DrawingVisual _attention;
@@ -110,6 +148,7 @@ internal sealed class LivingCoreScene
     private readonly ScaleTransform _glowScale = new(1.0, 1.0, 0.0, 0.0);
     private readonly DrawingVisual _speakRing;
     private readonly DrawingVisual _coreDot;
+    private readonly DrawingVisual _ember;
 
     private Size _size;
     private bool _mirrored;
@@ -118,10 +157,15 @@ internal sealed class LivingCoreScene
     {
         _root.Transform = _rootTransform;
 
-        // ---- 0 · Aura ----
+        // ---- 0 · Aura, and the warm bloom of Success; they lean together ----
         _aura = Draw(dc => dc.DrawEllipse(AuraBrush(), null, CentrePoint, 100.0, 100.0));
         _aura.Transform = _auraScale;
-        Add(_root, _aura);
+        Add(_auraGroup, _aura);
+        _warm = Draw(dc => dc.DrawEllipse(WarmBrush(), null, CentrePoint, 96.0, 96.0));
+        _warm.Transform = _warmScale;
+        Hide(_warm);
+        Add(_auraGroup, _warm);
+        Add(_root, _auraGroup);
 
         // ---- 1 · Energy lines: turn slowly while their dashes flow ----
         _energy2 = Draw(dc => dc.DrawGeometry(null, FlowPen(Accent, 0.10, Energy2Width, _energy2Dash), Polygon(LivingCoreDesign.EnergyLine2)));
@@ -152,26 +196,49 @@ internal sealed class LivingCoreScene
             Add(_root, _outward[k]);
         }
 
+        // Success: one clean ring expands and dissolves.
+        _successRing = Draw(dc => dc.DrawEllipse(null, PenOf(SuccessTone, 1.0, 1.2), CentrePoint, 56.0, 56.0));
+        _successRing.Transform = _successRingScale;
+        Hide(_successRing);
+        Add(_root, _successRing);
+
         // Blocked: the territory ring opens a 24-unit gap at the top, where
         // the work paused.
         _gapRing = Draw(dc => dc.DrawGeometry(null, PenOf(Pearl, 0.3, 0.8), Arc(62.0, 304.2, (2.0 * Math.PI * 62.0) - 24.0)));
         Hide(_gapRing);
         Add(_root, _gapRing);
 
+        // Warning: one amber segment marks the concern, up and forward.
+        _warningMark = Draw(dc => dc.DrawGeometry(null, PenOf(WarningTone, 1.0, 2.2), Parse("M 91,6.3 A 62,62 0 0 1 117.6,37.2")));
+        Hide(_warningMark);
+        Add(_root, _warningMark);
+
+        // ---- The body: Sleep sinks and dims everything from here inward ----
+        var bodyTransform = new TransformGroup();
+        bodyTransform.Children.Add(_bodyScale);
+        bodyTransform.Children.Add(_bodyShift);
+        _body.Transform = bodyTransform;
+
         // ---- 2 · Halo rings: inner glowing, a third of a cycle apart ----
         _halo[2] = Draw(dc => dc.DrawEllipse(null, PenOf(Pearl, 0.07, 0.35), CentrePoint, 66.5, 66.5));
         _halo[1] = Draw(dc => dc.DrawEllipse(null, PenOf(Accent, 0.14, 0.4), CentrePoint, 61.5, 61.5));
         _halo[0] = Draw(dc => DrawInnerHalo(dc, Accent));
-        _haloDanger = Draw(dc => DrawInnerHalo(dc, Danger));
         for (var i = 2; i >= 0; i--)
         {
             _halo[i].Transform = _haloScale[i];
-            Add(_root, _halo[i]);
+            Add(_body, _halo[i]);
         }
 
-        _haloDanger.Transform = _haloDangerScale;
-        Hide(_haloDanger);
-        Add(_root, _haloDanger);
+        // The inner ring in each state tone, crossfaded over the accent one.
+        _haloDanger = Draw(dc => DrawInnerHalo(dc, Danger));
+        _haloSuccess = Draw(dc => DrawInnerHalo(dc, SuccessTone));
+        _haloWarning = Draw(dc => DrawInnerHalo(dc, WarningTone));
+        foreach (var tone in new[] { _haloDanger, _haloSuccess, _haloWarning })
+        {
+            tone.Transform = _haloToneScale;
+            Hide(tone);
+            Add(_body, tone);
+        }
 
         // ---- 3 · Light threads ----
         _threads.Transform = _threadsScale;
@@ -183,7 +250,7 @@ internal sealed class LivingCoreScene
             Add(_threads, thread);
         }
 
-        Add(_root, _threads);
+        Add(_body, _threads);
 
         // Blocked: threads gathered at the top.
         _park = Draw(dc =>
@@ -193,7 +260,7 @@ internal sealed class LivingCoreScene
             dc.DrawGeometry(null, PenOf(Pearl, 0.45, 0.8), Parse("M 44,2.9 A 59,59 0 0 1 76,2.9"));
         });
         Hide(_park);
-        Add(_root, _park);
+        Add(_body, _park);
 
         // Error: threads broken into slow fragments.
         var fragment1 = Draw(dc => dc.DrawEllipse(null, DashedPen(Accent, 0.35, 0.8, [6, 9, 3, 14, 8, 22, 2, 30, 5, 41, 4, 60, 10, 66.7]), CentrePoint, 59.0, 59.0));
@@ -203,21 +270,31 @@ internal sealed class LivingCoreScene
         Add(_fragments, fragment1);
         Add(_fragments, fragment2);
         Hide(_fragments);
-        Add(_root, _fragments);
+        Add(_body, _fragments);
 
         // ---- 4 · Membrane: dark glass, lit rim, one faint highlight ----
-        Add(_root, Draw(dc => dc.DrawEllipse(BodyBrush(), null, CentrePoint, LivingCoreDesign.MembraneRadius, LivingCoreDesign.MembraneRadius)));
-        _rimAccent = Draw(dc => DrawRim(dc, Accent));
+        Add(_body, Draw(dc => dc.DrawEllipse(BodyBrush(), null, CentrePoint, LivingCoreDesign.MembraneRadius, LivingCoreDesign.MembraneRadius)));
+
+        // The accent rim's line has its own pen so Wake can draw it around.
+        _rimAccent = Draw(dc => DrawRimGlow(dc, Accent));
+        _rimAccentLine = Draw(dc => dc.DrawEllipse(null, RimDrawPen(), CentrePoint, LivingCoreDesign.MembraneRadius, LivingCoreDesign.MembraneRadius));
         _rimDanger = Draw(dc => DrawRim(dc, Danger));
+        _rimSuccess = Draw(dc => DrawRim(dc, SuccessTone));
+        _rimWarning = Draw(dc => DrawRim(dc, WarningTone));
         Hide(_rimDanger);
-        Add(_root, _rimAccent);
-        Add(_root, _rimDanger);
-        Add(_root, Draw(dc => dc.DrawGeometry(null, PenOf(White, 0.07, 2.2), Parse("M 16.77,44.27 A 46,46 0 0 1 44.27,16.77"))));
+        Hide(_rimSuccess);
+        Hide(_rimWarning);
+        Add(_body, _rimAccent);
+        Add(_body, _rimAccentLine);
+        Add(_body, _rimDanger);
+        Add(_body, _rimSuccess);
+        Add(_body, _rimWarning);
+        Add(_body, Draw(dc => dc.DrawGeometry(null, PenOf(White, 0.07, 2.2), Parse("M 16.77,44.27 A 46,46 0 0 1 44.27,16.77"))));
 
         // Error: a restrained hairline split.
         _crack = Draw(dc => dc.DrawGeometry(null, PenOf(Danger, 1.0, 0.8), Parse("M 94.8,25.2 L 89,33 L 92,36 L 85,44")));
         Hide(_crack);
-        Add(_root, _crack);
+        Add(_body, _crack);
 
         // ---- 5 · Deep stars: one visual per shimmer clock ----
         var starTransform = new TransformGroup();
@@ -240,10 +317,13 @@ internal sealed class LivingCoreScene
             Add(_stars, _starClock[k]);
         }
 
-        Add(_root, _stars);
+        Add(_body, _stars);
 
         // ---- 6 · Floating cells, their Thinking links and signals ----
-        _cellsWrap.Transform = _cellsSpread;
+        var cellsTransform = new TransformGroup();
+        cellsTransform.Children.Add(_cellsSpread);
+        cellsTransform.Children.Add(_cellsDrop);
+        _cellsWrap.Transform = cellsTransform;
         _cellsTurn.Transform = _cellsRotate;
         _links = Draw(dc =>
         {
@@ -281,7 +361,7 @@ internal sealed class LivingCoreScene
         }
 
         Add(_cellsWrap, _cellsTurn);
-        Add(_root, _cellsWrap);
+        Add(_body, _cellsWrap);
 
         // Thinking: orbit lanes.
         var orbit1 = Draw(dc => dc.DrawGeometry(null, DashedPen(Accent, 0.35, 0.5, [1, 2]), Ellipse(40.0, 14.0, -18.0)));
@@ -291,17 +371,24 @@ internal sealed class LivingCoreScene
         Add(_orbits, orbit1);
         Add(_orbits, orbit2);
         Hide(_orbits);
-        Add(_root, _orbits);
+        Add(_body, _orbits);
 
         // ---- 7 · Lens current: lateral lines flow, the crest sways ----
         _lateralA = Draw(dc => dc.DrawGeometry(null, FlowPen(Accent, 1.0, LateralWidth, _lateralADash, round: true), Parse("M 28.2,62.1 A 37.5,37.5 0 0 1 78.75,49.5")));
         _lateralB = Draw(dc => dc.DrawGeometry(null, FlowPen(Accent, 1.0, LateralWidth, _lateralBDash, round: true), Parse("M 35.5,61.4 A 32,32 0 0 1 72,52.3")));
-        Add(_root, _lateralA);
-        Add(_root, _lateralB);
+        Add(_body, _lateralA);
+        Add(_body, _lateralB);
 
-        _lens.Transform = _lensRotate;
+        // Scale first (Warning narrows it, Wake sweeps it in), then the turn.
+        var lensTransform = new TransformGroup();
+        lensTransform.Children.Add(_lensScale);
+        lensTransform.Children.Add(_lensRotate);
+        _lens.Transform = lensTransform;
         var crest = Draw(dc => dc.DrawGeometry(CrestBrush(), null, Parse("M 21.9,60 A 44,44 0 0 1 98.1,60 A 51.19,51.19 0 0 0 21.9,60 Z")));
-        crest.Transform = _crestRotate;
+        var crestTransform = new TransformGroup();
+        crestTransform.Children.Add(_crestRotate);
+        crestTransform.Children.Add(_crestShift);
+        crest.Transform = crestTransform;
         Add(_lens, crest);
         Add(_lens, Draw(dc =>
         {
@@ -311,14 +398,20 @@ internal sealed class LivingCoreScene
             dc.DrawEllipse(Solid(Accent, 0.55), null, new Point(18.0, 64.5), 0.8, 0.8);
             dc.DrawEllipse(Solid(Accent, 0.38), null, new Point(14.2, 66.0), 0.6, 0.6);
         }));
-        Add(_root, _lens);
+        Add(_body, _lens);
 
         // Speaking: the voice along the lower membrane.
         _voiceWave = Draw(dc => dc.DrawGeometry(null, PenOf(Accent, 1.0, 1.0), Parse(
             "M 30,92 Q 33.75,89 37.5,92 Q 41.25,95 45,92 Q 48.75,86 52.5,92 Q 56.25,98 60,92 Q 63.75,85 67.5,92 Q 71.25,99 75,92 Q 78.75,88 82.5,92 Q 86.25,95 90,92")));
         _voiceWave.Transform = _voiceWaveScale;
         Hide(_voiceWave);
-        Add(_root, _voiceWave);
+        Add(_body, _voiceWave);
+
+        // A new message: one soft ripple leaves the membrane.
+        _ripple = Draw(dc => dc.DrawEllipse(null, PenOf(Accent, 1.0, 1.0), CentrePoint, LivingCoreDesign.MembraneRadius, LivingCoreDesign.MembraneRadius));
+        _ripple.Transform = _rippleScale;
+        Hide(_ripple);
+        Add(_body, _ripple);
 
         // ---- 8 · White core: the nearest layer and the only white ----
         _attention = Draw(dc => dc.DrawEllipse(null, PenOf(Pearl, 0.8, 0.7), new Point(0.0, 0.0), 12.5, 12.5));
@@ -329,14 +422,21 @@ internal sealed class LivingCoreScene
         Hide(_speakRing);
         _coreDot = Draw(dc => dc.DrawEllipse(CoreBrush(), null, new Point(0.0, 0.0), 7.0, 7.0));
 
+        // Sleep: a dim warm ember over the white, crossfaded.
+        _ember = Draw(dc => dc.DrawEllipse(Solid(EmberTone, 1.0), null, new Point(0.0, 0.0), 7.0, 7.0));
+        Hide(_ember);
+
         _coreScaled.Transform = _coreScale;
         Add(_coreScaled, _glow);
         Add(_coreScaled, _speakRing);
         Add(_coreScaled, _coreDot);
+        Add(_coreScaled, _ember);
         Add(_core, _attention);
         Add(_core, _coreScaled);
         _core.Offset = new Vector(LivingCoreLooks.RestX, LivingCoreLooks.RestY);
-        Add(_root, _core);
+        Add(_body, _core);
+
+        Add(_root, _body);
     }
 
     /// <summary>The single visual the control hosts.</summary>
@@ -378,9 +478,15 @@ internal sealed class LivingCoreScene
     /// <summary>Moves the retained layers to <paramref name="frame"/>.</summary>
     public void Apply(LivingCoreFrame frame)
     {
-        // 0 · Aura
+        // 0 · Aura and the warm bloom
+        SetOffset(_auraGroup, frame.AuraLeanX, 0.0);
         SetOpacity(_aura, frame.AuraOpacity);
         SetScale(_auraScale, frame.AuraScale);
+        SetOpacity(_warm, frame.WarmOpacity);
+        if (frame.WarmOpacity > 0.0)
+        {
+            SetScale(_warmScale, frame.WarmScale);
+        }
 
         // 1 · Energy lines
         SetOpacity(_energy1, frame.EnergyOpacity);
@@ -409,20 +515,36 @@ internal sealed class LivingCoreScene
             }
         }
 
-        SetOpacity(_gapRing, frame.GapRingOpacity);
+        SetOpacity(_successRing, frame.SuccessRingOpacity);
+        if (frame.SuccessRingOpacity > 0.0)
+        {
+            SetScale(_successRingScale, frame.SuccessRingScale);
+        }
 
-        // 2 · Halo rings; the inner ring crossfades to the danger tone
+        SetOpacity(_gapRing, frame.GapRingOpacity);
+        SetOpacity(_warningMark, frame.WarningMarkOpacity);
+
+        // The body
+        SetScale(_bodyScale, frame.BodyScale);
+        SetTranslate(_bodyShift, 0.0, frame.BodyY);
+        SetOpacity(_body, frame.BodyOpacity);
+
+        // 2 · Halo rings; the inner ring crossfades to the state tones
+        var toned = frame.RimDanger + frame.RimSuccess + frame.RimWarning;
+        var accentShare = Math.Clamp(1.0 - toned, 0.0, 1.0);
         for (var i = 0; i < 3; i++)
         {
-            var light = i == 0 ? frame.HaloOpacity[0] * (1.0 - frame.RimDanger) : frame.HaloOpacity[i];
+            var light = i == 0 ? frame.HaloOpacity[0] * accentShare : frame.HaloOpacity[i];
             SetOpacity(_halo[i], light);
             SetScale(_haloScale[i], frame.HaloScale[i]);
         }
 
         SetOpacity(_haloDanger, frame.HaloOpacity[0] * frame.RimDanger);
-        if (frame.RimDanger > 0.0)
+        SetOpacity(_haloSuccess, frame.HaloOpacity[0] * frame.RimSuccess);
+        SetOpacity(_haloWarning, frame.HaloOpacity[0] * frame.RimWarning);
+        if (toned > 0.0)
         {
-            SetScale(_haloDangerScale, frame.HaloScale[0]);
+            SetScale(_haloToneScale, frame.HaloScale[0]);
         }
 
         // 3 · Threads and their state forms
@@ -444,28 +566,33 @@ internal sealed class LivingCoreScene
             SetAngle(_fragment2Rotate, frame.Fragment2Angle);
         }
 
-        // 4 · Membrane
-        SetOpacity(_rimAccent, 1.0 - frame.RimDanger);
+        // 4 · Membrane: the rim in its tone; Wake draws the line around
+        SetOpacity(_rimAccent, accentShare);
+        SetOpacity(_rimAccentLine, accentShare);
+        SetDashOffset(_rimDash, (1.0 - frame.RimDrawn) * RimLength / RimWidth);
         SetOpacity(_rimDanger, frame.RimDanger);
+        SetOpacity(_rimSuccess, frame.RimSuccess);
+        SetOpacity(_rimWarning, frame.RimWarning);
         SetOpacity(_crack, frame.CrackOpacity);
 
         // 5 · Deep stars
+        SetOffset(_stars, frame.StarsShiftX, frame.StarsShiftY);
         SetScale(_starsScale, frame.StarsScale);
         SetAngle(_starsRotate, frame.StarsAngle);
         for (var k = 0; k < _starClock.Length; k++)
         {
             SetOpacity(_starClock[k], frame.StarClockOpacity[k]);
-            SetOffset(_starClock[k], frame.StarGroupX[k], frame.StarGroupY[k]);
         }
 
         // 6 · Floating cells
         SetOpacity(_cellsWrap, frame.CellsOpacity);
-        SetScale(_cellsSpread, frame.CellsSpread);
+        SetOffset(_cellsWrap, frame.CellsShiftX, frame.CellsShiftY);
+        SetScaleXY(_cellsSpread, frame.CellsSpread, frame.CellsScaleY);
+        SetTranslate(_cellsDrop, 0.0, frame.CellsY);
         SetAngle(_cellsRotate, frame.CellsAngle);
         for (var j = 0; j < _bob.Length; j++)
         {
             SetOffset(_bob[j], frame.BobX[j], frame.BobY[j]);
-            SetOpacity(_bob[j], frame.CellGlow[j]);
         }
 
         SetOpacity(_links, frame.LinkOpacity);
@@ -495,18 +622,27 @@ internal sealed class LivingCoreScene
         }
 
         SetOpacity(_lens, frame.LensOpacity);
+        SetScaleXY(_lensScale, frame.LensScaleX, frame.LensScaleY);
         SetAngle(_lensRotate, frame.LensAngle);
         SetAngle(_crestRotate, frame.CrestAngle);
+        SetTranslate(_crestShift, 0.0, frame.CrestY);
         SetOpacity(_voiceWave, frame.VoiceWaveOpacity);
         if (frame.VoiceWaveOpacity > 0.0)
         {
             SetScaleY(_voiceWaveScale, frame.VoiceWaveScaleY);
         }
 
+        SetOpacity(_ripple, frame.RippleOpacity);
+        if (frame.RippleOpacity > 0.0)
+        {
+            SetScale(_rippleScale, frame.RippleScale);
+        }
+
         // 8 · White core
         SetOffset(_core, frame.CoreX, frame.CoreY);
         SetScale(_coreScale, frame.CoreScale);
         SetOpacity(_coreDot, frame.CoreOpacity);
+        SetOpacity(_ember, frame.EmberOpacity);
         SetOpacity(_glow, frame.GlowOpacity);
         SetScale(_glowScale, frame.GlowScale);
         SetOpacity(_speakRing, frame.SpeakRingOpacity);
@@ -542,10 +678,23 @@ internal sealed class LivingCoreScene
 
     private static void SetScale(ScaleTransform transform, double scale)
     {
-        if (Math.Abs(transform.ScaleX - scale) > 0.00005)
+        if (Math.Abs(transform.ScaleX - scale) > 0.00005 || Math.Abs(transform.ScaleY - scale) > 0.00005)
         {
             transform.ScaleX = scale;
             transform.ScaleY = scale;
+        }
+    }
+
+    private static void SetScaleXY(ScaleTransform transform, double scaleX, double scaleY)
+    {
+        if (Math.Abs(transform.ScaleX - scaleX) > 0.00005)
+        {
+            transform.ScaleX = scaleX;
+        }
+
+        if (Math.Abs(transform.ScaleY - scaleY) > 0.00005)
+        {
+            transform.ScaleY = scaleY;
         }
     }
 
@@ -554,6 +703,19 @@ internal sealed class LivingCoreScene
         if (Math.Abs(transform.ScaleY - scale) > 0.0005)
         {
             transform.ScaleY = scale;
+        }
+    }
+
+    private static void SetTranslate(TranslateTransform transform, double x, double y)
+    {
+        if (Math.Abs(transform.X - x) > 0.001)
+        {
+            transform.X = x;
+        }
+
+        if (Math.Abs(transform.Y - y) > 0.001)
+        {
+            transform.Y = y;
         }
     }
 
@@ -610,6 +772,12 @@ internal sealed class LivingCoreScene
 
     private static void DrawRim(DrawingContext dc, Color tone)
     {
+        DrawRimGlow(dc, tone);
+        dc.DrawEllipse(null, PenOf(tone, 0.55, RimWidth), CentrePoint, LivingCoreDesign.MembraneRadius, LivingCoreDesign.MembraneRadius);
+    }
+
+    private static void DrawRimGlow(DrawingContext dc, Color tone)
+    {
         var rim = new RadialGradientBrush
         {
             MappingMode = BrushMappingMode.Absolute,
@@ -624,7 +792,6 @@ internal sealed class LivingCoreScene
         rim.Freeze();
 
         dc.DrawEllipse(rim, null, CentrePoint, LivingCoreDesign.MembraneRadius, LivingCoreDesign.MembraneRadius);
-        dc.DrawEllipse(null, PenOf(tone, 0.55, 0.7), CentrePoint, LivingCoreDesign.MembraneRadius, LivingCoreDesign.MembraneRadius);
     }
 
     private static void DrawThread(DrawingContext dc, ThreadSpec spec)
@@ -734,6 +901,24 @@ internal sealed class LivingCoreScene
         };
         brush.GradientStops.Add(new GradientStop(WithAlpha(GlowTone, 0.6), 0.0));
         brush.GradientStops.Add(new GradientStop(WithAlpha(GlowTone, 0.18), 0.42));
+        brush.GradientStops.Add(new GradientStop(WithAlpha(GlowTone, 0.0), 1.0));
+        brush.Freeze();
+        return brush;
+    }
+
+    /// <summary>Success: the warm bloom (prototype "pt-warm").</summary>
+    private static Brush WarmBrush()
+    {
+        var brush = new RadialGradientBrush
+        {
+            MappingMode = BrushMappingMode.Absolute,
+            Center = CentrePoint,
+            GradientOrigin = CentrePoint,
+            RadiusX = 96.0,
+            RadiusY = 96.0,
+        };
+        brush.GradientStops.Add(new GradientStop(WithAlpha(Spot, 0.5), 0.0));
+        brush.GradientStops.Add(new GradientStop(WithAlpha(WarmTone, 0.2), 0.38));
         brush.GradientStops.Add(new GradientStop(WithAlpha(GlowTone, 0.0), 1.0));
         brush.Freeze();
         return brush;
@@ -864,4 +1049,16 @@ internal sealed class LivingCoreScene
 
         return pen;
     }
+
+    /// <summary>
+    /// The accent rim line: one dash as long as the rim and one gap as long,
+    /// so moving the offset from a full length to zero draws the rim around
+    /// (Wake). Flat dash ends, so a hidden rim leaves no dot.
+    /// </summary>
+    private Pen RimDrawPen() => new(Solid(Accent, 0.55), RimWidth)
+    {
+        DashStyle = _rimDash,
+        DashCap = PenLineCap.Flat,
+        LineJoin = PenLineJoin.Round,
+    };
 }

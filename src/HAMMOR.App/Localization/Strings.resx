@@ -203,6 +203,18 @@
   <data name="LivingCore.Listening" xml:space="preserve">
     <value>HAMMOR is paying attention to you.</value>
   </data>
+  <data name="LivingCore.Success" xml:space="preserve">
+    <value>HAMMOR finished something.</value>
+  </data>
+  <data name="LivingCore.Warning" xml:space="preserve">
+    <value>HAMMOR is waiting for you to confirm a risky action.</value>
+  </data>
+  <data name="LivingCore.Sleep" xml:space="preserve">
+    <value>HAMMOR is resting.</value>
+  </data>
+  <data name="LivingCore.Wake" xml:space="preserve">
+    <value>HAMMOR is waking up.</value>
+  </data>
   <data name="LivingCore.Speaking" xml:space="preserve">
     <value>HAMMOR is speaking.</value>
   </data>

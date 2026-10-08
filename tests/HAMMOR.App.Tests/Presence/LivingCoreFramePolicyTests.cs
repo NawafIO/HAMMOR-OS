@@ -59,12 +59,35 @@ public sealed class LivingCoreFramePolicyTests
     }
 
     [Theory]
+    [InlineData(true, 0.0, 450.0)]
+    [InlineData(true, 0.0, 112.0)]
+    [InlineData(false, 0.0, 450.0)]
+    [InlineData(false, 3600.0, 450.0)]
+    public void A_core_settled_in_sleep_draws_at_10_fps(bool active, double inactiveSeconds, double side)
+    {
+        // Guardrails board: "10 asleep", wherever the window is.
+        var context = Shown with { IsWindowActive = active, InactiveSeconds = inactiveSeconds, Side = side, IsResting = true };
+
+        Assert.Equal(LivingCoreFramePolicy.RestingInterval, LivingCoreFramePolicy.MinimumInterval(context), 12);
+    }
+
+    [Fact]
+    public void A_resting_core_slows_down_but_keeps_breathing()
+    {
+        // Sleep is "low energy", not dead: it draws less often, never not at all.
+        Assert.True(LivingCoreFramePolicy.ShouldRender(Shown with { IsResting = true }));
+        Assert.False(LivingCoreFramePolicy.ShouldRender(Shown with { IsResting = true, IsMinimized = true }));
+    }
+
+    [Theory]
     [InlineData(60.0, LivingCoreFramePolicy.ActiveInterval, 60)]
     [InlineData(120.0, LivingCoreFramePolicy.ActiveInterval, 60)]
     [InlineData(144.0, LivingCoreFramePolicy.ActiveInterval, 72)]
     [InlineData(60.0, LivingCoreFramePolicy.ReducedInterval, 30)]
     [InlineData(60.0, LivingCoreFramePolicy.BackgroundInterval, 20)]
     [InlineData(120.0, LivingCoreFramePolicy.ReducedInterval, 30)]
+    [InlineData(60.0, LivingCoreFramePolicy.RestingInterval, 10)]
+    [InlineData(120.0, LivingCoreFramePolicy.RestingInterval, 10)]
     public void Frames_drawn_in_one_second_of_display_refreshes(double hertz, double interval, int expected)
     {
         var last = double.NaN;
