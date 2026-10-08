@@ -18,8 +18,30 @@ engine and is written to an audit trail.
 > latest Living Core motion is **pending Windows visual verification**. See
 > [Development status](#development-status).
 
+## Living Core — Live Demo
+
+An interactive preview of the Living Core's **design and motion**, in your
+browser. It is a preview only: **not** a running build of the HAMMOR Windows
+app.
+
+**[Open the live demo →](https://gethammor.com/#living-core)**
+
+To run HAMMOR itself, build it on Windows: see
+[Getting started](#getting-started).
+
+معاينة تفاعلية لتصميم Living Core وحركاته في المتصفح. هي معاينة للتصميم
+والحركات فقط، وليست نسخة تشغيل من تطبيق HAMMOR لنظام Windows.
+
+**[افتح التجربة المباشرة ←](https://gethammor.com/#living-core)**
+
+لتشغيل HAMMOR نفسه، ابنِه على Windows: راجع
+[Getting started](#getting-started).
+
+---
+
 ## Contents
 
+- [Living Core — Live Demo](#living-core--live-demo)
 - [At a glance](#at-a-glance)
 - [Development status](#development-status)
 - [Features](#features)
