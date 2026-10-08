@@ -3,30 +3,51 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
       xmlns:loc="clr-namespace:HAMMOR.App.Localization"
-      xmlns:tasks="clr-namespace:HAMMOR.Core.Tasks;assembly=HAMMOR.Core"
       Title="{loc:Loc Tasks.Title}">
 
     <Grid Margin="{StaticResource PagePadding}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0"
-                   Style="{StaticResource PageTitleText}"
-                   Text="{loc:Loc Tasks.Title}" />
+        <!-- Title and the one way to create an unattended task -->
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
 
-        <!-- States what the task system does and does not do yet. -->
+            <TextBlock Grid.Column="0"
+                       Style="{StaticResource PageTitleText}"
+                       Text="{loc:Loc Tasks.Title}" />
+
+            <ui:Button Grid.Column="1"
+                       VerticalAlignment="Top"
+                       Appearance="Primary"
+                       Padding="16,8"
+                       Command="{Binding NewTaskCommand}"
+                       Content="{loc:Loc Tasks.New}" />
+        </Grid>
+
+        <!-- What unattended execution does, accurately (ADR-003/ADR-004). -->
         <ui:InfoBar Grid.Row="1"
                     Severity="Informational"
                     IsOpen="True"
                     IsClosable="False"
                     Margin="{StaticResource StackGap}"
-                    Title="{loc:Loc Common.NotImplemented}"
+                    Title="{loc:Loc Tasks.InfoTitle}"
                     Message="{loc:Loc Tasks.SchedulerNote}" />
 
-        <Grid Grid.Row="2">
+        <TextBlock Grid.Row="2"
+                   Style="{StaticResource SecondaryText}"
+                   Margin="{StaticResource StackGap}"
+                   Text="{Binding StatusMessage}"
+                   Visibility="{Binding HasStatusMessage, Converter={StaticResource BoolToVisibility}}" />
+
+        <Grid Grid.Row="3">
             <TextBlock Style="{StaticResource SecondaryText}"
                        HorizontalAlignment="Center"
                        VerticalAlignment="Center"
@@ -34,9 +55,10 @@
                        Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}" />
 
             <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <!-- Kept current from ITaskStore.TaskChanged; no polling. -->
                 <ItemsControl ItemsSource="{Binding Tasks}">
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type tasks:HammorTask}">
+                        <DataTemplate>
                             <Border Style="{StaticResource SurfaceCard}" Padding="12">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -47,8 +69,8 @@
 
                                     <Ellipse Grid.Column="0"
                                              Width="10" Height="10"
-                                             Margin="0,0,10,0"
-                                             VerticalAlignment="Center"
+                                             Margin="0,5,10,0"
+                                             VerticalAlignment="Top"
                                              Fill="{Binding State, Converter={StaticResource TaskStateToBrush}}" />
 
                                     <StackPanel Grid.Column="1">
@@ -56,20 +78,121 @@
                                                    FontWeight="SemiBold"
                                                    Text="{Binding Title}" />
                                         <TextBlock Style="{StaticResource SecondaryText}"
-                                                   Text="{Binding Description}" />
+                                                   Text="{Binding Description}"
+                                                   Visibility="{Binding HasDescription, Converter={StaticResource BoolToVisibility}}" />
+
+                                        <!-- Blocked: why it stopped. Resolved only by a new grant. -->
+                                        <Border Margin="0,6,0,0"
+                                                Padding="8,6"
+                                                BorderThickness="1"
+                                                BorderBrush="{StaticResource StatusBlockedBrush}"
+                                                CornerRadius="{StaticResource RadiusSm}"
+                                                Visibility="{Binding ShowBlockedReason, Converter={StaticResource BoolToVisibility}}">
+                                            <StackPanel>
+                                                <TextBlock Style="{StaticResource CaptionText}"
+                                                           Foreground="{StaticResource StatusBlockedBrush}"
+                                                           Text="{loc:Loc Tasks.BlockedReason}" />
+                                                <TextBlock Style="{StaticResource BodyText}"
+                                                           Text="{Binding BlockedReason}" />
+                                            </StackPanel>
+                                        </Border>
+
                                         <TextBlock Style="{StaticResource CaptionText}"
+                                                   Margin="0,4,0,0"
                                                    Foreground="{StaticResource StatusErrorBrush}"
-                                                   Text="{Binding Error}" />
+                                                   Text="{Binding Error}"
+                                                   Visibility="{Binding HasError, Converter={StaticResource BoolToVisibility}}" />
+
+                                        <StackPanel Margin="0,4,0,0"
+                                                    Visibility="{Binding HasResult, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Style="{StaticResource CaptionText}" Text="{loc:Loc Tasks.Result}" />
+                                            <TextBlock Style="{StaticResource SecondaryText}"
+                                                       MaxHeight="60"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding Result}"
+                                                       Text="{Binding Result}" />
+                                        </StackPanel>
+
+                                        <!-- The grant this task runs under. Technical values stay left-to-right. -->
+                                        <StackPanel Margin="0,6,0,0"
+                                                    Visibility="{Binding HasGrant, Converter={StaticResource BoolToVisibility}}">
+                                            <StackPanel Orientation="Horizontal"
+                                                        Visibility="{Binding HasTools, Converter={StaticResource BoolToVisibility}}">
+                                                <TextBlock Style="{StaticResource CaptionText}"
+                                                           Margin="0,0,6,0"
+                                                           Text="{loc:Loc Tasks.Tools}" />
+                                                <TextBlock Style="{StaticResource CaptionText}"
+                                                           FlowDirection="LeftToRight"
+                                                           Text="{Binding ToolsText}" />
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal"
+                                                        Visibility="{Binding HasRoots, Converter={StaticResource BoolToVisibility}}">
+                                                <TextBlock Style="{StaticResource CaptionText}"
+                                                           Margin="0,0,6,0"
+                                                           Text="{loc:Loc Tasks.Folders}" />
+                                                <TextBlock Style="{StaticResource CaptionText}"
+                                                           FlowDirection="LeftToRight"
+                                                           Text="{Binding RootsText}" />
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Style="{StaticResource CaptionText}"
+                                                           Margin="0,0,6,0"
+                                                           Text="{loc:Loc Tasks.GrantExpires}" />
+                                                <TextBlock Style="{StaticResource CaptionText}"
+                                                           FlowDirection="LeftToRight"
+                                                           Text="{Binding ExpiresText}" />
+                                            </StackPanel>
+                                        </StackPanel>
                                     </StackPanel>
 
-                                    <StackPanel Grid.Column="2" HorizontalAlignment="Right">
-                                        <TextBlock Style="{StaticResource CaptionText}"
-                                                   HorizontalAlignment="Right"
-                                                   Text="{Binding State, Converter={StaticResource EnumToLocalizedText}, ConverterParameter=Tasks.State}" />
+                                    <StackPanel Grid.Column="2" Margin="12,0,0,0">
+                                        <!-- State badge; Blocked has its own colour. -->
+                                        <Border Style="{StaticResource StatusPill}"
+                                                Margin="0"
+                                                HorizontalAlignment="Right"
+                                                BorderThickness="1"
+                                                BorderBrush="{Binding State, Converter={StaticResource TaskStateToBrush}}">
+                                            <TextBlock Style="{StaticResource CaptionText}"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{Binding State, Converter={StaticResource TaskStateToBrush}}"
+                                                       Text="{Binding State, Converter={StaticResource EnumToLocalizedText}, ConverterParameter=Tasks.State}" />
+                                        </Border>
+
                                         <TextBlock Style="{StaticResource CaptionText}"
                                                    Margin="0,4,0,0"
                                                    HorizontalAlignment="Right"
-                                                   Text="{Binding CreatedUtc, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" />
+                                                   FlowDirection="LeftToRight"
+                                                   Text="{Binding CreatedText}" />
+
+                                        <StackPanel Orientation="Horizontal"
+                                                    HorizontalAlignment="Right"
+                                                    Visibility="{Binding HasSchedule, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Style="{StaticResource CaptionText}"
+                                                       Margin="0,0,4,0"
+                                                       Text="{loc:Loc Tasks.Schedule}" />
+                                            <TextBlock Style="{StaticResource CaptionText}"
+                                                       FlowDirection="LeftToRight"
+                                                       Text="{Binding ScheduledText}" />
+                                        </StackPanel>
+
+                                        <!-- Shown by state; Core re-checks the state on every action. -->
+                                        <ui:Button Margin="0,8,0,0"
+                                                   HorizontalAlignment="Right"
+                                                   Padding="12,6"
+                                                   Appearance="Primary"
+                                                   Content="{loc:Loc Tasks.Resume}"
+                                                   Command="{Binding DataContext.ResumeCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                   CommandParameter="{Binding}"
+                                                   Visibility="{Binding CanResume, Converter={StaticResource BoolToVisibility}}" />
+
+                                        <ui:Button Margin="0,8,0,0"
+                                                   HorizontalAlignment="Right"
+                                                   Padding="12,6"
+                                                   Appearance="Secondary"
+                                                   Content="{loc:Loc Tasks.Cancel}"
+                                                   Command="{Binding DataContext.CancelTaskCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                   CommandParameter="{Binding}"
+                                                   Visibility="{Binding CanCancel, Converter={StaticResource BoolToVisibility}}" />
                                     </StackPanel>
                                 </Grid>
                             </Border>

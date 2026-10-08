@@ -13,12 +13,25 @@ through the agent pipeline, and an unattended task runner/scheduler engine
 (read-only, per-task grants — see
 [ADR-003](docs/adr/ADR-003-task-runner-scheduler.md)).
 
-Phase 5 is an **engine-only milestone**: the runner, scheduler, grant model and
-storage exist in Core/Infrastructure and are tested, but the app does not start
-the scheduler and has no UI to create grants, so no task runs unattended in the
-app yet. Several advertised capabilities are deliberately
+Phase 6b wires that engine into the app: the scheduler starts after startup
+housekeeping, and the Tasks page creates unattended tasks through an approval
+dialog that shows the exact grant, displays Blocked tasks with their reason,
+resumes them under a new grant, and cancels tasks
+([ADR-004](docs/adr/ADR-004-task-runner-app-integration.md)). Phase 6b is
+**pending Windows verification**. Several advertised capabilities are deliberately
 *not* implemented yet and are labelled as such in the UI — see
 [Current limitations](#current-limitations).
+
+The Living Core P0 (the animated presence and the static V2 Lens mark) builds
+on Windows and passes its tests (412/412). Three newer changes are **pending
+Windows verification**:
+
+- the Living Home, which turns the home screen into the approved canvas;
+- the language-switch fix;
+- the Claude Code account provider, which uses Claude without a required API
+  key ([ADR-007](docs/adr/ADR-007-claude-code-account-provider.md)).
+
+See [docs/LIVING-CORE.md](docs/LIVING-CORE.md).
 
 ---
 
@@ -28,7 +41,7 @@ app yet. Several advertised capabilities are deliberately
 |---|---|
 | OS | Windows 11 (Windows 10 1809+ should also work) |
 | SDK | .NET **8** SDK (the repo pins `8.0.130` via `global.json`) |
-| Accounts | Anthropic API key (required for chat) · ElevenLabs API key (optional, for speech) |
+| Accounts | A Claude account with [Claude Code](https://code.claude.com/docs/en/setup) installed (recommended), or an Anthropic API key · ElevenLabs API key (optional, for speech) |
 
 > The solution targets `net8.0` / `net8.0-windows` because the .NET 8 SDK is the
 > only one installed on the development machine. Two package pins follow from
@@ -135,10 +148,11 @@ These are real and visible in the UI rather than hidden:
 
 | Area | State |
 |---|---|
+| **Claude via Claude Code** | **Text only, pending Windows verification.** HAMMOR runs your own `claude.exe` in print mode with every tool disabled and never sees your Claude credentials ([ADR-007](docs/adr/ADR-007-claude-code-account-provider.md)). HAMMOR's own tools (files, Git, projects) need the API-key provider. Only the native `claude.exe` is started, never the npm `claude.cmd`. |
 | **Speech-to-text** | **Not implemented.** No recogniser is wired up; `UnavailableSpeechToTextProvider` reports itself unavailable and the chat page says so. Voice *output* works. |
 | **TTS streaming** | Not implemented. The ElevenLabs provider buffers the full response before playback and reports `SupportsStreaming = false`. |
 | **Semantic memory** | **Not implemented.** The abstraction exists; search is keyword-based and the Memory page states this. |
-| **Task scheduling / retry** | **Engine implemented, not wired into the app.** `TaskRunner` and `TaskSchedulerService` run granted tasks one at a time with Read-only, expiring, immutable grants, retry/backoff, cancellation and audit (ADR-003). The engine also has path-scoped grants (filesystem, Git and project tools limited to approved folders), a grant-authoring service that requires explicit approval and audits every grant, resume and cancel, and a retry limit of 10 (ADR-004 Phase 6a). Deferred to Phase 6b: starting the scheduler from the app, the grant-creation and approval UI, and Blocked-task display on the Tasks page. Until then nothing runs tasks automatically in the app. |
+| **Task scheduling / retry** | **Implemented; app wiring pending Windows verification (Phase 6b).** `TaskRunner` and `TaskSchedulerService` run granted tasks one at a time with Read-only, expiring, immutable grants, retry/backoff, cancellation and audit (ADR-003), plus path-scoped grants and a grant-authoring service that requires explicit approval (ADR-004 Phase 6a). The app starts the scheduler after startup housekeeping. The Tasks page creates tasks, shows Blocked tasks with their reason, resumes them under a new grant and cancels them, updating live. Unattended tasks remain read-only, with no recurrence and no notifications beyond the Tasks page. |
 | **Projects** | Store and model exist and scope memory/tasks. Read-only Git and project inspection exist as tools (status, diff, log, project inspect); Git tools only accept a repository root with its own `.git` directory and refuse layouts or config that would redirect git elsewhere ([ADR-005](docs/adr/ADR-005-interactive-git-repository-confinement.md)), and repository config cannot make them run a program; repositories whose own config defines a filter driver are refused ([ADR-006](docs/adr/ADR-006-git-repository-config-execution.md)); the project creation UI is not built. |
 | **Tray / global hotkey / overlay** | **Not implemented.** The settings toggles are present but disabled. |
 | **Mobile gateway** | Not built. Core is kept platform-neutral so it can be hosted later. |
@@ -147,3 +161,18 @@ These are real and visible in the UI rather than hidden:
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — layering, agent loop, providers,
   voice pipeline, tools and permissions, memory, tasks, engineering decisions.
+- [docs/LIVING-CORE.md](docs/LIVING-CORE.md) — the Living Core, the Living
+  Home and the V2 Lens mark: architecture, state mapping, budget, Windows
+  checklist.
+- [docs/LIVING-CORE-MOTION.md](docs/LIVING-CORE-MOTION.md) — Step 4: the
+  Living Core's motion matched to the reference video (the canvas
+  prototype's CSS), what triggers each state in HAMMOR, the frame budget,
+  Windows checklist.
+- [docs/CHAT-PROJECTS-SEARCH.md](docs/CHAT-PROJECTS-SEARCH.md) — Step 3: chat,
+  projects and global search, and what HAMMOR's data supports.
+- [docs/SETTINGS.md](docs/SETTINGS.md) — Settings v2: categories, navigation,
+  where every setting moved, Windows checklist.
+- [docs/SHELL.md](docs/SHELL.md) — the shell and sidebar: patterns studied,
+  metrics, behaviour, Windows checklist.
+- [docs/adr/ADR-007-claude-code-account-provider.md](docs/adr/ADR-007-claude-code-account-provider.md)
+  — Claude through your own Claude Code and Claude account.

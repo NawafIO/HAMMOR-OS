@@ -5,9 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HAMMOR.Core.Audit;
 using HAMMOR.Core.Memory;
-using HAMMOR.Core.Projects;
 using HAMMOR.Core.Storage;
-using HAMMOR.Core.Tasks;
 using Microsoft.Extensions.Logging;
 
 namespace HAMMOR.App.ViewModels;
@@ -56,51 +54,6 @@ public sealed partial class ActivityViewModel(
     }
 }
 
-/// <summary>Shows persisted tasks.</summary>
-public sealed partial class TasksViewModel(
-    ITaskStore taskStore,
-    ILogger<TasksViewModel> logger) : ObservableObject
-{
-    private readonly ITaskStore _taskStore =
-        taskStore ?? throw new ArgumentNullException(nameof(taskStore));
-
-    private readonly ILogger<TasksViewModel> _logger =
-        logger ?? throw new ArgumentNullException(nameof(logger));
-
-    public ObservableCollection<HammorTask> Tasks { get; } = [];
-
-    [ObservableProperty]
-    private bool _isLoading;
-
-    public bool IsEmpty => Tasks.Count == 0 && !IsLoading;
-
-    [RelayCommand]
-    public async Task LoadAsync()
-    {
-        IsLoading = true;
-
-        try
-        {
-            var tasks = await _taskStore.ListAsync().ConfigureAwait(true);
-
-            Tasks.Clear();
-            foreach (var task in tasks)
-            {
-                Tasks.Add(task);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Could not load tasks.");
-        }
-        finally
-        {
-            IsLoading = false;
-            OnPropertyChanged(nameof(IsEmpty));
-        }
-    }
-}
-
 /// <summary>Browses and searches memory.</summary>
 public sealed partial class MemoryViewModel(
     IMemoryStore memoryStore,
@@ -137,6 +90,28 @@ public sealed partial class MemoryViewModel(
     public bool IsSemanticSearchAvailable => _semanticIndex.IsAvailable;
 
     public bool IsEmpty => Entries.Count == 0 && !IsLoading;
+
+    /// <summary>
+    /// A search to run when the page next opens, set by global Search so an
+    /// opened result is in view. Used once.
+    /// </summary>
+    public string? PendingQuery { get; set; }
+
+    /// <summary>What the page runs on load: a pending search, or recent entries.</summary>
+    public async Task OpenAsync()
+    {
+        var pending = PendingQuery;
+        PendingQuery = null;
+
+        if (string.IsNullOrWhiteSpace(pending))
+        {
+            await LoadAsync().ConfigureAwait(true);
+            return;
+        }
+
+        SearchQuery = pending;
+        await SearchAsync().ConfigureAwait(true);
+    }
 
     [RelayCommand]
     public async Task LoadAsync()
@@ -218,51 +193,6 @@ public sealed partial class MemoryViewModel(
         foreach (var entry in entries)
         {
             Entries.Add(entry);
-        }
-    }
-}
-
-/// <summary>Lists projects.</summary>
-public sealed partial class ProjectsViewModel(
-    IProjectStore projectStore,
-    ILogger<ProjectsViewModel> logger) : ObservableObject
-{
-    private readonly IProjectStore _projectStore =
-        projectStore ?? throw new ArgumentNullException(nameof(projectStore));
-
-    private readonly ILogger<ProjectsViewModel> _logger =
-        logger ?? throw new ArgumentNullException(nameof(logger));
-
-    public ObservableCollection<HammorProject> Projects { get; } = [];
-
-    [ObservableProperty]
-    private bool _isLoading;
-
-    public bool IsEmpty => Projects.Count == 0 && !IsLoading;
-
-    [RelayCommand]
-    public async Task LoadAsync()
-    {
-        IsLoading = true;
-
-        try
-        {
-            var projects = await _projectStore.ListAsync().ConfigureAwait(true);
-
-            Projects.Clear();
-            foreach (var project in projects)
-            {
-                Projects.Add(project);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Could not load projects.");
-        }
-        finally
-        {
-            IsLoading = false;
-            OnPropertyChanged(nameof(IsEmpty));
         }
     }
 }

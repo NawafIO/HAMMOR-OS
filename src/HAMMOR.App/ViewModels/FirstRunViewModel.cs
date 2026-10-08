@@ -10,6 +10,7 @@ using HAMMOR.Core.Security;
 using HAMMOR.Core.Status;
 using HAMMOR.Core.Storage;
 using HAMMOR.Core.Voice;
+using HAMMOR.Infrastructure.Ai.ClaudeCode;
 using Microsoft.Extensions.Logging;
 
 namespace HAMMOR.App.ViewModels;
@@ -157,7 +158,13 @@ public sealed partial class FirstRunViewModel : ObservableObject
     {
         try
         {
-            if (AnthropicKeyInput.Trim().Length > 0)
+            // With an API key, Claude comes through the API. Without one, it
+            // comes through the user's own Claude Code and Claude account: an
+            // API key is optional, never required.
+            var hasApiKey = AnthropicKeyInput.Trim().Length > 0;
+            Draft.Ai.PrimaryProvider = hasApiKey ? "claude" : ClaudeCodeAiProvider.Id;
+
+            if (hasApiKey)
             {
                 await _secretStore
                     .SetAsync(SecretNames.AnthropicApiKey, AnthropicKeyInput.Trim())

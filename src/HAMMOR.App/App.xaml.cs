@@ -2,7 +2,11 @@ using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using HAMMOR.App.Localization;
+using HAMMOR.App.Presence;
+using HAMMOR.App.Search;
 using HAMMOR.App.Services;
+using HAMMOR.App.Shell;
+using HAMMOR.App.Themes;
 using HAMMOR.App.ViewModels;
 using HAMMOR.App.Views;
 using HAMMOR.Core.Configuration;
@@ -11,11 +15,16 @@ using HAMMOR.Core.Permissions;
 using HAMMOR.Core.Status;
 using HAMMOR.Core.Storage;
 using HAMMOR.Core.Tasks;
+using HAMMOR.Core.Voice;
+using HAMMOR.Infrastructure.Ai.ClaudeCode;
 using HAMMOR.Infrastructure.DependencyInjection;
 using HAMMOR.Infrastructure.Memory;
 using HAMMOR.Infrastructure.Persistence;
+using HAMMOR.Infrastructure.Tasks;
+using HAMMOR.Platform.Windows.Audio;
 using HAMMOR.Platform.Windows.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Serilog;
@@ -31,7 +40,20 @@ namespace HAMMOR.App;
 /// </summary>
 public partial class App : Application
 {
+    /// <summary>
+    /// Upper bound on waiting for the scheduler at exit. Cancelling a run and
+    /// recording it as Cancelled takes milliseconds; the bound only exists so a
+    /// misbehaving run can never hang shutdown.
+    /// </summary>
+    private static readonly TimeSpan SchedulerStopTimeout = TimeSpan.FromSeconds(5);
+
     private IHost? _host;
+
+    // Set only once startup housekeeping has succeeded (ADR-004 §4).
+    private TaskSchedulerService? _scheduler;
+
+    // The static mark, shown while the host starts.
+    private SplashScreen? _splash;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -47,6 +69,8 @@ public partial class App : Application
 
         ConfigureSerilog(paths);
 
+        _splash = ShowSplash();
+
         try
         {
             _host = BuildHost();
@@ -54,10 +78,19 @@ public partial class App : Application
 
             await InitialiseAsync(_host.Services).ConfigureAwait(true);
 
+            // ADR-004 §4: the scheduler starts only after migration and
+            // interrupted-task reconciliation have completed. If either fails,
+            // InitialiseAsync throws and no unattended task ever runs.
+            StartScheduler(_host.Services);
+
+            // Before the first window: the setup wizard is modal and must
+            // never open underneath the splash.
+            CloseSplash();
             ShowFirstWindow(_host.Services);
         }
         catch (Exception ex)
         {
+            CloseSplash();
             Log.Fatal(ex, "HAMMOR failed to start.");
 
             MessageBox.Show(
@@ -91,6 +124,43 @@ public partial class App : Application
         Log.Information("HAMMOR starting. Data root: {DataRoot}", paths.DataRoot);
     }
 
+    /// <summary>
+    /// Shows the V2 Lens splash (Logo board) until the first window is ready.
+    /// Purely presentational: a failure is logged and start-up continues.
+    /// </summary>
+    private static SplashScreen? ShowSplash()
+    {
+        try
+        {
+            var splash = new SplashScreen("Assets/Splash.png");
+            splash.Show(autoClose: false, topMost: false);
+            return splash;
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Splash screen could not be shown.");
+            return null;
+        }
+    }
+
+    private void CloseSplash()
+    {
+        var splash = Interlocked.Exchange(ref _splash, null);
+        if (splash is null)
+        {
+            return;
+        }
+
+        try
+        {
+            splash.Close(TimeSpan.FromMilliseconds(300));
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Splash screen could not be closed cleanly.");
+        }
+    }
+
     private static IHost BuildHost() =>
         Host.CreateDefaultBuilder()
             .ConfigureLogging(logging =>
@@ -111,11 +181,31 @@ public partial class App : Application
                 // Windows-specific: DPAPI secrets, WASAPI audio.
                 services.AddHammorWindowsPlatform();
 
+                // Living Core: observe when speech really plays. The WASAPI
+                // player is wrapped, not replaced, and nothing below the UI
+                // layer changes; VoiceOrchestrator still receives an
+                // IAudioPlayer that behaves exactly as before.
+                services.AddSingleton<NAudioPlayer>();
+                services.AddSingleton(sp => new SpeechPlaybackMonitor(
+                    sp.GetRequiredService<NAudioPlayer>(),
+                    sp.GetRequiredService<ILogger<SpeechPlaybackMonitor>>()));
+                services.Replace(ServiceDescriptor.Singleton<IAudioPlayer>(
+                    sp => sp.GetRequiredService<SpeechPlaybackMonitor>()));
+                services.AddSingleton<LivingCorePresenter>();
+
                 // UI-layer services.
                 services.AddSingleton<ILocalizationService, ResxLocalizationService>();
                 services.AddSingleton<IConfirmationService, DialogConfirmationService>();
                 services.AddSingleton<IThemeService, WpfUiThemeService>();
                 services.AddSingleton<INavigationViewPageProvider, DependencyInjectionPageProvider>();
+                services.AddSingleton<ITaskEditorDialog, TaskEditorDialogService>();
+
+                // Shell: how the sidebar was left, and the Blocked-task count
+                // behind the dot on the Tasks row. Both are presentation only.
+                services.AddSingleton(sp => new ShellLayoutStore(
+                    Path.Combine(sp.GetRequiredService<HammorPaths>().DataRoot, "shell-layout.json"),
+                    sp.GetRequiredService<ILogger<ShellLayoutStore>>()));
+                services.AddSingleton<BlockedTaskTracker>();
 
                 // View models.
                 services.AddSingleton<ShellViewModel>();
@@ -125,6 +215,12 @@ public partial class App : Application
                 services.AddSingleton<MemoryViewModel>();
                 services.AddSingleton<ProjectsViewModel>();
                 services.AddSingleton<SettingsViewModel>();
+                services.AddSingleton<SearchViewModel>();
+
+                // Global Search over what HAMMOR keeps (read only), and the
+                // navigator Search and Projects use to open what they find.
+                services.AddSingleton<SearchService>();
+                services.AddSingleton<ShellNavigator>();
                 services.AddTransient<FirstRunViewModel>();
 
                 // Views. Pages are transient so navigating back to one gets a
@@ -136,6 +232,7 @@ public partial class App : Application
                 services.AddTransient<MemoryPage>();
                 services.AddTransient<ProjectsPage>();
                 services.AddTransient<SettingsPage>();
+                services.AddTransient<SearchPage>();
             })
             .Build();
 
@@ -155,6 +252,11 @@ public partial class App : Application
 
         services.GetRequiredService<IThemeService>()
             .Apply(configurationStore.Current.General.Theme);
+
+        // The static mark for the title bar and sidebar, and the shell's
+        // surfaces, matched to the theme.
+        BrandMarks.Register(Current);
+        ShellSurfaces.Register(Current);
 
         services.GetRequiredService<SqliteDatabase>().Migrate();
 
@@ -184,8 +286,71 @@ public partial class App : Application
 
         // Probe providers once so the shell opens with real status rather than
         // placeholder values. Event-driven from here on; nothing polls.
-        await services.GetRequiredService<ISystemStatusService>()
-            .RefreshAsync().ConfigureAwait(true);
+        var statusService = services.GetRequiredService<ISystemStatusService>();
+        await statusService.RefreshAsync().ConfigureAwait(true);
+
+        // Claude Code's state (signed in or out, a usage limit) reaches the
+        // status bar when a request or a check reveals it.
+        services.GetRequiredService<IClaudeCodeAccount>().StatusChanged +=
+            (_, _) => _ = Current.Dispatcher.InvokeAsync(() => statusService.RefreshAsync());
+    }
+
+    private void StartScheduler(IServiceProvider services)
+    {
+        try
+        {
+            var scheduler = services.GetRequiredService<TaskSchedulerService>();
+            scheduler.Start();
+            _scheduler = scheduler;
+
+            Log.Information("Task scheduler started.");
+        }
+        catch (Exception ex)
+        {
+            // Fails closed: without a scheduler no unattended task runs. The
+            // rest of the app stays usable, and the failure is logged loudly.
+            Log.Error(ex, "Task scheduler could not start; unattended tasks will not run this session.");
+        }
+    }
+
+    /// <summary>
+    /// Stops the scheduler before the host is stopped and disposed, so a task
+    /// that is running is cancelled and recorded as Cancelled while the store
+    /// and audit log are still alive (ADR-004 §4).
+    /// </summary>
+    /// <remarks>
+    /// Deliberately synchronous and bounded. WPF does not await an
+    /// <c>async void</c> <see cref="OnExit"/>, so work placed after its first
+    /// await may never run before the process ends. The stop runs on the
+    /// thread pool so no cancellation callback executes on the UI thread, and
+    /// nothing in the scheduler's path waits for the UI thread, so this cannot
+    /// deadlock; the timeout is a last resort.
+    /// </remarks>
+    private void StopScheduler()
+    {
+        var scheduler = Interlocked.Exchange(ref _scheduler, null);
+        if (scheduler is null)
+        {
+            return;
+        }
+
+        try
+        {
+            if (Task.Run(() => scheduler.StopAsync()).Wait(SchedulerStopTimeout))
+            {
+                Log.Information("Task scheduler stopped.");
+            }
+            else
+            {
+                Log.Warning(
+                    "Task scheduler did not stop within {Timeout}; continuing shutdown.",
+                    SchedulerStopTimeout);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Task scheduler did not stop cleanly.");
+        }
     }
 
     private static void ShowFirstWindow(IServiceProvider services)
@@ -211,6 +376,9 @@ public partial class App : Application
 
     protected override async void OnExit(ExitEventArgs e)
     {
+        // Before any await, and before the host is stopped or disposed.
+        StopScheduler();
+
         if (_host is not null)
         {
             await _host.StopAsync().ConfigureAwait(false);

@@ -1,0 +1,251 @@
+<ui:FluentWindow x:Class="HAMMOR.App.Views.TaskEditorWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                 xmlns:loc="clr-namespace:HAMMOR.App.Localization"
+                 Title="{Binding WindowTitle}"
+                 Width="660"
+                 Height="760"
+                 MinWidth="520"
+                 MinHeight="480"
+                 WindowStartupLocation="CenterOwner"
+                 WindowBackdropType="Mica"
+                 WindowCornerPreference="Round"
+                 ExtendsContentIntoTitleBar="True"
+                 FlowDirection="{Binding FlowDirection, Source={x:Static loc:LocalizationSource.Instance}}">
+
+    <!--
+        Collects a new unattended task, or a replacement grant for a Blocked
+        task (ADR-004 §5). Presentation only: the view model turns input into a
+        draft, and TaskAuthoringService validates it, shows the exact grant in
+        the confirmation dialog and creates nothing unless the user allows it.
+    -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0"
+                     Title="{Binding WindowTitle}"
+                     FlowDirection="LeftToRight"
+                     ShowMaximize="False"
+                     ShowMinimize="False" />
+
+        <ScrollViewer Grid.Row="1" Margin="24,8,24,0" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+
+                <TextBlock Style="{StaticResource PageTitleText}" Text="{Binding WindowTitle}" />
+
+                <!-- ============ Resume: the task being unblocked ============ -->
+                <Border Style="{StaticResource SurfaceCard}"
+                        Visibility="{Binding IsResume, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource CaptionText}" Text="{loc:Loc TaskEditor.BlockedTask}" />
+                        <TextBlock Style="{StaticResource BodyText}"
+                                   FontWeight="SemiBold"
+                                   Text="{Binding Title}" />
+                        <TextBlock Style="{StaticResource SecondaryText}"
+                                   Margin="{StaticResource FieldGap}"
+                                   Text="{Binding Prompt}" />
+
+                        <StackPanel Visibility="{Binding HasBlockedReason, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Style="{StaticResource CaptionText}" Text="{loc:Loc Tasks.BlockedReason}" />
+                            <TextBlock Style="{StaticResource BodyText}"
+                                       Foreground="{StaticResource StatusBlockedBrush}"
+                                       Text="{Binding BlockedReason}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- ============ Create: title and instruction ============ -->
+                <StackPanel Visibility="{Binding IsCreate, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Style="{StaticResource BodyText}" Text="{loc:Loc TaskEditor.TaskName}" />
+                    <ui:TextBox Margin="{StaticResource StackGap}"
+                                Text="{Binding Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock Style="{StaticResource BodyText}" Text="{loc:Loc TaskEditor.Prompt}" />
+                    <TextBlock Style="{StaticResource CaptionText}"
+                               Margin="{StaticResource FieldGap}"
+                               Text="{loc:Loc TaskEditor.PromptHint}" />
+                    <ui:TextBox Margin="{StaticResource StackGap}"
+                                MinHeight="96"
+                                AcceptsReturn="True"
+                                TextWrapping="Wrap"
+                                VerticalScrollBarVisibility="Auto"
+                                Text="{Binding Prompt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+
+                <!-- ============ Tools: Read-only only ============ -->
+                <TextBlock Style="{StaticResource SectionTitleText}" Text="{loc:Loc TaskEditor.Tools}" />
+                <TextBlock Style="{StaticResource CaptionText}"
+                           Margin="{StaticResource FieldGap}"
+                           Text="{loc:Loc TaskEditor.ToolsNote}" />
+                <ItemsControl Margin="{StaticResource StackGap}" ItemsSource="{Binding Tools}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <CheckBox Margin="0,0,0,4"
+                                      IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                      ToolTip="{Binding Description}">
+                                <!-- Tool names are identifiers: always left-to-right. -->
+                                <TextBlock FlowDirection="LeftToRight" Text="{Binding Name}" />
+                            </CheckBox>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- ============ Folders: required for filesystem tools ============ -->
+                <StackPanel Visibility="{Binding NeedsRoots, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Style="{StaticResource SectionTitleText}" Text="{loc:Loc TaskEditor.Folders}" />
+                    <TextBlock Style="{StaticResource CaptionText}"
+                               Margin="{StaticResource FieldGap}"
+                               Text="{loc:Loc TaskEditor.FoldersNote}" />
+
+                    <ItemsControl ItemsSource="{Binding Roots}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Paths are always left-to-right, also in Arabic. -->
+                                    <TextBlock Grid.Column="0"
+                                               Style="{StaticResource BodyText}"
+                                               FlowDirection="LeftToRight"
+                                               HorizontalAlignment="Left"
+                                               VerticalAlignment="Center"
+                                               Text="{Binding}" />
+
+                                    <ui:Button Grid.Column="1"
+                                               Margin="8,0,0,0"
+                                               Padding="10,4"
+                                               Appearance="Secondary"
+                                               Content="{loc:Loc TaskEditor.RemoveFolder}"
+                                               Command="{Binding DataContext.RemoveRootCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                               CommandParameter="{Binding}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <ui:Button HorizontalAlignment="Left"
+                               Margin="{StaticResource StackGap}"
+                               Padding="12,6"
+                               Appearance="Secondary"
+                               Click="OnAddFolder"
+                               Content="{loc:Loc TaskEditor.AddFolder}" />
+                </StackPanel>
+
+                <!-- ============ Expiry: required, at most 30 days ============ -->
+                <TextBlock Style="{StaticResource SectionTitleText}" Text="{loc:Loc TaskEditor.Expiry}" />
+                <StackPanel Orientation="Horizontal" Margin="{StaticResource FieldGap}">
+                    <DatePicker Width="180"
+                                SelectedDate="{Binding ExpiryDate, Mode=TwoWay}"
+                                DisplayDateStart="{Binding MinDate}"
+                                DisplayDateEnd="{Binding MaxDate}" />
+                    <ui:TextBox Width="96"
+                                Margin="8,0,0,0"
+                                FlowDirection="LeftToRight"
+                                Text="{Binding ExpiryTime, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+                <TextBlock Style="{StaticResource CaptionText}"
+                           Margin="{StaticResource StackGap}"
+                           Text="{loc:Loc TaskEditor.ExpiryNote}" />
+
+                <!-- ============ Tool-call cap ============ -->
+                <TextBlock Style="{StaticResource BodyText}" Text="{loc:Loc TaskEditor.MaxToolCalls}" />
+                <ui:NumberBox Width="160"
+                              HorizontalAlignment="Left"
+                              Margin="{StaticResource FieldGap}"
+                              Minimum="1"
+                              Maximum="50"
+                              Value="{Binding MaxToolCalls, Mode=TwoWay}" />
+                <TextBlock Style="{StaticResource CaptionText}"
+                           Margin="{StaticResource StackGap}"
+                           Text="{loc:Loc TaskEditor.MaxToolCallsNote}" />
+
+                <!-- ============ Optional schedule (new tasks only) ============ -->
+                <StackPanel Visibility="{Binding IsCreate, Converter={StaticResource BoolToVisibility}}">
+                    <CheckBox Margin="{StaticResource FieldGap}"
+                              IsChecked="{Binding IsScheduled, Mode=TwoWay}"
+                              Content="{loc:Loc TaskEditor.Schedule}" />
+                    <StackPanel Orientation="Horizontal"
+                                Margin="{StaticResource FieldGap}"
+                                IsEnabled="{Binding IsScheduled}">
+                        <DatePicker Width="180"
+                                    SelectedDate="{Binding ScheduleDate, Mode=TwoWay}"
+                                    DisplayDateStart="{Binding MinDate}"
+                                    DisplayDateEnd="{Binding MaxDate}" />
+                        <ui:TextBox Width="96"
+                                    Margin="8,0,0,0"
+                                    FlowDirection="LeftToRight"
+                                    Text="{Binding ScheduleTime, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource CaptionText}"
+                               Margin="{StaticResource StackGap}"
+                               Text="{loc:Loc TaskEditor.ScheduleNote}" />
+                </StackPanel>
+
+                <!-- ============ Optional project (new tasks, when projects exist) ============ -->
+                <StackPanel Visibility="{Binding HasProjects, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Style="{StaticResource BodyText}" Text="{loc:Loc TaskEditor.Project}" />
+                    <ComboBox Width="300"
+                              HorizontalAlignment="Left"
+                              Margin="{StaticResource StackGap}"
+                              ItemsSource="{Binding Projects}"
+                              DisplayMemberPath="Name"
+                              SelectedItem="{Binding SelectedProject, Mode=TwoWay}" />
+                </StackPanel>
+
+                <TextBlock Style="{StaticResource CaptionText}"
+                           Margin="{StaticResource StackGap}"
+                           Text="{loc:Loc TaskEditor.ReviewNote}" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- ============ Feedback and actions ============ -->
+        <StackPanel Grid.Row="2" Margin="24,8,24,24">
+            <TextBlock Style="{StaticResource BodyText}"
+                       Margin="{StaticResource FieldGap}"
+                       Foreground="{StaticResource StatusWarningBrush}"
+                       Text="{Binding Notice}"
+                       Visibility="{Binding HasNotice, Converter={StaticResource BoolToVisibility}}" />
+
+            <StackPanel Margin="{StaticResource FieldGap}"
+                        Visibility="{Binding HasErrors, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Style="{StaticResource BodyText}"
+                           Foreground="{StaticResource StatusErrorBrush}"
+                           Text="{loc:Loc TaskEditor.ErrorsTitle}" />
+                <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Errors}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Style="{StaticResource BodyText}"
+                                           Margin="0,2,0,0"
+                                           Foreground="{StaticResource StatusErrorBrush}"
+                                           Text="{Binding}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <ui:Button Appearance="Secondary"
+                           Padding="16,8"
+                           IsCancel="True"
+                           Command="{Binding CancelCommand}"
+                           Content="{loc:Loc Common.Cancel}" />
+
+                <ui:Button Margin="12,0,0,0"
+                           Appearance="Primary"
+                           Padding="16,8"
+                           Command="{Binding SubmitCommand}"
+                           Content="{Binding SubmitLabel}" />
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</ui:FluentWindow>

@@ -25,6 +25,7 @@ Five projects. The dependency direction only ever points inward toward Core.
                 └─────────────────────────────┘
 
                   tests/HAMMOR.Core.Tests  net8.0
+                  tests/HAMMOR.App.Tests   net8.0-windows  (Living Core model)
 ```
 
 **Core owns** AI provider contracts, intent/routing/planning, the permission
@@ -97,6 +98,19 @@ Notes:
 - `AiResponse` surfaces `StopReason` verbatim, so `IsRefusal` and `IsTruncated`
   are checked before the text is treated as an answer.
 - Model and effort come from configuration, never from code.
+
+`ClaudeCodeAiProvider` (`claude-code`) reaches Claude through the user's own
+installed Claude Code and the Claude account signed in there. It needs no API
+key, and HAMMOR never handles the credential
+([ADR-007](adr/ADR-007-claude-code-account-provider.md)).
+
+- Each turn is one documented print-mode run:
+  `claude -p --output-format json --tools ""`, with the prompt on stdin.
+- It starts the executable directly with fixed arguments, a timeout, bounded
+  output and a process-tree kill.
+- Claude Code has no tools in these runs, so the provider is text-only. The
+  agent loop takes its text path, and HAMMOR's own tools need the API-key
+  provider.
 
 ---
 

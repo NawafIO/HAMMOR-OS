@@ -110,6 +110,7 @@ public sealed class TaskStateToBrushConverter : IValueConverter
                 TaskState.Completed => "StatusSuccessBrush",
                 TaskState.Running => "StatusWarningBrush",
                 TaskState.Failed => "StatusErrorBrush",
+                TaskState.Blocked => "StatusBlockedBrush",
                 _ => "StatusNeutralBrush",
             }
             : "StatusNeutralBrush";
@@ -145,6 +146,24 @@ public sealed class EnumToLocalizedTextConverter : IValueConverter
             ? value.ToString() ?? string.Empty
             : LocalizationSource.Instance[$"{prefix}.{value}"];
     }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+        throw new NotSupportedException("One-way only.");
+}
+
+/// <summary>
+/// Visible when an enum value has the name given as the converter parameter,
+/// for example <c>ConverterParameter=Voice</c>; collapsed otherwise. Settings
+/// uses it to show only the selected category.
+/// </summary>
+public sealed class EnumMatchToVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is Enum current
+        && parameter is string name
+        && string.Equals(current.ToString(), name, StringComparison.Ordinal)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
         throw new NotSupportedException("One-way only.");

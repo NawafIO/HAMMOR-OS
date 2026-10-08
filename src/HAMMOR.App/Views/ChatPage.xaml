@@ -3,6 +3,7 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
       xmlns:loc="clr-namespace:HAMMOR.App.Localization"
+      xmlns:presence="clr-namespace:HAMMOR.App.Presence"
       xmlns:vm="clr-namespace:HAMMOR.App.ViewModels"
       d:DataContext="{d:DesignInstance Type=vm:ChatViewModel}"
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -10,78 +11,149 @@
       mc:Ignorable="d"
       Title="{loc:Loc Chat.Title}">
 
-    <Grid Margin="{StaticResource PagePadding}">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
+    <!-- The Living Home (canvas page 1). Always on the abyss: the Living Core
+         is light drawn for a dark field, whatever the app theme. -->
+    <Grid Background="{StaticResource AbyssDepthBrush}">
+        <Grid Margin="{StaticResource PagePadding}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <Grid Grid.Row="0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
+            <!-- Conversation header: appears once the hero gives way to the
+                 transcript, keeping Thinking, Speaking and Error in sight. -->
+            <Grid Grid.Row="0"
+                  Margin="0,0,0,8"
+                  Visibility="{Binding HasMessages, Converter={StaticResource BoolToVisibility}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
 
-            <TextBlock Grid.Column="0"
-                       Style="{StaticResource PageTitleText}"
-                       Text="{loc:Loc Chat.Title}" />
+                <!-- Compact core; its aura spills into the page padding. -->
+                <presence:LivingCore x:Name="CompactCore"
+                                     Grid.Column="0"
+                                     Width="112"
+                                     Height="112"
+                                     Margin="-18,-28,2,-28"
+                                     VerticalAlignment="Center"
+                                     State="{Binding State}"
+                                     Reaction="{Binding Reaction}"
+                                     ToolTip="{Binding Description}"
+                                     AutomationProperties.Name="{Binding Description}" />
 
-            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                <ui:Button Appearance="Secondary"
-                           Padding="8,4"
-                           Command="{Binding SpeakLastCommand}"
-                           Icon="{ui:SymbolIcon Speaker224}"
-                           ToolTip="{loc:Loc Chat.Speak}" />
-                <ui:Button Margin="8,0,0,0"
-                           Appearance="Secondary"
-                           Padding="8,4"
-                           Command="{Binding StopSpeakingCommand}"
-                           Icon="{ui:SymbolIcon SpeakerMute24}"
-                           ToolTip="{loc:Loc Chat.StopSpeaking}" />
-                <ui:Button Margin="8,0,0,0"
-                           Appearance="Secondary"
-                           Padding="8,4"
-                           Command="{Binding ClearCommand}"
-                           Icon="{ui:SymbolIcon Broom24}"
-                           ToolTip="{loc:Loc Chat.Clear}" />
-            </StackPanel>
-        </Grid>
-
-        <!-- Transcript -->
-        <ScrollViewer Grid.Row="1"
-                      x:Name="TranscriptScroll"
-                      VerticalScrollBarVisibility="Auto"
-                      Padding="0,8">
-            <Grid>
-                <!-- Empty state -->
-                <StackPanel VerticalAlignment="Center"
-                            HorizontalAlignment="Center"
-                            Visibility="{Binding HasMessages, Converter={StaticResource InverseBoolToVisibility}}">
-                    <TextBlock Style="{StaticResource SectionTitleText}"
-                               HorizontalAlignment="Center"
-                               Text="{loc:Loc Chat.EmptyTitle}" />
-                    <TextBlock Style="{StaticResource SecondaryText}"
-                               HorizontalAlignment="Center"
-                               MaxWidth="420"
-                               TextAlignment="Center"
-                               Text="{loc:Loc Chat.EmptyBody}" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock VerticalAlignment="Center"
+                               Style="{StaticResource HomeTitleText}"
+                               Text="{loc:Loc Chat.Title}" />
+                    <!-- The project these turns belong to. -->
+                    <Border Margin="12,2,0,0"
+                            Style="{StaticResource ChatProjectChip}"
+                            Visibility="{Binding HasActiveProject, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Folder24" FontSize="13" Foreground="{StaticResource LensTealBrush}" />
+                            <TextBlock Margin="6,0,0,0"
+                                       VerticalAlignment="Center"
+                                       Style="{StaticResource HomeCaptionText}"
+                                       Text="{Binding ActiveProjectName}" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
 
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Style="{StaticResource GhostIconButton}"
+                            Command="{Binding SpeakLastCommand}"
+                            ToolTip="{loc:Loc Chat.Speak}"
+                            AutomationProperties.Name="{loc:Loc Chat.Speak}">
+                        <ui:SymbolIcon Symbol="Speaker224" FontSize="17" />
+                    </Button>
+                    <Button Margin="4,0,0,0"
+                            Style="{StaticResource GhostIconButton}"
+                            Command="{Binding StopSpeakingCommand}"
+                            ToolTip="{loc:Loc Chat.StopSpeaking}"
+                            AutomationProperties.Name="{loc:Loc Chat.StopSpeaking}">
+                        <ui:SymbolIcon Symbol="SpeakerMute24" FontSize="17" />
+                    </Button>
+                    <Button Margin="4,0,0,0"
+                            Style="{StaticResource GhostIconButton}"
+                            Command="{Binding ClearCommand}"
+                            ToolTip="{loc:Loc Chat.NewChat}"
+                            AutomationProperties.Name="{loc:Loc Chat.NewChat}">
+                        <ui:SymbolIcon Symbol="Compose24" FontSize="17" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <!-- Home: the Living Core is the centre of the screen. -->
+            <Grid Grid.Row="1"
+                  Visibility="{Binding HasMessages, Converter={StaticResource InverseBoolToVisibility}}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Sized from the space it is given (see ChatPage.xaml.cs). -->
+                <Grid x:Name="HeroStage" Grid.Row="0" SizeChanged="OnHeroStageSizeChanged">
+                    <!-- Light the core casts on the page. Negative margins let it
+                         reach past this cell without being clipped to it. -->
+                    <Ellipse x:Name="HeroAmbient"
+                             Fill="{StaticResource CoreAmbientBrush}"
+                             IsHitTestVisible="False" />
+                    <presence:LivingCore x:Name="HeroCore"
+                                         Width="360"
+                                         Height="360"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"
+                                         State="{Binding State}"
+                                         Reaction="{Binding Reaction}"
+                                         ToolTip="{Binding Description}"
+                                         AutomationProperties.Name="{Binding Description}" />
+                </Grid>
+
+                <!-- Greeting, drawn a little into the faint lower aura so it
+                     reads with the core; a render transform, so moving it
+                     never feeds back into the hero's size. -->
+                <StackPanel Grid.Row="1">
+                    <StackPanel.RenderTransform>
+                        <TranslateTransform x:Name="HomeTextShift" />
+                    </StackPanel.RenderTransform>
+
+                    <TextBlock x:Name="GreetingText"
+                               Margin="0,6,0,10"
+                               Style="{StaticResource HomeGreetingText}" />
+
+                    <TextBlock Style="{StaticResource HomeBodyText}"
+                               Text="{loc:Loc Chat.EmptyBody}" />
+                </StackPanel>
+            </Grid>
+
+            <!-- Transcript -->
+            <ScrollViewer Grid.Row="1"
+                          x:Name="TranscriptScroll"
+                          VerticalScrollBarVisibility="Auto"
+                          Padding="0,8"
+                          Visibility="{Binding HasMessages, Converter={StaticResource BoolToVisibility}}">
                 <ItemsControl ItemsSource="{Binding Messages}"
-                              Visibility="{Binding HasMessages, Converter={StaticResource BoolToVisibility}}">
+                              MaxWidth="860"
+                              HorizontalAlignment="Stretch">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:ChatMessageViewModel}">
-                            <Grid>
+                            <Grid x:Name="MessageRow" Background="Transparent">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
                                 <!-- User bubble -->
                                 <Border Style="{StaticResource UserMessageBubble}"
                                         Visibility="{Binding IsUser, Converter={StaticResource BoolToVisibility}}">
                                     <TextBlock Text="{Binding Text}"
                                                TextWrapping="Wrap"
                                                FontSize="{StaticResource FontSizeBody}"
-                                               Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}" />
+                                               Foreground="{StaticResource PearlBrush}" />
                                 </Border>
 
                                 <!-- Assistant bubble -->
@@ -98,70 +170,214 @@
                                     </Border.Style>
 
                                     <StackPanel>
-                                        <TextBlock Style="{StaticResource CaptionText}"
-                                                   Margin="0,0,0,2"
+                                        <TextBlock Style="{StaticResource HomeCaptionText}"
+                                                   Margin="0,0,0,3"
                                                    Text="{Binding AuthorLabel}" />
                                         <TextBlock Text="{Binding Text}"
                                                    TextWrapping="Wrap"
                                                    FontSize="{StaticResource FontSizeBody}"
-                                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                                                   Foreground="{StaticResource PearlBrush}" />
                                     </StackPanel>
                                 </Border>
+
+                                <!-- Time and copy: under the bubble, on its side, shown
+                                     while the message is hovered or focused. -->
+                                <StackPanel x:Name="MessageActions"
+                                            Grid.Row="1"
+                                            Margin="6,-6,6,10"
+                                            Orientation="Horizontal"
+                                            Opacity="0">
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="HorizontalAlignment" Value="Left" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsUser}" Value="True">
+                                                    <Setter Property="HorizontalAlignment" Value="Right" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <TextBlock VerticalAlignment="Center"
+                                               Style="{StaticResource HomeCaptionText}"
+                                               Text="{Binding TimeLabel}" />
+                                    <Button Margin="6,0,0,0"
+                                            Style="{StaticResource MessageActionButton}"
+                                            Click="OnCopyMessageClick"
+                                            ToolTip="{loc:Loc Chat.Copy}"
+                                            AutomationProperties.Name="{loc:Loc Chat.Copy}">
+                                        <ui:SymbolIcon Symbol="Copy24" FontSize="13" />
+                                    </Button>
+                                </StackPanel>
                             </Grid>
+                            <DataTemplate.Triggers>
+                                <Trigger SourceName="MessageRow" Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="MessageActions" Property="Opacity" Value="1" />
+                                </Trigger>
+                                <Trigger SourceName="MessageRow" Property="IsKeyboardFocusWithin" Value="True">
+                                    <Setter TargetName="MessageActions" Property="Opacity" Value="1" />
+                                </Trigger>
+                            </DataTemplate.Triggers>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+            </ScrollViewer>
+
+            <!-- Progress: which pipeline stage is running -->
+            <StackPanel Grid.Row="2"
+                        Margin="0,6,0,0"
+                        HorizontalAlignment="Center"
+                        Orientation="Horizontal"
+                        Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}">
+                <ui:ProgressRing IsIndeterminate="True" Width="14" Height="14" />
+                <TextBlock Margin="8,0,0,0"
+                           VerticalAlignment="Center"
+                           Style="{StaticResource HomeCaptionText}"
+                           Text="{Binding ProgressDetail}" />
+            </StackPanel>
+
+            <!-- Composer: dark glass under the core, quieter than it. -->
+            <Grid Grid.Row="3"
+                  Margin="0,22,0,0"
+                  MaxWidth="760">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Project scope: these turns use the project's context and
+                     are saved under it. The cross returns to no project. -->
+                <Border Grid.Row="0"
+                        Margin="12,0,0,10"
+                        HorizontalAlignment="Left"
+                        Style="{StaticResource ChatProjectChip}"
+                        Visibility="{Binding HasActiveProject, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Symbol="Folder24" FontSize="13" Foreground="{StaticResource LensTealBrush}" />
+                        <TextBlock Margin="6,0,8,0"
+                                   VerticalAlignment="Center"
+                                   Style="{StaticResource HomeCaptionText}">
+                            <Run Text="{loc:Loc Chat.InProject}" />
+                            <Run Text="{Binding ActiveProjectName, Mode=OneWay}" Foreground="{StaticResource PearlBrush}" />
+                        </TextBlock>
+                        <Button Style="{StaticResource MessageActionButton}"
+                                Command="{Binding ClearProjectCommand}"
+                                ToolTip="{loc:Loc Chat.LeaveProject}"
+                                AutomationProperties.Name="{loc:Loc Chat.LeaveProject}">
+                            <ui:SymbolIcon Symbol="Dismiss16" FontSize="11" />
+                        </Button>
+                    </StackPanel>
+                </Border>
+
+                <!-- Focus light, shown while the composer has focus. -->
+                <Border Grid.Row="1"
+                        Margin="-28,-18"
+                        CornerRadius="48"
+                        Background="{StaticResource ComposerFocusBrush}"
+                        IsHitTestVisible="False">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Opacity" Value="0" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsKeyboardFocusWithin, ElementName=ComposerShell}" Value="True">
+                                    <Setter Property="Opacity" Value="1" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                </Border>
+
+                <Border x:Name="ComposerShell" Grid.Row="1" Style="{StaticResource ComposerShell}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBox x:Name="InputBox"
+                                 Grid.Column="0"
+                                 Style="{StaticResource ComposerTextBox}"
+                                 Text="{Binding Input, UpdateSourceTrigger=PropertyChanged}"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 MinHeight="30"
+                                 MaxHeight="140"
+                                 VerticalScrollBarVisibility="Auto"
+                                 AutomationProperties.Name="{loc:Loc Chat.InputPlaceholder}"
+                                 PreviewKeyDown="OnInputKeyDown" />
+
+                        <!-- Placeholder, shown while the box is empty. -->
+                        <TextBlock Grid.Column="0"
+                                   VerticalAlignment="Center"
+                                   IsHitTestVisible="False"
+                                   FontSize="15"
+                                   Foreground="{StaticResource FogBrush}"
+                                   TextTrimming="CharacterEllipsis"
+                                   Text="{loc:Loc Chat.InputPlaceholder}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Text, ElementName=InputBox}" Value="">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+
+                        <!-- While a turn runs, the same place stops it. -->
+                        <Button Grid.Column="1"
+                                Margin="12,0,0,0"
+                                VerticalAlignment="Bottom"
+                                Style="{StaticResource ComposerSendButton}"
+                                Command="{Binding CancelTurnCommand}"
+                                ToolTip="{loc:Loc Chat.Stop}"
+                                AutomationProperties.Name="{loc:Loc Chat.Stop}"
+                                Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}">
+                            <ui:SymbolIcon Symbol="Stop24" FontSize="16" />
+                        </Button>
+
+                        <Button Grid.Column="1"
+                                Margin="12,0,0,0"
+                                VerticalAlignment="Bottom"
+                                Style="{StaticResource ComposerSendButton}"
+                                Visibility="{Binding IsBusy, Converter={StaticResource InverseBoolToVisibility}}"
+                                Command="{Binding SendCommand}"
+                                ToolTip="{loc:Loc Chat.Send}"
+                                AutomationProperties.Name="{loc:Loc Chat.Send}">
+                            <!-- The arrow points the way text flows: mirrored in
+                                 Arabic. The mirror sits on a wrapper so the
+                                 icon keeps WPF-UI's own style. -->
+                            <Grid RenderTransformOrigin="0.5,0.5">
+                                <Grid.Style>
+                                    <Style TargetType="Grid">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsRightToLeft, Source={x:Static loc:LocalizationSource.Instance}}" Value="True">
+                                                <Setter Property="RenderTransform">
+                                                    <Setter.Value>
+                                                        <ScaleTransform ScaleX="-1" />
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
+                                <ui:SymbolIcon Symbol="Send24" FontSize="18" />
+                            </Grid>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Honest statement about voice input rather than a dead button -->
+                <TextBlock Grid.Row="2"
+                           Margin="0,10,0,0"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"
+                           Style="{StaticResource HomeCaptionText}"
+                           Text="{loc:Loc Chat.VoiceInputUnavailable}"
+                           Visibility="{Binding IsVoiceInputAvailable, Converter={StaticResource InverseBoolToVisibility}}" />
             </Grid>
-        </ScrollViewer>
-
-        <!-- Progress: shows which pipeline stage is running -->
-        <StackPanel Grid.Row="2"
-                    Orientation="Horizontal"
-                    Margin="0,4"
-                    Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}">
-            <ui:ProgressRing IsIndeterminate="True" Width="16" Height="16" />
-            <TextBlock Margin="8,0,0,0"
-                       VerticalAlignment="Center"
-                       Style="{StaticResource SecondaryText}"
-                       Text="{Binding ProgressDetail}" />
-        </StackPanel>
-
-        <!-- Composer -->
-        <Grid Grid.Row="3" Margin="0,8,0,0">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-
-            <ui:TextBox Grid.Row="0" Grid.Column="0"
-                        x:Name="InputBox"
-                        Text="{Binding Input, UpdateSourceTrigger=PropertyChanged}"
-                        PlaceholderText="{loc:Loc Chat.InputPlaceholder}"
-                        AcceptsReturn="True"
-                        TextWrapping="Wrap"
-                        MaxHeight="140"
-                        VerticalContentAlignment="Top"
-                        KeyDown="OnInputKeyDown" />
-
-            <ui:Button Grid.Row="0" Grid.Column="1"
-                       Margin="8,0,0,0"
-                       Appearance="Primary"
-                       VerticalAlignment="Bottom"
-                       Padding="14,8"
-                       Command="{Binding SendCommand}"
-                       Content="{loc:Loc Chat.Send}"
-                       Icon="{ui:SymbolIcon Send24}" />
-
-            <!-- Honest statement about voice input rather than a dead button -->
-            <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
-                       Margin="0,6,0,0"
-                       Style="{StaticResource CaptionText}"
-                       Text="{loc:Loc Chat.VoiceInputUnavailable}"
-                       Visibility="{Binding IsVoiceInputAvailable, Converter={StaticResource InverseBoolToVisibility}}" />
         </Grid>
     </Grid>
 </Page>

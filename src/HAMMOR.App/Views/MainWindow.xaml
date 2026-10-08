@@ -9,12 +9,15 @@
                  Height="780"
                  MinWidth="840"
                  MinHeight="560"
-                 WindowBackdropType="Mica"
+                 WindowBackdropType="None"
                  WindowCornerPreference="Round"
                  ExtendsContentIntoTitleBar="True"
                  FlowDirection="{Binding FlowDirection}">
 
-    <Grid>
+    <!-- The shell surface lives on the root grid, not on Window.Background:
+         WPF-UI resets the window background whenever it removes a backdrop
+         (at start-up and on every theme change). -->
+    <Grid Background="{DynamicResource HammorShellBackgroundBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -27,7 +30,12 @@
                      Title="{loc:Loc App.Title}"
                      FlowDirection="LeftToRight"
                      ShowMaximize="True"
-                     ShowMinimize="True" />
+                     ShowMinimize="True">
+            <!-- Application mark: the 20 px app-icon tile (V2 Lens). -->
+            <ui:TitleBar.Icon>
+                <ui:ImageIcon Width="16" Height="16" Source="{DynamicResource HammorTitleBarIcon}" />
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
 
         <!-- Sidebar navigation. Pages are resolved from DI by the
              INavigationViewPageProvider so each view gets its view model. -->
@@ -35,37 +43,84 @@
                            Grid.Row="1"
                            IsBackButtonVisible="Collapsed"
                            IsPaneToggleVisible="True"
+                           ItemTemplate="{StaticResource HammorNavItemTemplate}"
                            OpenPaneLength="220">
 
+            <!-- Sidebar mark (Logo board): the full mark with its seal ring and
+                 the wordmark while the pane is open, the compact lens while it
+                 is collapsed, with clear space around it. Marks are never
+                 mirrored, hence LeftToRight. -->
+            <ui:NavigationView.PaneHeader>
+                <Grid Margin="0,8,0,16" HorizontalAlignment="Left">
+                    <StackPanel Margin="6,0,0,0" Orientation="Horizontal"
+                                Visibility="{Binding IsPaneOpen, ElementName=RootNavigation, Converter={StaticResource BoolToVisibility}}">
+                        <Image Width="28"
+                               Height="28"
+                               FlowDirection="LeftToRight"
+                               Source="{DynamicResource HammorSidebarMark}" />
+                        <Path Margin="10,0,0,0"
+                              VerticalAlignment="Center"
+                              FlowDirection="LeftToRight"
+                              Data="{DynamicResource HammorWordmarkLatin}"
+                              Fill="{DynamicResource HammorMarkInkBrush}"
+                              Visibility="{Binding IsRightToLeft, Source={x:Static loc:LocalizationSource.Instance}, Converter={StaticResource InverseBoolToVisibility}}" />
+                        <Path Margin="10,0,0,0"
+                              VerticalAlignment="Center"
+                              FlowDirection="LeftToRight"
+                              Data="{DynamicResource HammorWordmarkArabic}"
+                              Fill="{DynamicResource HammorMarkInkBrush}"
+                              Visibility="{Binding IsRightToLeft, Source={x:Static loc:LocalizationSource.Instance}, Converter={StaticResource BoolToVisibility}}" />
+                    </StackPanel>
+                    <Image Width="24"
+                           Height="24"
+                           Margin="8,0,0,0"
+                           FlowDirection="LeftToRight"
+                           Source="{DynamicResource HammorSidebarLens}"
+                           Visibility="{Binding IsPaneOpen, ElementName=RootNavigation, Converter={StaticResource InverseBoolToVisibility}}" />
+                </Grid>
+            </ui:NavigationView.PaneHeader>
+
             <ui:NavigationView.MenuItems>
-                <ui:NavigationViewItem Content="{loc:Loc Nav.Chat}"
+                <ui:NavigationViewItem Style="{StaticResource HammorNavItemStyle}"
+                                       Content="{loc:Loc Nav.Chat}"
                                        Icon="{ui:SymbolIcon ChatMultiple24}"
                                        TargetPageType="{x:Type views:ChatPage}" />
-                <ui:NavigationViewItem Content="{loc:Loc Nav.Activity}"
+                <ui:NavigationViewItem Style="{StaticResource HammorNavItemStyle}"
+                                       Content="{loc:Loc Nav.Search}"
+                                       Icon="{ui:SymbolIcon Search24}"
+                                       TargetPageType="{x:Type views:SearchPage}" />
+                <ui:NavigationViewItem Style="{StaticResource HammorNavItemStyle}"
+                                       Content="{loc:Loc Nav.Activity}"
                                        Icon="{ui:SymbolIcon DocumentBulletList24}"
                                        TargetPageType="{x:Type views:ActivityPage}" />
-                <ui:NavigationViewItem Content="{loc:Loc Nav.Tasks}"
+                <ui:NavigationViewItem x:Name="TasksNavigationItem"
+                                       Style="{StaticResource HammorNavItemStyle}"
+                                       Content="{loc:Loc Nav.Tasks}"
                                        Icon="{ui:SymbolIcon TaskListSquareLtr24}"
                                        TargetPageType="{x:Type views:TasksPage}" />
-                <ui:NavigationViewItem Content="{loc:Loc Nav.Memory}"
+                <ui:NavigationViewItem Style="{StaticResource HammorNavItemStyle}"
+                                       Content="{loc:Loc Nav.Memory}"
                                        Icon="{ui:SymbolIcon Brain24}"
                                        TargetPageType="{x:Type views:MemoryPage}" />
-                <ui:NavigationViewItem Content="{loc:Loc Nav.Projects}"
+                <ui:NavigationViewItem Style="{StaticResource HammorNavItemStyle}"
+                                       Content="{loc:Loc Nav.Projects}"
                                        Icon="{ui:SymbolIcon FolderOpen24}"
                                        TargetPageType="{x:Type views:ProjectsPage}" />
             </ui:NavigationView.MenuItems>
 
             <ui:NavigationView.FooterMenuItems>
-                <ui:NavigationViewItem Content="{loc:Loc Nav.Settings}"
+                <ui:NavigationViewItem Style="{StaticResource HammorNavItemStyle}"
+                                       Content="{loc:Loc Nav.Settings}"
                                        Icon="{ui:SymbolIcon Options24}"
                                        TargetPageType="{x:Type views:SettingsPage}" />
             </ui:NavigationView.FooterMenuItems>
         </ui:NavigationView>
 
-        <!-- Status bar: honest readiness signals for every provider and device. -->
+        <!-- Status bar: honest readiness signals for every provider and device,
+             on the shell's own surface behind a hairline. -->
         <Border Grid.Row="2"
-                Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}"
-                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                Background="Transparent"
+                BorderBrush="{DynamicResource HammorChromeStrokeBrush}"
                 BorderThickness="0,1,0,0"
                 Padding="16,8">
             <Grid>

@@ -7,6 +7,7 @@ using HAMMOR.Core.Security;
 using HAMMOR.Core.Status;
 using HAMMOR.Core.Tools;
 using HAMMOR.Core.Voice;
+using HAMMOR.Infrastructure.Ai.ClaudeCode;
 using Microsoft.Extensions.Logging;
 
 namespace HAMMOR.App.ViewModels;
@@ -39,6 +40,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         ISystemStatusService statusService,
         IAudioDeviceProvider audioDevices,
         IVoiceOrchestrator voice,
+        IClaudeCodeAccount claudeCode,
         ILogger<SettingsViewModel> logger)
     {
         _configurationStore = configurationStore
@@ -53,6 +55,9 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         _draft = configurationStore.Current.Clone();
         ConfigurationFilePath = configurationStore.ConfigurationFilePath;
+
+        _localization.LanguageChanged += OnLanguageChanged;
+        InitializeClaudeCode(claudeCode);
     }
 
     /// <summary>Working copy. Nothing is persisted until Save runs.</summary>
@@ -132,6 +137,8 @@ public sealed partial class SettingsViewModel : ObservableObject
             .ExistsAsync(SecretNames.ElevenLabsApiKey).ConfigureAwait(true);
 
         OnPropertyChanged(nameof(SelectedLanguage));
+
+        await LoadClaudeCodeAsync().ConfigureAwait(true);
     }
 
     [RelayCommand]
@@ -249,17 +256,27 @@ public sealed partial class SettingsViewModel : ObservableObject
         try
         {
             await _localization.SetLanguageAsync(languageCode).ConfigureAwait(true);
-
-            // SetLanguageAsync persisted the language, so refresh the draft to
-            // avoid writing a stale value back on the next Save.
-            Draft.General.Language = _localization.CurrentLanguage;
-
-            OnPropertyChanged(nameof(SelectedLanguage));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Could not switch language to {Language}.", languageCode);
             StatusMessage = ex.Message;
+
+            // The selector already shows the language that failed to apply;
+            // put it back to the one in use.
+            OnPropertyChanged(nameof(SelectedLanguage));
         }
+    }
+
+    /// <summary>
+    /// Keeps the selector on the language actually in use, wherever the
+    /// switch came from: this page, the shell's quick toggle or first run.
+    /// </summary>
+    private void OnLanguageChanged(object? sender, LanguageChangedEventArgs e)
+    {
+        // SetLanguageAsync persisted the language; refresh the draft so the
+        // next Save does not write a stale value back.
+        Draft.General.Language = _localization.CurrentLanguage;
+        OnPropertyChanged(nameof(SelectedLanguage));
     }
 }

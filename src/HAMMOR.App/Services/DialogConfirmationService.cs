@@ -37,9 +37,14 @@ public sealed class DialogConfirmationService : IConfirmationService
 
         return application.Dispatcher.InvokeAsync(() =>
         {
+            // Owned by the active window (for example the task editor), so the
+            // prompt opens centred over the form that asked for it.
+            var owner = application.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
+                ?? application.MainWindow;
+
             var dialog = new ConfirmationDialog(request)
             {
-                Owner = application.MainWindow,
+                Owner = owner,
                 FlowDirection = LocalizationSource.Instance.FlowDirection,
             };
 

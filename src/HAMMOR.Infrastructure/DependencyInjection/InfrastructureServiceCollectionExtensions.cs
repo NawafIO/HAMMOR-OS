@@ -10,6 +10,7 @@ using HAMMOR.Core.Tasks;
 using HAMMOR.Core.Tools;
 using HAMMOR.Core.Voice;
 using HAMMOR.Infrastructure.Ai;
+using HAMMOR.Infrastructure.Ai.ClaudeCode;
 using HAMMOR.Infrastructure.Configuration;
 using HAMMOR.Infrastructure.Memory;
 using HAMMOR.Infrastructure.Persistence;
@@ -23,6 +24,7 @@ using HAMMOR.Infrastructure.Tools;
 using HAMMOR.Infrastructure.Voice;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace HAMMOR.Infrastructure.DependencyInjection;
 
@@ -83,6 +85,18 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<ClaudeToolCallingProvider>();
         services.AddSingleton<IAiProvider>(sp => sp.GetRequiredService<ClaudeToolCallingProvider>());
         services.AddSingleton<IToolCallingProvider>(sp => sp.GetRequiredService<ClaudeToolCallingProvider>());
+
+        // Claude through the user's own installed Claude Code and Claude
+        // account ("claude-code"): no API key, credentials never touched by
+        // HAMMOR, text-only. It runs in its own empty folder under the data
+        // root.
+        services.AddSingleton<IClaudeCodeCli>(sp => new ClaudeCodeCli(
+            SystemClaudeCodeHost.Instance,
+            Path.Combine(sp.GetRequiredService<HammorPaths>().DataRoot, "claude-code"),
+            sp.GetRequiredService<ILogger<ClaudeCodeCli>>()));
+        services.AddSingleton<IClaudeCodeAccount, ClaudeCodeAccount>();
+        services.AddSingleton<ClaudeCodeAiProvider>();
+        services.AddSingleton<IAiProvider>(sp => sp.GetRequiredService<ClaudeCodeAiProvider>());
 
         // --- Voice providers ----------------------------------------------
         services.AddHttpClient(ElevenLabsTextToSpeechProvider.HttpClientName, client =>

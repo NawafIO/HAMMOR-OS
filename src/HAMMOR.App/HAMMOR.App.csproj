@@ -12,7 +12,24 @@
     <AssemblyName>HAMMOR</AssemblyName>
     <UseWPF>true</UseWPF>
     <SatelliteResourceLanguages>en;ar</SatelliteResourceLanguages>
+    <!-- V2 Lens app icon (exe, taskbar, Alt+Tab). Regenerate with
+         scripts/render-brand-assets.js. -->
+    <ApplicationIcon>Assets\HAMMOR.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Startup splash: the static mark, shown while the host starts. -->
+    <Resource Include="Assets\Splash.png" />
+    <!-- Display face of the Living Home: Alexandria Light, Latin and Arabic
+         subset (SIL Open Font License 1.1; licence shipped beside it). -->
+    <Resource Include="Assets\Fonts\AlexandriaLight.ttf" />
+    <None Update="Assets\Fonts\OFL-Alexandria.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Lets the tests check the Living Core's fixed design data (budgets). -->
+    <InternalsVisibleTo Include="HAMMOR.App.Tests" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\HAMMOR.Core\HAMMOR.Core.csproj" />

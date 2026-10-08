@@ -1,0 +1,147 @@
+<!--
+    Global Search. One box, results grouped by what they are, the keyboard
+    first: arrows move, Enter opens, Escape clears. Before anything is typed
+    it shows recent saved conversations and projects.
+-->
+<Page x:Class="HAMMOR.App.Views.SearchPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:loc="clr-namespace:HAMMOR.App.Localization"
+      Title="{loc:Loc Search.Title}">
+
+    <Page.Resources>
+        <!-- A result row: icon, title, detail; the highlighted row has the
+             sidebar's teal indicator and fill. -->
+        <Style x:Key="SearchResultItem" TargetType="ListBoxItem">
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="FocusVisualStyle" Value="{DynamicResource DefaultControlFocusVisualStyle}" />
+            <Setter Property="Margin" Value="0,1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+            <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
+            <Setter Property="AutomationProperties.HelpText" Value="{Binding Detail}" />
+            <EventSetter Event="MouseLeftButtonUp" Handler="OnResultClicked" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Row" MinHeight="48" CornerRadius="8" Background="Transparent" Padding="0,7">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="44" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Rectangle x:Name="Indicator"
+                                           Width="3"
+                                           Height="14"
+                                           HorizontalAlignment="Left"
+                                           VerticalAlignment="Center"
+                                           Fill="{DynamicResource NavigationViewSelectionIndicatorForeground}"
+                                           Opacity="0"
+                                           RadiusX="1.5"
+                                           RadiusY="1.5" />
+                                <ui:SymbolIcon HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               FontSize="16"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                               Symbol="{Binding Icon}" />
+                                <StackPanel Grid.Column="1" Margin="0,0,12,0" VerticalAlignment="Center">
+                                    <TextBlock FontSize="14"
+                                               Foreground="{TemplateBinding Foreground}"
+                                               Text="{Binding Title}"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock x:Name="DetailText"
+                                               Margin="0,2,0,0"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                               Text="{Binding Detail}"
+                                               TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <DataTrigger Binding="{Binding Detail}" Value="">
+                                <Setter TargetName="DetailText" Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Row" Property="Background" Value="{DynamicResource NavigationViewItemBackgroundPointerOver}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Row" Property="Background" Value="{DynamicResource NavigationViewItemBackgroundSelected}" />
+                                <Setter TargetName="Indicator" Property="Opacity" Value="1" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Page.Resources>
+
+    <Grid Margin="32,28,32,16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Style="{StaticResource SettingsPageTitle}"
+                   Text="{loc:Loc Search.Title}" />
+
+        <!-- The box: Ctrl+K anywhere comes here. -->
+        <ui:TextBox x:Name="QueryBox"
+                    Grid.Row="1"
+                    Margin="0,16,0,8"
+                    MaxWidth="760"
+                    HorizontalAlignment="Stretch"
+                    FontSize="16"
+                    Padding="12,10"
+                    Icon="{ui:SymbolIcon Search24}"
+                    PlaceholderText="{loc:Loc Search.Placeholder}"
+                    Text="{Binding Query, UpdateSourceTrigger=PropertyChanged}"
+                    AutomationProperties.Name="{loc:Loc Search.Title}"
+                    PreviewKeyDown="OnQueryKeyDown" />
+
+        <StackPanel Grid.Row="2" MaxWidth="760" HorizontalAlignment="Stretch" Margin="0,0,0,12">
+            <!-- What is searched, honestly. -->
+            <TextBlock Style="{StaticResource CaptionText}" Text="{loc:Loc Search.Scope}" />
+            <TextBlock Margin="0,4,0,0"
+                       Style="{StaticResource CaptionText}"
+                       Foreground="{StaticResource StatusWarningBrush}"
+                       Text="{loc:Loc Search.SomeFailed}"
+                       Visibility="{Binding SomeSourcesFailed, Converter={StaticResource BoolToVisibility}}" />
+        </StackPanel>
+
+        <Grid Grid.Row="3" MaxWidth="760" HorizontalAlignment="Stretch">
+            <TextBlock Margin="4,8,0,0"
+                       Style="{StaticResource SecondaryText}"
+                       Text="{loc:Loc Search.NoResults}"
+                       Visibility="{Binding ShowNoResults, Converter={StaticResource BoolToVisibility}}" />
+            <TextBlock Margin="4,8,0,0"
+                       Style="{StaticResource SecondaryText}"
+                       Text="{loc:Loc Search.NothingRecent}"
+                       Visibility="{Binding ShowNothingRecent, Converter={StaticResource BoolToVisibility}}" />
+
+            <ListBox x:Name="ResultsList"
+                     Style="{StaticResource SettingsNavList}"
+                     ItemContainerStyle="{StaticResource SearchResultItem}"
+                     ItemsSource="{Binding Results}"
+                     SelectedItem="{Binding SelectedResult, Mode=TwoWay}"
+                     KeyDown="OnResultsKeyDown"
+                     AutomationProperties.Name="{loc:Loc Search.Results}">
+                <ListBox.GroupStyle>
+                    <GroupStyle>
+                        <GroupStyle.HeaderTemplate>
+                            <DataTemplate>
+                                <TextBlock Margin="4,14,4,6"
+                                           Style="{StaticResource SettingsGroupTitle}"
+                                           Text="{Binding Name}" />
+                            </DataTemplate>
+                        </GroupStyle.HeaderTemplate>
+                    </GroupStyle>
+                </ListBox.GroupStyle>
+            </ListBox>
+        </Grid>
+    </Grid>
+</Page>

@@ -43,20 +43,7 @@ public partial class MemoryPage : Page
         DataContext = viewModel;
         InitializeComponent();
 
-        Loaded += async (_, _) => await viewModel.LoadAsync().ConfigureAwait(true);
-    }
-}
-
-/// <summary>Project list page.</summary>
-public partial class ProjectsPage : Page
-{
-    public ProjectsPage(ProjectsViewModel viewModel)
-    {
-        ArgumentNullException.ThrowIfNull(viewModel);
-
-        DataContext = viewModel;
-        InitializeComponent();
-
-        Loaded += async (_, _) => await viewModel.LoadAsync().ConfigureAwait(true);
+        // A result opened from Search arrives as a pending search.
+        Loaded += async (_, _) => await viewModel.OpenAsync().ConfigureAwait(true);
     }
 }

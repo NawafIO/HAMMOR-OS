@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HAMMOR.App.Localization;
@@ -6,6 +7,7 @@ using HAMMOR.Core.Agent;
 using HAMMOR.Core.Ai;
 using HAMMOR.Core.Configuration;
 using HAMMOR.Core.Localization;
+using HAMMOR.Core.Projects;
 using HAMMOR.Core.Status;
 using HAMMOR.Core.Voice;
 using Microsoft.Extensions.Logging;
@@ -25,6 +27,12 @@ public sealed partial class ChatMessageViewModel(AiRole role, string text, bool 
     public bool IsUser => Role == AiRole.User;
 
     public bool IsAssistant => Role == AiRole.Assistant;
+
+    /// <summary>When the message appeared on screen.</summary>
+    public DateTimeOffset Timestamp { get; } = DateTimeOffset.Now;
+
+    /// <summary>The time, in the current language's short format.</summary>
+    public string TimeLabel => Timestamp.ToString("t", CultureInfo.CurrentCulture);
 
     /// <summary>Localised author label.</summary>
     public string AuthorLabel =>
@@ -66,7 +74,22 @@ public sealed partial class ChatViewModel : ObservableObject
     private string _input = string.Empty;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CancelTurnCommand))]
     private bool _isBusy;
+
+    /// <summary>
+    /// The project the next turns belong to, or null. The pipeline then adds
+    /// the project's standing context to the prompt and saves the exchange
+    /// under the project, as Core already supports; nothing else changes.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasActiveProject))]
+    [NotifyPropertyChangedFor(nameof(ActiveProjectName))]
+    private HammorProject? _activeProject;
+
+    public bool HasActiveProject => ActiveProject is not null;
+
+    public string ActiveProjectName => ActiveProject?.Name ?? string.Empty;
 
     /// <summary>Current pipeline stage, shown while a turn is running.</summary>
     [ObservableProperty]
@@ -117,6 +140,7 @@ public sealed partial class ChatViewModel : ObservableObject
                 {
                     Input = text,
                     History = history,
+                    ProjectId = ActiveProject?.Id,
                     Language = _localization.CurrentLanguage,
                 },
                 progress,
@@ -157,6 +181,16 @@ public sealed partial class ChatViewModel : ObservableObject
     }
 
     private bool CanSend() => !IsBusy;
+
+    /// <summary>Stops the turn in progress. The question stays; no reply is added.</summary>
+    [RelayCommand(CanExecute = nameof(CanCancelTurn))]
+    private void CancelTurn() => _turnCancellation?.Cancel();
+
+    private bool CanCancelTurn() => IsBusy;
+
+    /// <summary>Back to unscoped conversation.</summary>
+    [RelayCommand]
+    private void ClearProject() => ActiveProject = null;
 
     /// <summary>Speaks the most recent assistant reply.</summary>
     [RelayCommand]

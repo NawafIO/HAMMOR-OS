@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><defs>
+  <linearGradient id="tile" x1="0" y1="0" x2="0" y2="120" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#17212D"/><stop offset="1" stop-color="#04070A"/></linearGradient>
+  <radialGradient id="tglow" cx="60%" cy="48%" r="50%"><stop offset="0" stop-color="#147078" stop-opacity="0.9"/><stop offset="1" stop-color="#147078" stop-opacity="0"/></radialGradient>
+  <radialGradient id="pg"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.9"/><stop offset="0.25" stop-color="#F3EFE6" stop-opacity="0.35"/><stop offset="1" stop-color="#F3EFE6" stop-opacity="0"/></radialGradient>
+  <radialGradient id="body" cx="70" cy="52" r="60" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0B292C"/><stop offset="0.7" stop-color="#071016"/><stop offset="1" stop-color="#04080C"/></radialGradient>
+  <linearGradient id="crest" x1="21.9" y1="0" x2="98.1" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3ED0C8" stop-opacity="0.15"/><stop offset="0.55" stop-color="#3ED0C8" stop-opacity="0.85"/><stop offset="1" stop-color="#3ED0C8"/></linearGradient>
+</defs><g transform="translate(60 60) scale(1.24) translate(-60 -60)"><path d="M 21.9 60 A 44 44 0 0 1 98.1 60 A 55.89 55.89 0 0 0 21.9 60 Z" fill="#EAF0F5"/><path d="M 98.1 60 A 44 44 0 0 1 26 65.93" fill="none" stroke="#EAF0F5" stroke-width="5" stroke-linecap="round"/><circle cx="76" cy="57.5" r="8" fill="#FFFFFF"/></g></svg>
