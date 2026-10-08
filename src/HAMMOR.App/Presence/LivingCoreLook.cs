@@ -1,337 +1,117 @@
 namespace HAMMOR.App.Presence;
 
 /// <summary>
-/// The white core's pose. First group of the state-change cascade
-/// (0 to 0.45 s): its new position announces the state before anything else
-/// moves.
+/// One state's resting values, as the approved prototype's CSS writes them:
+/// where the white core sits and how bright it is, and the base light and
+/// shape of every layer. A state change moves each value to the next state's
+/// with that element's own CSS transition, or at once where the prototype
+/// has none; the looping and one-shot animations on top are
+/// <see cref="LivingCoreMotion"/>'s.
 /// </summary>
-/// <remarks>All positions are in the 120-unit design box; centre (60, 60).</remarks>
-public struct CoreLook
+public readonly record struct LivingCoreLook
 {
-    /// <summary>White core centre, X.</summary>
-    public double X;
+    // ---- The white core (prototype .pp, .ppk, .pcore, .pglow) ----
 
-    /// <summary>White core centre, Y.</summary>
-    public double Y;
+    /// <summary>White core position in design units.</summary>
+    public double X { get; init; }
 
-    /// <summary>1 = the 7-unit core of the Idle state.</summary>
-    public double Scale;
+    /// <summary>White core position in design units.</summary>
+    public double Y { get; init; }
 
-    /// <summary>Core and glow opacity.</summary>
-    public double Opacity;
+    /// <summary>White core size: 1 is the logo's.</summary>
+    public double Scale { get; init; }
 
-    /// <summary>Glow intensity relative to Idle.</summary>
-    public double Glow;
+    /// <summary>White core light.</summary>
+    public double Opacity { get; init; }
 
-    /// <summary>Glow size relative to Idle; below 1 the glow narrows (Warning).</summary>
-    public double GlowSize;
+    /// <summary>0 white, 1 the warm ember of Sleep.</summary>
+    public double Ember { get; init; }
 
-    /// <summary>Thin attention ring (Listening), 0 to 1.</summary>
-    public double AttentionRing;
+    /// <summary>The soft glow around the white core: on, or off in Sleep.</summary>
+    public double Glow { get; init; }
 
-    /// <summary>Speech ring around the core (Speaking), 0 to 1.</summary>
-    public double SpeakRing;
+    // ---- The body (.all) and its layers ----
 
-    /// <summary>Idle micro-drift strength, 0 to 1. Idle glances and the pointer need it too.</summary>
-    public double Drift;
-
-    /// <summary>A dim warm ember instead of white (Sleep), 0 to 1.</summary>
-    public double Ember;
-
-    public static CoreLook Lerp(in CoreLook a, in CoreLook b, double t) => new()
-    {
-        X = LookMath.Mix(a.X, b.X, t),
-        Y = LookMath.Mix(a.Y, b.Y, t),
-        Scale = LookMath.Mix(a.Scale, b.Scale, t),
-        Opacity = LookMath.Mix(a.Opacity, b.Opacity, t),
-        Glow = LookMath.Mix(a.Glow, b.Glow, t),
-        GlowSize = LookMath.Mix(a.GlowSize, b.GlowSize, t),
-        AttentionRing = LookMath.Mix(a.AttentionRing, b.AttentionRing, t),
-        SpeakRing = LookMath.Mix(a.SpeakRing, b.SpeakRing, t),
-        Drift = LookMath.Mix(a.Drift, b.Drift, t),
-        Ember = LookMath.Mix(a.Ember, b.Ember, t),
-    };
-}
-
-/// <summary>
-/// Membrane interior: deep stars, floating cells and the lens current. Second
-/// cascade group (0.2 to 0.8 s).
-/// </summary>
-public struct InsideLook
-{
-    public double StarOpacity;
-
-    /// <summary>Star field scale about the centre.</summary>
-    public double StarScale;
-
-    /// <summary>Shimmer clock rate; 2 doubles the tempo.</summary>
-    public double StarShimmerSpeed;
-
-    /// <summary>Shimmer depth; 1 dips each star to 35%, 0 holds it steady.</summary>
-    public double StarShimmerDepth;
-
-    /// <summary>Field drift rate; 1 = one turn in 240 s.</summary>
-    public double StarDriftSpeed;
-
-    public double CellOpacity;
-
-    /// <summary>Cell school scale about the lens centre; below 1 leans in.</summary>
-    public double CellSpread;
-
-    /// <summary>Vertical squash of the school; below 1 it settles like sediment (Sleep).</summary>
-    public double CellSquash;
-
-    /// <summary>Horizontal narrowing of the school, so the sediment stays inside the membrane (Sleep).</summary>
-    public double CellNarrow;
-
-    /// <summary>How far the school sinks, design units (Sleep).</summary>
-    public double CellDrop;
-
-    /// <summary>School drift rate; 1 = one turn in 140 s.</summary>
-    public double CellDriftSpeed;
-
-    /// <summary>Per-cell bob strength; 0 stops random drifting.</summary>
-    public double CellBob;
-
-    /// <summary>Processing links between cells (Thinking).</summary>
-    public double LinkOpacity;
-
-    /// <summary>Signals travelling along the links (Thinking).</summary>
-    public double SignalOpacity;
-
-    /// <summary>Orbit lanes (Thinking).</summary>
-    public double OrbitOpacity;
-
-    public double LensOpacity;
-
-    /// <summary>Crest sway strength; 1 = ±1.4°.</summary>
-    public double LensSway;
-
-    /// <summary>Deliberate lens turn; 1 = ±5° (Thinking).</summary>
-    public double LensPrecession;
-
-    /// <summary>Lens height; 0.8 narrows it (Warning).</summary>
-    public double LensNarrow;
-
-    /// <summary>Crest offset, design units; negative rises (Warning: −4).</summary>
-    public double CrestLift;
-
-    /// <summary>Outer lateral line opacity.</summary>
-    public double LateralA;
-
-    /// <summary>Inner lateral line opacity.</summary>
-    public double LateralB;
-
-    /// <summary>Lateral flow rate; 1 = one pattern cycle in 3.2 s.</summary>
-    public double LateralFlowSpeed;
-
-    /// <summary>Hairline split in the membrane (Error).</summary>
-    public double CrackOpacity;
-
-    /// <summary>Voice along the lower membrane (Speaking).</summary>
-    public double VoiceWave;
-
-    public static InsideLook Lerp(in InsideLook a, in InsideLook b, double t) => new()
-    {
-        StarOpacity = LookMath.Mix(a.StarOpacity, b.StarOpacity, t),
-        StarScale = LookMath.Mix(a.StarScale, b.StarScale, t),
-        StarShimmerSpeed = LookMath.Mix(a.StarShimmerSpeed, b.StarShimmerSpeed, t),
-        StarShimmerDepth = LookMath.Mix(a.StarShimmerDepth, b.StarShimmerDepth, t),
-        StarDriftSpeed = LookMath.Mix(a.StarDriftSpeed, b.StarDriftSpeed, t),
-        CellOpacity = LookMath.Mix(a.CellOpacity, b.CellOpacity, t),
-        CellSpread = LookMath.Mix(a.CellSpread, b.CellSpread, t),
-        CellSquash = LookMath.Mix(a.CellSquash, b.CellSquash, t),
-        CellNarrow = LookMath.Mix(a.CellNarrow, b.CellNarrow, t),
-        CellDrop = LookMath.Mix(a.CellDrop, b.CellDrop, t),
-        CellDriftSpeed = LookMath.Mix(a.CellDriftSpeed, b.CellDriftSpeed, t),
-        CellBob = LookMath.Mix(a.CellBob, b.CellBob, t),
-        LinkOpacity = LookMath.Mix(a.LinkOpacity, b.LinkOpacity, t),
-        SignalOpacity = LookMath.Mix(a.SignalOpacity, b.SignalOpacity, t),
-        OrbitOpacity = LookMath.Mix(a.OrbitOpacity, b.OrbitOpacity, t),
-        LensOpacity = LookMath.Mix(a.LensOpacity, b.LensOpacity, t),
-        LensSway = LookMath.Mix(a.LensSway, b.LensSway, t),
-        LensPrecession = LookMath.Mix(a.LensPrecession, b.LensPrecession, t),
-        LensNarrow = LookMath.Mix(a.LensNarrow, b.LensNarrow, t),
-        CrestLift = LookMath.Mix(a.CrestLift, b.CrestLift, t),
-        LateralA = LookMath.Mix(a.LateralA, b.LateralA, t),
-        LateralB = LookMath.Mix(a.LateralB, b.LateralB, t),
-        LateralFlowSpeed = LookMath.Mix(a.LateralFlowSpeed, b.LateralFlowSpeed, t),
-        CrackOpacity = LookMath.Mix(a.CrackOpacity, b.CrackOpacity, t),
-        VoiceWave = LookMath.Mix(a.VoiceWave, b.VoiceWave, t),
-    };
-}
-
-/// <summary>
-/// Halo rings, light threads and the body of the core. Third cascade group
-/// (0.4 to 1.2 s).
-/// </summary>
-public struct HaloLook
-{
-    public double HaloOpacity;
-
-    /// <summary>Halo and thread scale about the centre.</summary>
-    public double HaloScale;
-
-    /// <summary>Ring breathing strength; 1 = ±1.4% over 6.4 s.</summary>
-    public double HaloBreath;
-
-    /// <summary>Uneven inner-ring rhythm (Error), 0 to 1.</summary>
-    public double HaloIrregular;
-
-    /// <summary>The inner ring tightens and holds (Warning), 0 to 1.</summary>
-    public double HaloTight;
-
-    /// <summary>The inner ring moves with the user's input (Listening), 0 to 1.</summary>
-    public double Vox;
-
-    /// <summary>Rim and inner ring shift from accent to the danger tone (Error).</summary>
-    public double RimDanger;
-
-    /// <summary>Rim and inner ring shift to the success tone (Success).</summary>
-    public double RimSuccess;
-
-    /// <summary>Rim and inner ring shift to the warning tone (Warning).</summary>
-    public double RimWarning;
-
-    /// <summary>The amber segment that marks a concern (Warning).</summary>
-    public double WarningMark;
-
-    public double ThreadOpacity;
-
-    /// <summary>Thread 1 (r 54, 14 s) orbit rate.</summary>
-    public double ThreadSpeed1;
-
-    /// <summary>Thread 2 (r 58.5, 22 s) orbit rate.</summary>
-    public double ThreadSpeed2;
-
-    /// <summary>Thread 3 (r 63.5, 30 s) orbit rate.</summary>
-    public double ThreadSpeed3;
-
-    /// <summary>Thread 4 (r 70, 42 s) orbit rate.</summary>
-    public double ThreadSpeed4;
-
-    /// <summary>Thread brightening on emphasis (Speaking), 0 to 1.</summary>
-    public double ThreadPulse;
-
-    /// <summary>Threads gathered at the top where work paused (Blocked).</summary>
-    public double ParkOpacity;
-
-    /// <summary>Territory ring with a controlled gap (Blocked).</summary>
-    public double GapRingOpacity;
-
-    /// <summary>Threads broken into slow fragments (Error).</summary>
-    public double FragmentOpacity;
-
-    /// <summary>Rings pulsing outward (Speaking), 0 to 1.</summary>
-    public double OutwardRings;
-
-    /// <summary>Rings drawing inward toward the core (Listening), 0 to 1.</summary>
-    public double InwardRings;
-
-    /// <summary>Scale of the whole body about the centre (Sleep: 86%).</summary>
-    public double BodyScale;
-
-    /// <summary>How far the whole body sinks, design units (Sleep: 9).</summary>
-    public double BodyDrop;
-
-    /// <summary>Light of the whole body (Sleep: 60%).</summary>
-    public double BodyOpacity;
-
-    /// <summary>The body's slow sleeping breath, 0 to 1.</summary>
-    public double BodyBreath;
-
-    public static HaloLook Lerp(in HaloLook a, in HaloLook b, double t) => new()
-    {
-        HaloOpacity = LookMath.Mix(a.HaloOpacity, b.HaloOpacity, t),
-        HaloScale = LookMath.Mix(a.HaloScale, b.HaloScale, t),
-        HaloBreath = LookMath.Mix(a.HaloBreath, b.HaloBreath, t),
-        HaloIrregular = LookMath.Mix(a.HaloIrregular, b.HaloIrregular, t),
-        HaloTight = LookMath.Mix(a.HaloTight, b.HaloTight, t),
-        Vox = LookMath.Mix(a.Vox, b.Vox, t),
-        RimDanger = LookMath.Mix(a.RimDanger, b.RimDanger, t),
-        RimSuccess = LookMath.Mix(a.RimSuccess, b.RimSuccess, t),
-        RimWarning = LookMath.Mix(a.RimWarning, b.RimWarning, t),
-        WarningMark = LookMath.Mix(a.WarningMark, b.WarningMark, t),
-        ThreadOpacity = LookMath.Mix(a.ThreadOpacity, b.ThreadOpacity, t),
-        ThreadSpeed1 = LookMath.Mix(a.ThreadSpeed1, b.ThreadSpeed1, t),
-        ThreadSpeed2 = LookMath.Mix(a.ThreadSpeed2, b.ThreadSpeed2, t),
-        ThreadSpeed3 = LookMath.Mix(a.ThreadSpeed3, b.ThreadSpeed3, t),
-        ThreadSpeed4 = LookMath.Mix(a.ThreadSpeed4, b.ThreadSpeed4, t),
-        ThreadPulse = LookMath.Mix(a.ThreadPulse, b.ThreadPulse, t),
-        ParkOpacity = LookMath.Mix(a.ParkOpacity, b.ParkOpacity, t),
-        GapRingOpacity = LookMath.Mix(a.GapRingOpacity, b.GapRingOpacity, t),
-        FragmentOpacity = LookMath.Mix(a.FragmentOpacity, b.FragmentOpacity, t),
-        OutwardRings = LookMath.Mix(a.OutwardRings, b.OutwardRings, t),
-        InwardRings = LookMath.Mix(a.InwardRings, b.InwardRings, t),
-        BodyScale = LookMath.Mix(a.BodyScale, b.BodyScale, t),
-        BodyDrop = LookMath.Mix(a.BodyDrop, b.BodyDrop, t),
-        BodyOpacity = LookMath.Mix(a.BodyOpacity, b.BodyOpacity, t),
-        BodyBreath = LookMath.Mix(a.BodyBreath, b.BodyBreath, t),
-    };
-}
-
-/// <summary>
-/// Ambient aura and energy lines. Last cascade group (0.8 to 1.6 s).
-/// </summary>
-public struct AuraLook
-{
-    public double AuraOpacity;
-
-    /// <summary>Breathing strength; 1 = ±4% and 78 to 100% light over 8 s.</summary>
-    public double AuraBreath;
-
-    /// <summary>Pulse with speech (Speaking), 0 to 1.</summary>
-    public double AuraPulse;
-
-    public double EnergyOpacity;
-
-    /// <summary>Energy line turn and flow rate; 1 = 90 s and 140 s turns.</summary>
-    public double EnergySpeed;
-
-    public static AuraLook Lerp(in AuraLook a, in AuraLook b, double t) => new()
-    {
-        AuraOpacity = LookMath.Mix(a.AuraOpacity, b.AuraOpacity, t),
-        AuraBreath = LookMath.Mix(a.AuraBreath, b.AuraBreath, t),
-        AuraPulse = LookMath.Mix(a.AuraPulse, b.AuraPulse, t),
-        EnergyOpacity = LookMath.Mix(a.EnergyOpacity, b.EnergyOpacity, t),
-        EnergySpeed = LookMath.Mix(a.EnergySpeed, b.EnergySpeed, t),
-    };
-}
-
-/// <summary>
-/// One complete look: the numbers a state is made of. States differ only in
-/// these values, which is what lets a new state be added without touching the
-/// renderer.
-/// </summary>
-public struct LivingCoreLook
-{
-    public CoreLook Core;
-    public InsideLook Inside;
-    public HaloLook Halo;
-    public AuraLook Aura;
+    /// <summary>Light of everything from the halo inward (Sleep dims it).</summary>
+    public double BodyOpacity { get; init; }
 
     /// <summary>
-    /// Blends two looks with a separate progress per cascade group, so the
-    /// white core can finish moving before the aura starts.
+    /// The body's size: Sleep shrinks it to 86%. While Sleep's own breathing
+    /// animation runs it shows instead; this resting value shows under
+    /// reduced motion.
     /// </summary>
-    public static LivingCoreLook Blend(in LivingCoreLook from, in LivingCoreLook to, in CascadeProgress progress) => new()
-    {
-        Core = CoreLook.Lerp(from.Core, to.Core, progress.Core),
-        Inside = InsideLook.Lerp(from.Inside, to.Inside, progress.Inside),
-        Halo = HaloLook.Lerp(from.Halo, to.Halo, progress.Halo),
-        Aura = AuraLook.Lerp(from.Aura, to.Aura, progress.Aura),
-    };
-}
+    public double BodyScale { get; init; }
 
-/// <summary>Eased progress of each cascade group, each 0 to 1.</summary>
-public readonly record struct CascadeProgress(double Core, double Inside, double Halo, double Aura)
-{
-    public static CascadeProgress Complete { get; } = new(1.0, 1.0, 1.0, 1.0);
+    /// <summary>How far the body sinks, design units (Sleep: 9).</summary>
+    public double BodyDrop { get; init; }
 
-    public bool IsComplete => Core >= 1.0 && Inside >= 1.0 && Halo >= 1.0 && Aura >= 1.0;
-}
+    public double ThreadsOpacity { get; init; }
 
-internal static class LookMath
-{
-    public static double Mix(double a, double b, double t) => a + ((b - a) * t);
+    public double AuraOpacity { get; init; }
+
+    public double StarsOpacity { get; init; }
+
+    /// <summary>The cell school's shape: Listening draws it in, Error spreads it, Sleep lays it down.</summary>
+    public double CellsScaleX { get; init; }
+
+    public double CellsScaleY { get; init; }
+
+    /// <summary>How far the cell school sinks, design units.</summary>
+    public double CellsDrop { get; init; }
+
+    public double CellsOpacity { get; init; }
+
+    public double EnergyOpacity { get; init; }
+
+    // ---- Lens current ----
+
+    public double LensOpacity { get; init; }
+
+    /// <summary>Warning narrows the lens to 80% of its height.</summary>
+    public double LensScaleY { get; init; }
+
+    /// <summary>Warning lifts the crest, design units (negative is up).</summary>
+    public double CrestLift { get; init; }
+
+    public double LateralAOpacity { get; init; }
+
+    public double LateralBOpacity { get; init; }
+
+    // ---- State marks: 0 or 1, faded in and out by their transition ----
+
+    public double InwardRings { get; init; }
+
+    public double OutwardRings { get; init; }
+
+    public double GapRing { get; init; }
+
+    public double Fragments { get; init; }
+
+    public double Crack { get; init; }
+
+    public double Links { get; init; }
+
+    public double Orbits { get; init; }
+
+    public double VoiceWave { get; init; }
+
+    public double SpeakRing { get; init; }
+
+    public double AttentionRing { get; init; }
+
+    public double Warm { get; init; }
+
+    public double SuccessRing { get; init; }
+
+    public double WarningMark { get; init; }
+
+    public double Park { get; init; }
+
+    // ---- The rim and inner halo's tone (switches at once, as in the prototype) ----
+
+    public double RimDanger { get; init; }
+
+    public double RimSuccess { get; init; }
+
+    public double RimWarning { get; init; }
 }

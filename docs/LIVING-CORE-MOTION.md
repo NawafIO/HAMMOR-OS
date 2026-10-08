@@ -1,141 +1,266 @@
-# Step 4: Living Core motion, reworked to the reference
+# Step 4: Living Core motion, matched to the reference video
 
 **Status: branch `claude/living-shell-sidebar`. UNVERIFIED ON WINDOWS.** It
 was written in a Linux container without the .NET SDK, so it has not been
-compiled, run or seen on a screen. What was checked:
+compiled, run or seen on a screen. What was checked is listed under
+[How the video was used](#how-the-video-was-used). None of it replaces a
+compiler or a real screen.
 
-- the C# was parsed, and every member the changed code and tests use was
-  cross-referenced against the declarations in the repository and the .NET 8,
-  WPF-UI 4.3 and CommunityToolkit reference assemblies;
-- the XAML and resx files were checked as XML, and English and Arabic have
-  the same keys;
-- the 650 look values in `LivingCoreLooks.cs` were compared with a Python
-  port of the engine, and every assertion of `LivingCoreLifeTests` and
-  `LivingCoreMotionTests` (235 in all) was run against that port: all pass.
+## Why it changed again
 
-None of this replaces a compiler or a real screen.
+The previous rework was built from the canvas boards. The boards soften the
+prototype: one 1.6 s cascade for every change, idle glances, halos hidden
+while speaking, loops slowed in Error and Blocked, a thread lap on Success.
+The video shows none of that. It is a recording of the canvas's **Play with
+the core** prototype, which is SVG driven by CSS, and it moves the way that
+CSS moves.
 
-## The reference
+So the engine is now an exact emulation of the prototype's CSS, element by
+element, as Chrome applies it. Where the boards and the video disagree, the
+video wins. The identity, the geometry, the colours and the state wiring are
+unchanged.
 
-No video reached this session: the only attachment was the canvas PDF. The
-behavioural source used instead is the approved Living Core canvas and its
-**Prototype** board: its CSS keyframes and its event code (pointer, message,
-panel, the ten state buttons). The state boards, interaction rules, motion
-board and guardrails fill in what the prototype leaves out. If the video
-differs from the prototype anywhere, name the state and what differs.
+## How the video was used
 
-The first Step 4 added idle wander, parallax and breathing on top of the six
-P0 states. It was too subtle and did not reproduce the reference's
-state-driven motion. This rework replaces it: the wander is gone, and each of
-the ten states has its own pose, intensity, white-core behaviour, ring and
-thread behaviour and transition. The identity, geometry and colours are
-unchanged; the success green (`#6AD895`), warning amber (`#E99B2A`) and ember
-(`#E9C9A8`) are the prototype's own signal colours.
+1. **The recording.** 1080 × 738 px, 37.3 s, 2,244 frames at about 60 fps.
+   The core's zone was calibrated from the frame at 2.546 px per design unit.
+   The twelve state changes were read from the stage label:
+
+   | Time | State | Time | State |
+   |---|---|---|---|
+   | 2.49 s | Thinking | 21.44 s | Warning |
+   | 7.10 s | Success | 23.64 s | Error |
+   | 9.07 s | Blocked | 25.45 s | Wake |
+   | 13.23 s | Sleep | 28.05 s | Idle (Wake hands over) |
+   | ≈15.3 s | Listening | 29.47 s | Speaking |
+   | 18.54 s | Speaking | 31.54 s | Listening |
+
+2. **The white core was tracked in every frame.**
+3. **Ground truth in Chromium.** The prototype's own source was run in
+   headless Chromium, driven with the video's timeline. The computed style
+   of every animated element was sampled every frame. Frames rendered from
+   it were checked side by side against the video's frames.
+4. **The rules Chrome applies.** The harness confirmed these, and the video
+   shows them:
+   - A property with a running animation shows the animation's value.
+   - When an animation starts, it shows its first keyframe at once.
+   - When an animation stops, the property jumps to its resting value. The
+     browser never transitions from an animated value.
+   - Otherwise a change of resting value runs the element's own CSS
+     transition from the value on screen. A property with no transition
+     switches at once.
+   - An animation that stays applied across a state change keeps its start
+     time. A new duration therefore moves its phase at once.
+   - A positive delay shows the resting value. `fill: both` holds the first
+     and last keyframes.
+5. **A model of those rules against the harness.** A Python model was
+   compared with the harness, property by property and frame by frame. Every
+   property agrees within frame jitter (±3 frames). The largest residuals sit
+   at the one change time that had to be estimated (Sleep → Listening).
+6. **The model against the video.** Over 1,968 frames, the model's
+   white-core path differs from the tracked one by a median of 0.035 design
+   units, or 0.09 px.
+7. **The C# against the model.** `LivingCoreMotion` was ported line by line
+   to Python and diffed against the model. All 103 frame fields agree to
+   1e-9 in every one of these runs:
+   - the video's timeline;
+   - every reaction in every state;
+   - the pointer;
+   - a voice level;
+   - reduced motion;
+   - 40 randomised runs.
+
+   The only difference is the voice wave under a real speech envelope, a
+   HAMMOR addition (no envelope is connected today).
+8. **The tests.** Every assertion in the three rewritten test files was run
+   against that port: 90 cases, all pass. The C# was parsed and its member
+   names cross-referenced against the repository and the .NET, WPF and
+   toolkit reference assemblies.
+
+## What changed
+
+**Removed**, because the video does not do it:
+
+- the 1.6 s staggered cascade;
+- the Idle glance every 14 s;
+- the thread lap on Success, and the cells' shiver on a new message;
+- the glow's breathing;
+- typing modulation of Listening (`InputSignal`);
+- the 2 s spacing between glances, and merging message bursts;
+- the board's restraint, which had:
+  - hidden the halo in Speaking and Blocked's middle ring;
+  - held the aura still in Thinking and stopped the crest's sway;
+  - slowed Error, Blocked and Sleep.
+
+**Now as in the reference:**
+
+- every layer's own transition, and the reference's jumps (see
+  [Transitions and jumps](#transitions-and-jumps));
+- its keyframes, verbatim (`LivingCoreKeyframes.cs`);
+- its loop tempos;
+- the request glance in Blocked, every 6.4 s;
+- each new message restarting the ripple and the glance;
+- the aura leaning toward a panel in every state;
+- Sleep's sediment, from the prototype's values.
+
+Startup holds Wake for 2.6 s. A state set during that time shows when it ends.
 
 ## The ten states
 
+Positions are fractions of the white core's zone (centre 63, 60.5; ±19 ×
+±8 units). Loops run for as long as the state lasts.
+
 | State | White core | Inside | Halo, rings, threads | Body, aura |
 |---|---|---|---|---|
-| **Idle** | Rest; micro-drift; one glance about every 14 s; follows the pointer | Cells drift and bob; stars shimmer | Halo breathes over 6.4 s; threads 14, 22, 30, 42 s | Aura breathes over 8 s |
-| **Listening** | Centred, 112%, attention ring | Stars brighter, shimmer twice as fast; lateral lines bright | Inward rings at 55%, lifted to full by typing; the inner ring moves with the input | — |
-| **Thinking** | Up and to the left (−35%, −20% of its zone), 78%, 55% light | Links and travelling signals between cells; orbit lanes; lens precesses | Threads faster | Aura steady |
-| **Speaking** | Centred, 125%, pulsing to 147% | Cells still; voice wave | Halo replaced by outward rings every 1.8 s; threads pulse | Aura pulses |
-| **Success** | Lifted up and forward, to the right (+68%, −69%), 108%, brighter | Cells rise together (−3.5) and settle back; stars catch light | One green ring grows from 95% to 150% and dissolves; one thread laps once in 1.2 s; rim in the success tone | Warm bloom: 95→112→100% size, 40→100→55% light, once over 3.2 s |
-| **Warning** | Held back at 92% (+37%, −12.5%), glow narrowed; no drift, no glances | Lens narrows to 80%, crest rises 4; cells slow, no bob | Inner halo tightens to 97–98% and holds; one amber segment pulses every 3.2 s; threads at half speed | Aura 60% |
-| **Blocked** | Low and a little right (+16%, +31%), 94%; one glance toward the request, then waits | Stars and cells slow | Gap ring; threads parked, a slow light at the park | Aura 55% |
-| **Error** | To the right (+68%, +6%), 90%, 60% light | Crack; cells dim and spread | Danger rim; the inner ring stutters; fragments; threads broken | Aura 30% |
-| **Sleep** | A warm ember at rest, no glow, following nothing | Cells settle to a low band; stars almost out (15%); lens dims | Threads stop; halo breathes at half | The body sinks 9, shrinks to 86% at 60% light and breathes 86–87.5% over 9.6 s; aura 20% |
-| **Wake** | A point of light swells to 150% and settles (0–25%) | Rim draws itself round (16–50%); lens sweeps in (30–60%); cells and stars bloom (48–80%) | Halo and threads arrive last (68–100%) | Aura rises (60–100%) |
+| **Idle** | Rest (76, 57.5), with a 9.6 s drift of under a unit; follows the pointer | Cells bob on their own clocks and the school turns over 140 s; stars turn over 240 s and shimmer | Halo breathes over 6.4 s; threads at 14, 22, 30 and 42 s; crest sways ±1.4° | Aura breathes 96–104% over 8 s |
+| **Listening** | Centred, 112%, attention ring breathing | School drawn in to 92%; every star shimmers on one 1.6 s clock; lateral lines bright, flowing every 1.1 s | Three rings draw inward every 1.8 s, 0.6 s apart; the inner halo ring moves with the voice rhythm; inner threads at 8 and 12 s | Aura breathes |
+| **Thinking** | Up and back (−0.35, −0.2), 78%, 55% light | Cell links with travelling signals; two orbit lanes; lens precesses ±5° at 60% light; bobbing stops; stars turn in 60 s | Threads at 8, 12, 16 and 22.4 s | Aura breathes |
+| **Speaking** | Centred, pulsing from 125% to 147% over 1.6 s | Voice wave along the lower membrane | Three rings leave the halo every 1.8 s; the halo keeps breathing; threads pulse | Aura pulses with the voice |
+| **Success** | Lifted, up and to the right (0.68, −0.69), 108% | Cells rise 3.5 together and settle | One green ring: 95% → 150%, gone by 45%; rim in the success tone | Warm bloom: 40% → 100% → 55% light, 95% → 112% → 100% size, over 3.2 s |
+| **Warning** | Held back (0.37, −0.125), 92% | Lens narrowed to 80%; crest up 4 and still; bobbing stops; school turns over 280 s | Inner halo ring tightens to 97–98%; one amber segment pulses every 3.2 s; threads at half speed; rim in the warning tone | Aura 60% |
+| **Blocked** | Low (0.16, 0.31), 94%; every 6.4 s glances 9 units toward the request and 2 up, holds, comes back | Bobbing stops; school turns over 600 s | Threads off; parked light at the top pulses over 3.2 s; gap ring | Aura 55% |
+| **Error** | Right (0.68, 0.06), 90%, 60% light | Crack; cells spread to 118% at 50% light; stars 30%; lens 45% | Inner halo ring stutters on a 2.4 s pattern; fragments turn; threads off; rim in the danger tone | Aura 30% |
+| **Sleep** | An ember at rest, no glow | School laid down: 38 lower, 40% tall; stars 15%; energy lines 30% | Threads off; halo and loops continue | Body down 9, 86% size, 60% light, breathing 86–87.5% over 9.6 s; aura 20% |
+| **Wake** | A point of light swells to 150% at 12% and settles by 25% | Rim draws itself round (16–50%); lens sweeps in (30–60%); cells and stars bloom (48–80%) | Halo and threads arrive last (68–100%) | Aura rises (60–100%) |
 
-Percentages of position are of the white core's zone. Wake lasts 2.4 s and
-then hands over to the state underneath.
+The Wake ignition lasts 2.4 s, and Wake shows for 2.6 s before the state
+underneath.
+
+## Transitions and jumps
+
+**Glides**, each on its own transition from the prototype's CSS:
+
+| What | Time | Curve |
+|---|---|---|
+| White core position (pose, glance, pointer) | 0.45 s | settle |
+| White core size | 0.6 s | settle |
+| White core light | 0.6 s | ease |
+| Depth: cells move 30% with the core, stars 10% against | 0.6 s | settle |
+| Aura lean toward a panel | 1.2 s | settle |
+| Shapes: lens narrowing, cell school, body | 1.2 s | settle |
+| Light of the body, lens, threads, aura, stars, cells; the ember | 0.8 s | ease |
+| State marks: rings, gap ring, links, orbits, fragments, crack, voice wave, speaking ring | 0.6 s | ease |
+
+A change during a change starts from the frame on screen.
+
+**Jumps the reference makes, reproduced on purpose.** The video shows them,
+and smoothing them would make HAMMOR move unlike it:
+
+1. The body drops into Sleep at once and lifts out of it at once: its
+   breathing animation carries the sink and the shrink. Its light fades.
+2. The white core's size goes straight to 125% when Speaking starts, and
+   straight to the next state's size when it ends.
+3. Overlays with their own rhythm appear at their first keyframe and vanish
+   at once when the state ends: Success's bloom and ring, Warning's amber
+   segment, Blocked's parked light and Listening's attention ring.
+4. These switch at once, because the prototype gives them no transition:
+   - the rim's tone (danger, success, warning);
+   - the crest's lift;
+   - the energy lines' light;
+   - the glow;
+   - the lateral lines' light.
+5. Loops whose tempo changes with the state jump in phase at the change:
+   - the threads;
+   - the star field and its shimmer;
+   - the cell school;
+   - the lateral current.
+
+   CSS keeps the animation's start time and changes only its duration.
+6. The idle drift and Blocked's request glance end at once when their state
+   ends. That is up to 0.8 units for the drift, and up to 9 for the glance if
+   Blocked ends mid-glance.
+7. Wake starts from nothing. When it ends, whatever its keyframes held goes
+   straight to the next state: Wake → Thinking puts the core at 78% at once.
+8. Some animations replace a shape while they run:
+   - Thinking's precession and Wake's sweep replace Warning's lens
+     narrowing;
+   - Success's rise and Wake's bloom replace the cells' Listening, Error or
+     Sleep shape (Error → Success resets the 118% spread at once).
+
+If any of these looks wrong in HAMMOR, name it: each is one rule in
+`LivingCoreMotion`, and smoothing one is a small, separate change.
 
 ## Real HAMMOR triggers
 
 | State or reaction | Source | Notes |
 |---|---|---|
-| Listening | The composer has focus and text | Each keystroke reaches the core as `InputSignal`; the rings follow the rhythm. Holds 1.2 s after typing stops. No microphone. |
+| Listening | The composer has focus and text | Holds 1.2 s after typing stops. No microphone. |
 | Speaking | `SpeechPlaybackMonitor` | Held 0.8 s after the last word. |
 | Thinking | A chat turn in flight, until its reply arrives | |
-| Success | A task completes, or a blocked task is approved (Blocked → Pending or Running) | Held for its 3.2 s timeline. |
-| Warning | The approval prompt for a privileged tool call (`ConfirmationDialog`) is open | `ApprovalPromptWatcher` only hears the dialog's Loaded and Closed events. It never shows, answers or reads a prompt. |
-| Blocked | Any task in `TaskState.Blocked` | |
+| Success | A task completes, or a blocked task is approved | Held 3.2 s: one cycle of the bloom. |
+| Warning | The approval prompt for a privileged tool call is open | `ApprovalPromptWatcher` only hears the dialog's Loaded and Closed events. It never shows, answers or reads a prompt. |
+| Blocked | Any task in `TaskState.Blocked` | The request glance goes toward the leading side, where Tasks is. |
 | Error | A failed turn, or a task that failed this session | Holds until the user acts. |
-| Sleep | The window is minimised, or ten minutes pass with no key, click, wheel or pointer move | Only when nothing else is going on. |
-| Wake | Leaving Sleep for any reason; the window restored; the app opening | Leaving Sleep always goes through Wake. |
-| New message | An assistant reply is added to the conversation | One ripple leaves the membrane (100→135%, 75%→0 in 0.9 s) and the cells shiver once. In Idle or Success, one glance toward the transcript and back. |
-| Panel | The user opens the navigation pane on the chat page | In Idle or Success, one glance toward the pane, and the aura leans 4 units its way. |
-| Pointer | The pointer moves over HAMMOR's window, in Idle | Followed inside the zone, 450 ms behind. Moves under 24 px are ignored. Let go after 5 s of stillness, or 1.2 s after the pointer leaves. The cells move 30% with the white core and the stars 10% against it. |
+| Sleep | The window is minimised, or ten minutes pass with no input | |
+| Wake | Leaving Sleep; the window restored; the app opening | Leaving Sleep always goes through Wake. |
+| New message | An assistant reply is added to the conversation | See below. |
+| Panel | The navigation pane opens on the chat page | See below. |
+| Pointer | The pointer moves over HAMMOR's window, in Idle | See below. |
 
-**Who moves the white core.** One owner, `LivingCoreMotion`. States rank
-Wake, Speaking, Listening, Warning, Thinking, Blocked, Error, Success, Sleep,
-Idle. Within a state the order is the pose, then a glance toward a message or
-panel, then the pointer (Idle only), then rest.
+- **New message.**
+  - One ripple leaves the membrane: 100% → 135% while its light falls from
+    75% to 0, over 0.9 s.
+  - For 1.2 s the white core glances toward the transcript and down. The
+    target is (0.5, 0.9) of the zone, which is held on the zone's edge.
+  - A second message restarts both.
+- **Panel.**
+  - For 2.4 s the white core glances toward the pane (0.95 of its zone
+    sideways).
+  - The aura leans 3.8 units its way in every state.
+- **Pointer.**
+  - The white core follows it inside its zone, 450 ms behind, ignoring moves
+    under 24 px.
+  - It lets go after 5 s of stillness, or 1.2 s after the pointer leaves the
+    window.
 
-The collision rules:
+**Who moves the white core**, in the prototype's order:
 
-- no two glances within 2 s;
-- message bursts within 2 s count as one;
-- while listening, thinking, speaking, waiting, blocked, in error or asleep a
-  message only ripples;
-- a glance in progress fades out when the state stops allowing it.
+1. Sleep and Wake rest.
+2. Speaking, Listening and Thinking hold their pose.
+3. Otherwise a message glance goes first, then a panel glance.
+4. Then Blocked, Warning, Error and Success hold their pose.
+5. Then, in Idle only, the pointer.
+6. Otherwise, rest.
 
-## Transitions
+## Where it still differs from the reference
 
-- Every state change uses the approved 1.6 s cascade, on ease.settle:
-  - the white core from 0 to 0.45 s;
-  - cells and stars from 0.2 to 0.8 s;
-  - halo and threads from 0.4 to 1.2 s;
-  - aura and energy lines from 0.8 to 1.6 s.
-- A change during a change starts from the frame on screen.
-- Wake and Success add their one-shot keyframes, starting from a fixed point
-  as the reference does: the ignition from a point of light, the bloom from
-  40%.
-- Leaving Success fades the bloom. Leaving Blocked in the middle of its
-  glance fades the glance.
-- The tests check every frame of an 18-state sequence for jumps. At 60 fps
-  the white core moves at most 3.2 units per frame, and no light changes by
-  more than 0.17 per frame outside those one-shot starts.
+1. **HAMMOR's own geometry.** It has 26 stars, 14 cells, 4 threads and 3
+   halo rings, as approved on the build board; the prototype has 18, 13, 3
+   and 2. The fourth thread (42 s, counter-clockwise), the third halo ring,
+   the fourth star clock and the third bob clock follow the same rules as
+   their neighbours.
+2. **The app opens with Wake.** The prototype opens in Idle.
+3. **Success lasts one 3.2 s cycle.** The prototype loops it until the next
+   click.
+4. **Triggers are HAMMOR's events**, as in the table above. In right-to-left
+   layouts the glances follow the physical side.
+5. **Reduced motion is stricter.** Transitions shorten to 0.4 s, and
+   reactions and the pointer are ignored. The prototype's switch only stops
+   animations.
+6. **Frame rate.** HAMMOR draws:
+   - at the display rate, up to 60 fps, while its window is active;
+   - at 30 fps for a 160 px core or smaller, or a window in the background;
+   - at 20 fps after 45 s in the background;
+   - at 10 fps settled in Sleep.
 
-## Where it differs from the prototype
-
-1. **Speaking hides the halo.** The approved P0 state board replaces it with
-   the outward rings; the prototype keeps both.
-2. **Idle glances about every 14 s.** The motion and state boards ask for
-   this; the prototype has no idle glance.
-3. **Blocked glances once.** The state board asks for one glance; the
-   prototype repeats it.
-4. **No glances in Warning or Error**, as their boards say.
-5. **Listening's rings rest at 55%.** Typing lifts them, because there is no
-   microphone and typing is the user's input.
-6. **Sleep's sediment is narrower and flatter.** The cells are at 50% width
-   and 20% height, dropped 37 units. The prototype uses full width and 40%
-   height, dropped 38, which puts cells past the rim at some rotations. The
-   tests check that every cell stays inside at every rotation.
-7. **The cells move in 0.6 s.** They follow the motion board's cascade (0.2
-   to 0.8 s); the prototype eases them over 1.2 s. The sediment therefore
-   falls twice as fast as in the reference.
-8. **The app opens with Wake.** This replaces the earlier cascade from a
-   dormant look.
-9. **The panel is the navigation pane.** It is HAMMOR's only panel beside the
-   core.
-10. **Warning is the privileged-tool prompt.** HAMMOR has no separate caution
-    notice.
+   The prototype always draws at the display rate.
+7. **A real voice envelope**, when one is connected (none is today), sets the
+   Speaking pulse, the voice wave and the strength of Listening's rings.
+8. **No camera mode.** There is no camera, microphone or speech-to-text.
 
 ## Reduced motion
 
 Windows Settings › Accessibility › Visual effects › **Animation effects**
 off:
 
-- Every state keeps its pose, shape and light.
-- Drift, glances, the pointer, the aura lean, the shiver, the thread lap and
-  breathing all stop.
-- Wake becomes a 0.4 s fade.
-- Success becomes a change of light only: the bloom 40→100→55%, the ring
-  held at 120%.
-- The ripple becomes one soft rise and fall of light.
-- Frames stop once a state has settled, except in Speaking and Blocked, whose
-  light changes slowly.
+- Every animation stops, as with the prototype's reduced-motion switch.
+- Each state shows its resting values:
+  - Listening's rings held in place at full light;
+  - Success's ring at full size;
+  - Blocked's parked light at full;
+  - Sleep's body sunk and shrunk.
+- State changes blend over 0.4 s, then frames stop.
+- There is no ignition, ripple, glance, lean or pointer follow.
 
 **Settings › Appearance › Living Core motion** shows which mode is active.
 
@@ -145,61 +270,57 @@ off:
 
 | Situation | Frames |
 |---|---|
-| Minimised, hidden, unloaded | None |
+| Minimised, hidden or unloaded | None |
 | Reduced motion, settled state | None |
 | Window active, hero core | Up to 60 fps, also on 120 and 144 Hz displays |
 | Core 160 px or smaller (the 112 px header) | 30 fps |
 | Window in the background | 30 fps, then 20 fps after 45 s |
 | Settled in Sleep, window shown | 10 fps (Guardrails board: "10 asleep") |
 
-- **Nothing is allocated per frame.**
-- **The new layers are cheap.** They are ten drawing visuals (warm bloom,
-  success ring, warning mark, two halo tones, two rim tones, the rim's draw
-  line, ripple and ember) and two containers (aura group, body). They are
-  drawn once and animated by transform and opacity. The exception is the
-  rim's dash offset, which moves only during Wake.
-- **Unchanged values are skipped**, as before.
-- **The pointer is cheap.** A move only stores a number after the 24 px
-  dead zone, and only while the core is animating.
-- **The presenter adds no polling.** It has five one-shot timers, one per
-  hold (speaking, listening, success, wake and the ten-minute sleep
-  deadline). The sleep timer is re-armed only when it fires early.
+- **Nothing is allocated per frame.** Each animation is a precomputed table
+  of keyframes.
+- **One frame costs the same as before.** The engine evaluates about 55
+  animation slots and 50 transitions per frame. That is plain arithmetic
+  over fixed arrays.
+- **The scene is unchanged.** It is the same retained visuals, moved by
+  transforms, opacity and dash offsets. Unchanged values are skipped.
+- **The presenter adds no polling.** It uses only one-shot timers, one per
+  hold.
 
 ## Files
 
 | File | Change |
 |---|---|
-| `Presence/LivingCoreState.cs` | Ten states |
-| `Presence/LivingCoreLook.cs`, `LivingCoreLooks.cs` | New look values (glow size, ember, cell squash, narrow and drop, lens and crest, halo tightness, voice ring, rim tones, warning mark, body); the four new looks |
-| `Presence/LivingCoreMotion.cs` | Rewritten to the reference: poses, pointer, depth, reactions, collisions, Success and Wake timelines, Sleep |
-| `Presence/LivingCoreFrame.cs`, `LivingCoreScene.cs` | The new frame values and visuals |
-| `Presence/LivingCoreReaction.cs` (new) | New-message and panel reactions |
-| `Presence/PointerDeadZone.cs` (new) | The 24 px dead zone |
-| `Presence/ApprovalPromptWatcher.cs` (new) | Observes the approval prompt for Warning |
-| `Presence/LivingCoreSignals.cs` | The new signals, ranks and `NeedsWake` |
-| `Presence/LivingCorePresenter.cs` | Success, Warning, Sleep and Wake from real events; reactions; typing |
-| `Presence/LivingCore.cs` | `Reaction` and `InputSignal` properties; the dead zone; letting go when the pointer leaves |
-| `Presence/LivingCoreFramePolicy.cs` | 10 fps asleep |
-| `Presence/CubicBezierEasing.cs` | The prototype's sleep curve (`Sink`) |
-| `Presence/LivingCoreDesign.cs` | The first Step 4's wander clocks removed |
-| `Views/ChatPage.xaml`, `Views/MainWindow.xaml.cs` | Bindings; activity, minimise and pane events reported to the presenter |
-| `Localization/Strings*.resx` | Four state descriptions in each language |
-| `tests/HAMMOR.App.Tests/Presence/` | See below |
+| `Presence/LivingCoreKeyframes.cs` (new) | The prototype's `@keyframes`; CSS animation and transition semantics |
+| `Presence/LivingCoreMotion.cs` | Rewritten as the CSS emulation |
+| `Presence/LivingCoreLook.cs`, `LivingCoreLooks.cs` | One flat set of resting values per state, from the prototype's CSS |
+| `Presence/CubicBezierEasing.cs` | CSS `linear` and `ease`; an exact path for linear curves |
+| `Presence/LivingCore.cs`, `LivingCorePresenter.cs`, `Views/ChatPage.xaml` | Typing modulation (`InputSignal`) removed |
+| `Presence/LivingCoreReaction.cs` | Docs |
+| `tests/HAMMOR.App.Tests/Presence/` | Motion, life and design tests rewritten to the reference |
 
-No Core, Infrastructure, security, permission, chat, speech, task or
-approval behaviour changed. There is no camera, microphone or speech-to-text.
+No Core, Infrastructure, security, permission, chat, speech, task or approval
+behaviour changed. The scene, the frame, the state resolver and the frame
+policy are unchanged.
 
-Tests (App, 359 → 451):
+### Tests
+
+App tests go from 451 to 466:
 
 | File | Before | After |
 |---|---|---|
-| `LivingCoreLifeTests` (rewritten) | 28 | 57 |
-| `LivingCoreDesignTests` | 13 | 31 |
-| `LivingCoreStateResolverTests` | 10 | 27 |
-| `LivingCoreFramePolicyTests` | 20 | 27 |
-| `LivingCoreStringsTests` | 4 | 15 |
-| `PointerDeadZoneTests` (new) | — | 10 |
-| `LivingCoreMotionTests` | 18 | 18 (four retargeted to the new behaviour) |
+| `LivingCoreMotionTests` | 18 | 24 |
+| `LivingCoreLifeTests` | 57 | 65 |
+| `LivingCoreDesignTests` | 31 | 32 |
+
+The rewritten tests assert what the video shows:
+
+- the jumps listed above;
+- the tempo changes;
+- Blocked's 6.4 s glance;
+- the message restart;
+- the aura's lean in held states;
+- Sleep's resting values under reduced motion.
 
 ## Windows verification
 
@@ -213,10 +334,10 @@ dotnet test -c Release
 .\src\HAMMOR.App\bin\Release\net8.0-windows\HAMMOR.exe
 ```
 
-Expected: 0 errors; **888 tests** pass (Core 437, App 451), 0 failed, 0
+Expected: 0 errors; **903 tests** pass (Core 437, App 466), 0 failed, 0
 skipped.
 
-To run only the Living Core tests:
+Only the Living Core tests:
 
 ```powershell
 dotnet test tests\HAMMOR.App.Tests -c Release --filter "FullyQualifiedName~HAMMOR.App.Tests.Presence"
@@ -225,58 +346,77 @@ dotnet test tests\HAMMOR.App.Tests -c Release --filter "FullyQualifiedName~HAMMO
 First open **Settings › Appearance**: "Living Core motion" must say **Full
 motion**, or every check below shows a still core by design.
 
-### What to look at
+### Side by side with the video
 
-1. **App start.** Wake: a point of light swells and settles, then the rim
-   draws itself round, then the lens, cells and stars, then the halo and
-   threads, with the aura last. About 2.4 s.
-2. **Idle and the pointer.**
-   - Move the pointer around the window: the white core follows inside its
-     zone, a little behind, never past it.
-   - The cells move with it and the stars against it.
-   - Small moves are ignored. Stop for 5 s, or leave the window: it returns
-     to rest.
-   - In Arabic it follows the physical side.
-3. **Listening.** Click the composer and type: the core centres and grows,
-   and the inward rings draw in, stronger while you type and easing 1.2 s
-   after you stop.
-4. **Thinking, then a new message.** Send: the core moves up and back,
-   dims, and links and signals run between the cells. When the reply lands,
-   one ripple leaves the membrane and the cells shiver; once back in Idle a
-   later reply also draws one glance toward the conversation.
-5. **Speaking.** Have a reply spoken: the core centres and pulses, rings
-   pulse outward.
-6. **Warning.** Trigger a privileged tool call that asks for approval. While
-   the prompt is open: the core holds back, the lens narrows, the halo
-   tightens and one amber segment pulses at the top right. Deny or allow:
-   it returns.
-7. **Blocked, then Success.** A task waiting for approval: the core sits
-   low, glances once toward the request and waits; the gap ring shows.
-   Approve it: Success lifts and brightens once, with a green ring, the
-   warm bloom and one thread lap, then settles.
-8. **Error.** A failed turn (for example with no network): dimmer, the crack
-   and the danger rim; it holds until you send again.
-9. **Panel.** On the chat page with the sidebar collapsed, open it: the core
-   glances toward it and the aura leans its way.
-10. **Sleep and Wake.** Minimise, then restore: Wake plays. Or leave HAMMOR
-    untouched for ten minutes: the core sinks, shrinks and dims to an ember,
-    and the cells settle low. Move the pointer: Wake, then Idle.
-11. **Reduced motion.** Turn Animation effects off: every state above still
-    reads, held still, and the Appearance row says reduced.
-12. **Conversation header.** The 112 px core shows the same states.
+Play the reference video next to HAMMOR and compare each moment:
+
+1. **App start, against 25.45–28.05 s.**
+   - A point of light swells past full and settles.
+   - Then the rim draws round, then the lens, then the cells and stars.
+   - The halo and threads, and the aura, come last.
+   - After 2.6 s it hands over to Idle.
+2. **Idle, against 28.05–29.47 s.**
+   - The white core sits forward and high with a small drift.
+   - Everything turns and breathes.
+   - Move the pointer: the white core follows inside its zone, cells with
+     it, stars against it.
+3. **Listening (type in the composer), against 15.3–18.5 s and 31.5 s on.**
+   - The core centres at 112%, with the attention ring.
+   - Rings draw inward.
+   - The lateral lines brighten and run fast, and the stars shimmer quickly.
+4. **Thinking (send), against 2.49–7.10 s.**
+   - The core moves up and back, small and dim.
+   - Links and signals run between the cells, and the lens rocks.
+   - The threads jump forward in phase as they speed up.
+5. **New message (the reply lands).**
+   - One ripple leaves the membrane.
+   - Back in Idle, a later reply draws a 1.2 s glance down toward the
+     conversation.
+6. **Speaking (a spoken reply), against 18.54–21.44 s and 29.47–31.54 s.**
+   - The core snaps to 125%, glides to the centre and pulses.
+   - Rings leave the halo, the voice wave runs, and the aura and threads
+     pulse.
+7. **Warning (a privileged tool call asking for approval), against
+   21.44–23.64 s.**
+   - The core holds back.
+   - The lens narrows and the crest lifts at once.
+   - The amber segment pulses and the threads slow.
+8. **Blocked (a task waiting for approval), against 9.07–13.23 s.**
+   - The core sits low.
+   - Every 6.4 s it glances toward the sidebar and back.
+   - The threads are off and parked at the top, with the gap ring.
+9. **Success (approve it), against 7.10–9.07 s.**
+   - The core lifts.
+   - The warm bloom and the green ring, and the cells rise.
+   - One cycle, then back.
+10. **Error (a failed turn), against 23.64–25.45 s.**
+    - The core dims to the right.
+    - The crack and the danger rim appear, the inner ring stutters, and the
+      cells spread.
+11. **Sleep (minimise and restore, or ten quiet minutes), against
+    13.23–15.3 s.**
+    - The body drops and shrinks at once.
+    - The ember appears, and the school lies down at the bottom.
+    - Restoring plays Wake.
+12. **Panel.** On the chat page with the pane collapsed, open it.
+    - The core glances toward it, and the aura leans its way.
+    - In Thinking the aura still leans, and the core stays put.
+13. **Reduced motion.** Turn Animation effects off.
+    - Every state still reads, held still.
+    - The Appearance row says reduced.
+14. **Conversation header.** The 112 px core shows the same states at
+    30 fps.
 
 ### Visual checks needing a real screen
 
-- **Sleep's sediment.** The cells flatten to 20% height. If they read as
-  slivers instead of cells, the alternative is the prototype's 40% with a
-  higher band.
-- **Sleep's fall.** The sediment falls in 0.6 s, twice as fast as the
-  prototype. If it reads as a drop rather than settling, the cells' cascade
-  stage for Sleep should lengthen to 1.2 s.
+- **The jumps above.** They match the video. If one reads as a glitch in
+  HAMMOR rather than as the reference's character, say which.
+- **Sleep's sediment.** The prototype's band (38 down, 40% tall) puts the
+  lowest cells over the rim at some rotations. This is in the video too.
+- **10 fps asleep.** The slow loops step at 10 fps. If that shows, Sleep
+  needs 20 fps.
 - **Small sizes.** The warning segment, the success ring and the ember at
   112 px.
-- **Amber and green.** Check both against the approved boards, on the
-  default and violet themes.
 
 ### Performance
 

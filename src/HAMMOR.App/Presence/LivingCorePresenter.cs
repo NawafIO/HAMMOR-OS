@@ -26,8 +26,7 @@ namespace HAMMOR.App.Presence;
 /// <item><b>Speaking</b>: real playback from <see cref="SpeechPlaybackMonitor"/>,
 /// held 0.8 s after the last word (Interaction board).</item>
 /// <item><b>Listening</b>: the user types in the focused composer, settling
-/// 1.2 s after they stop. No microphone is opened. Each keystroke is passed
-/// on as <see cref="InputSignal"/>.</item>
+/// 1.2 s after they stop. No microphone is opened.</item>
 /// <item><b>Thinking</b>: a chat turn is in flight and its reply has not
 /// arrived yet (<see cref="ChatViewModel.IsBusy"/>).</item>
 /// <item><b>Warning</b>: an approval prompt for a risky action is open
@@ -61,7 +60,7 @@ public sealed partial class LivingCorePresenter : ObservableObject, IDisposable
     internal static readonly TimeSpan SuccessHold = TimeSpan.FromSeconds(LivingCoreMotion.SuccessSeconds);
 
     /// <summary>The 2.4 s ignition plus a beat, then it hands over.</summary>
-    internal static readonly TimeSpan WakeHold = TimeSpan.FromSeconds(2.6);
+    internal static readonly TimeSpan WakeHold = TimeSpan.FromSeconds(LivingCoreMotion.WakeHoldSeconds);
 
     /// <summary>"Ten minutes without interaction" (state board 09).</summary>
     internal static readonly TimeSpan SleepAfter = TimeSpan.FromMinutes(10);
@@ -100,7 +99,6 @@ public sealed partial class LivingCorePresenter : ObservableObject, IDisposable
     private bool _inactive;
     private TimeSpan _lastActivity;
     private long _reactions;
-    private long _inputs;
     private bool _disposed;
 
     public LivingCorePresenter(
@@ -147,10 +145,6 @@ public sealed partial class LivingCorePresenter : ObservableObject, IDisposable
     /// <summary>The latest reaction for the core: a new message, a panel opening.</summary>
     [ObservableProperty]
     private LivingCoreReaction? _reaction;
-
-    /// <summary>Increases with each keystroke in the composer.</summary>
-    [ObservableProperty]
-    private long _inputSignal;
 
     /// <summary>
     /// What the core is showing, in words: its accessible name and tooltip, so
@@ -480,12 +474,6 @@ public sealed partial class LivingCorePresenter : ObservableObject, IDisposable
                 break;
 
             case nameof(ChatViewModel.Input):
-                if (_composerFocused && !string.IsNullOrEmpty(_chat.Input))
-                {
-                    // Each keystroke is the user's input for Listening.
-                    InputSignal = ++_inputs;
-                }
-
                 SyncListening();
                 break;
         }

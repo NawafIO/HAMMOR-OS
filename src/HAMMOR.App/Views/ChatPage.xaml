@@ -42,7 +42,6 @@
                                      VerticalAlignment="Center"
                                      State="{Binding State}"
                                      Reaction="{Binding Reaction}"
-                                     InputSignal="{Binding InputSignal}"
                                      ToolTip="{Binding Description}"
                                      AutomationProperties.Name="{Binding Description}" />
 
@@ -110,7 +109,6 @@
                                          VerticalAlignment="Center"
                                          State="{Binding State}"
                                          Reaction="{Binding Reaction}"
-                                         InputSignal="{Binding InputSignal}"
                                          ToolTip="{Binding Description}"
                                          AutomationProperties.Name="{Binding Description}" />
                 </Grid>

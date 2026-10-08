@@ -1,67 +1,69 @@
 namespace HAMMOR.App.Presence;
 
 /// <summary>
-/// The Living Core's motion engine: turns a state, the app's reactions and the
-/// passing of time into a <see cref="LivingCoreFrame"/>. Pure arithmetic, no
-/// WPF, deterministic: the same inputs at the same times always produce the
-/// same frames.
+/// The Living Core's motion engine: turns a state, the app's reactions, the
+/// pointer and the passing of time into a <see cref="LivingCoreFrame"/>. Pure
+/// arithmetic, no WPF, deterministic: the same inputs at the same times always
+/// produce the same frames.
 /// </summary>
 /// <remarks>
 /// <para>
-/// The behavioural source is the approved Living Core canvas: its prototype
-/// board (the ten states, the events and the pointer), its state boards §04,
-/// its interaction rules §05 and its awareness board §06.
+/// <b>The reference.</b> The approved prototype, and the video recorded from
+/// it, are CSS: every layer is an element with a resting value per state, a
+/// CSS transition, and animations. This engine reproduces those rules exactly,
+/// element by element, as the browser applies them:
+/// </para>
+/// <list type="bullet">
+/// <item>Each state applies its set of animations (<see cref="PrototypeKeyframes"/>).
+/// One that stays applied across a state change keeps its clock; a new
+/// duration moves its phase at once (so the threads jump when Thinking speeds
+/// them up, as in the video).</item>
+/// <item>A resting value that changes glides with its element's transition
+/// (the white core 0.45 s, its size and light 0.6 s, the layers' shape 1.2 s
+/// and light 0.8 s, the state marks 0.6 s), from the value on screen.</item>
+/// <item>A value an animation drives jumps when that animation starts or
+/// stops: the browser never transitions from an animated value. So the body
+/// drops into Sleep and back at once, and the white core snaps to 125% when
+/// Speaking starts.</item>
+/// <item>Values without a transition in the prototype (the rim's tone, the
+/// crest's lift, the energy lines' light) switch at once.</item>
+/// </list>
+/// <para>
+/// <b>The white core</b> has one owner: the prototype's pose order. Sleep and
+/// Wake rest; Speaking, Listening and Thinking hold their poses; otherwise a
+/// new message or an opening panel draws a glance, then Blocked, Warning,
+/// Error and Success hold theirs, then in Idle the pointer, then rest.
 /// </para>
 /// <para>
-/// <b>State changes</b> blend the previous look into the next one with the
-/// approved 1.6 s cascade: white core 0 to 0.45 s, cells and stars 0.2 to
-/// 0.8 s, halo and threads 0.4 to 1.2 s, aura and energy 0.8 to 1.6 s, all on
-/// ease.settle. A change during a change starts from what is on screen, so
-/// nothing ever jumps. Success and Wake add a one-shot timeline on top: they
-/// reach their peak once, then fall back.
-/// </para>
-/// <para>
-/// <b>Idle</b> runs nine clocks that never synchronise (Motion board): aura
-/// 8 s, energy lines 90 and 140 s, halo rings 6.4 s a third apart, threads 14,
-/// 22, 30 and 42 s in alternating directions, stars 240 s with four shimmer
-/// clocks, cells 140 s with three bob clocks, lens sway 6.4 s and flow 3.2 s,
-/// white core drift 9.6 s with one unhurried glance about every 14 s.
-/// </para>
-/// <para>
-/// <b>The white core has one owner</b>: this class. Where it looks is, highest
-/// first: the state's pose (Speaking, Listening, Thinking, Blocked), a glance
-/// toward a message or a panel, the pointer (Idle only), rest. On top come the
-/// idle drift and glance and the single Blocked glance toward the request.
-/// Depth follows it: the cells move 30% with it, the stars 10% the other way.
-/// Nothing else writes it.
-/// </para>
-/// <para>
-/// <b>Reduced motion</b> keeps every state's position, shape and light, and
-/// drops drift, glances, the pointer, orbit, shimmer and breathing. Pulses
-/// become a slow change of light; state changes and Wake become a short blend.
+/// <b>Reduced motion</b> turns every animation off, as the prototype's
+/// reduced-motion switch does, and shortens every transition to 0.4 s: each
+/// state is a still frame.
 /// </para>
 /// </remarks>
 public sealed class LivingCoreMotion
 {
-    /// <summary>Length of the full state-change cascade.</summary>
-    public const double CascadeSeconds = 1.6;
-
-    /// <summary>Length of a state change under reduced motion.</summary>
-    public const double ReducedTransitionSeconds = 0.4;
-
-    /// <summary>The Wake ignition: core, rim, lens, cells and stars, then halo, threads and aura.</summary>
+    /// <summary>The Wake ignition (prototype keyframes <c>wk*</c>).</summary>
     public const double WakeSeconds = 2.4;
 
-    /// <summary>The Success timeline: the warm bloom, the ring and the rise, once.</summary>
+    /// <summary>How long Wake shows before the state underneath (prototype <c>wakeThen</c>).</summary>
+    public const double WakeHoldSeconds = 2.6;
+
+    /// <summary>One Success bloom: the warm light, the ring and the rise.</summary>
     public const double SuccessSeconds = 3.2;
 
     /// <summary>A new message's ripple.</summary>
     public const double RippleSeconds = 0.9;
 
-    /// <summary>No two glances within this time, and message bursts within it count as one.</summary>
-    public const double GlanceSpacing = 2.0;
+    /// <summary>A new message draws the white core for this long.</summary>
+    public const double MessageGlanceSeconds = 1.2;
 
-    /// <summary>The white core follows the pointer this far behind.</summary>
+    /// <summary>An opening panel draws the white core for this long.</summary>
+    public const double PanelGlanceSeconds = 2.4;
+
+    /// <summary>Every transition under reduced motion.</summary>
+    public const double ReducedTransitionSeconds = 0.4;
+
+    /// <summary>The white core reaches a new target (pointer, glance or pose) this long after it changes.</summary>
     public const double PointerLag = 0.45;
 
     /// <summary>It lets the pointer go after this much stillness.</summary>
@@ -79,289 +81,281 @@ public sealed class LivingCoreMotion
     /// <summary>Depth: the stars move this share, the other way.</summary>
     public const double StarsDepth = -0.1;
 
-    // A frame never advances the clocks by more than this, so resuming after
-    // a pause (minimised, hidden, debugger) continues instead of jumping.
-    private const double MaxStep = 0.1;
+    /// <summary>A panel glance, as a share of the zone.</summary>
+    public const double PanelGlance = 0.95;
 
-    private const double GateTimeConstant = 0.15;
-    private const double SuccessGateTimeConstant = 0.25;
+    /// <summary>The aura leans this far toward a panel per unit of glance.</summary>
+    public const double PanelLean = 4.0;
 
-    // "Smoothed over 120 ms so they never jitter" (state board, Listening).
-    private const double EnvelopeTimeConstant = 0.12;
-
-    // Typing is the user's input while Listening: each keystroke lifts the
-    // level, which falls away over about half a second.
-    private const double InputKick = 0.6;
-    private const double InputRelease = 0.45;
-
-    private const double GlanceOut = 0.45;
-    private const double GlanceBack = 1.2;
-    private const double FirstGlanceDelay = 4.2;
-    private const double RequestGlanceDelay = 0.5;
-    private const double RequestGlanceHold = 0.9;
-    private const double RequestGlanceDx = 9.0;
-    private const double RequestGlanceDy = -2.0;
-
-    // Reactions, as fractions of the zone (prototype): a message is down and
-    // to the transcript's side, a panel straight to its side.
+    private const double CoreMoveSeconds = PointerLag;
+    private const double CoreSizeSeconds = 0.6;
+    private const double DepthSeconds = 0.6;
+    private const double LeanSeconds = 1.2;
+    private const double ShapeSeconds = 1.2;
+    private const double LightSeconds = 0.8;
+    private const double MarkSeconds = 0.6;
     private const double MessageGlanceX = 0.5;
     private const double MessageGlanceY = 0.9;
-    private const double MessageGlanceHold = 0.6;
-    private const double PanelGlanceX = 0.95;
-    private const double PanelGlanceHold = 1.0;
+    private const double MaxStep = 0.1;
+    private const double EnvelopeTimeConstant = 0.12;
 
-    // "The aura leans 4% toward the panel."
-    private const double PanelAuraLean = 4.0;
+    // Listening and Speaking rings: their delays, and their resting sizes
+    // (what shows before a ring's delay ends, and under reduced motion).
+    private static readonly double[] RingDelays = [0.0, 0.6, 1.2];
+    private static readonly double[] InwardRest = [1.22, 1.12, 1.03];
+    private static readonly double[] OutwardRest = [1.06, 1.18, 1.3];
 
-    // "The cells shiver once."
-    private const double ShiverSeconds = 0.6;
-    private const double ShiverPeriod = 0.15;
-    private const double ShiverAmplitude = 0.45;
+    private static readonly AnimationSpec[][] Specs = BuildSpecs();
 
-    // Success: "a thread takes one quick lap".
-    private const double SuccessLapSeconds = 1.2;
+    private readonly CssAnimation[] _animations = new CssAnimation[(int)Slot.Count];
 
-    private static readonly CubicBezierEasing Linear = new(0.0, 0.0, 1.0, 1.0);
+    // The animations the last frame showed: a value jumps when the animation
+    // on it changes between two frames, as the browser decides per style change.
+    private readonly CssKeyframes?[] _before = new CssKeyframes?[(int)Slot.Count];
+    private readonly CssTransition[] _values = new CssTransition[(int)Value.Count];
 
-    // Idle micro-drift, under 1.5% (hero board, prototype).
-    private static readonly double[] DriftTimes = [0.0, 0.25, 0.5, 0.75, 1.0];
-    private static readonly double[] DriftX = [0.0, 0.8, 0.2, -0.7, 0.0];
-    private static readonly double[] DriftY = [0.0, -0.5, 0.7, 0.2, 0.0];
+    private LivingCoreState _shown;
+    private double _wakeUntil = double.NegativeInfinity;
+    private double _wakeStart = double.NegativeInfinity;
+    private (double X, double Y, double Scale, double Opacity) _pose;
+    private CssAnimation _ripple;
 
-    // Idle glances: targets relative to rest, all inside the zone, with the
-    // approved hold of 0.6 to 1.2 s and an interval of about 14 s.
-    private static readonly double[] GlanceDx = [-14.0, 3.0, -9.0, -4.0];
-    private static readonly double[] GlanceDy = [2.0, 5.0, -2.5, 4.0];
-    private static readonly double[] GlanceHold = [0.9, 1.2, 0.7, 1.0];
-    private static readonly double[] GlanceInterval = [14.0, 15.6, 12.8, 14.8];
+    private double _messageUntil = double.NegativeInfinity;
+    private double _messageSide = 1.0;
+    private double _panelUntil = double.NegativeInfinity;
+    private double _panel;
 
-    // Speaking: the core pulses with its own speech (1.25 to 1.47).
-    private static readonly double[] PulseTimes = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0];
-    private static readonly double[] PulseScale = [1.0, 1.136, 1.032, 1.176, 1.048, 1.0];
-
-    private static readonly double[] AuraPulseTimes = [0.0, 0.3, 0.6, 1.0];
-    private static readonly double[] AuraPulseScale = [1.0, 1.06, 1.02, 1.0];
-    private static readonly double[] AuraPulseLight = [0.9, 1.0, 0.95, 0.9];
-
-    private static readonly double[] ThreadPulseTimes = [0.0, 0.3, 0.6, 0.8, 1.0];
-    private static readonly double[] ThreadPulseLight = [0.7, 1.0, 0.82, 1.0, 0.7];
-
-    private static readonly double[] WaveTimes = [0.0, 0.25, 0.5, 0.75, 1.0];
-    private static readonly double[] WaveScale = [0.4, 1.2, 0.6, 1.4, 0.4];
-
-    // Listening: the inner ring moves with the user (prototype "vox", 1.6 s).
-    private static readonly double[] VoxTimes = [0.0, 0.18, 0.34, 0.52, 0.70, 0.86, 1.0];
-    private static readonly double[] VoxScale = [1.0, 0.975, 1.008, 0.982, 1.012, 0.99, 1.0];
-
-    // Error: the inner ring breathes off the 0.8 s grid.
-    private static readonly double[] StutterTimes = [0.0, 0.17, 0.23, 0.49, 0.58, 0.83, 1.0];
-    private static readonly double[] StutterScale = [1.0, 1.01, 1.004, 1.012, 1.0, 1.006, 1.0];
-    private static readonly double[] StutterLight = [0.55, 0.3, 0.5, 0.25, 0.5, 0.32, 0.55];
-
-    // Success, once over 3.2 s (prototype "warm" and "rise").
-    private static readonly double[] WarmTimes = [0.0, 0.25, 1.0];
-    private static readonly double[] WarmScale = [0.95, 1.12, 1.0];
-    private static readonly double[] WarmLight = [0.4, 1.0, 0.55];
-    private static readonly double[] RiseTimes = [0.0, 0.25, 0.6, 1.0];
-    private static readonly double[] RiseY = [0.0, -3.5, -0.5, 0.0];
-
-    // Still frames for rings under reduced motion (prototype's static poses).
-    private static readonly double[] StaticOutwardScale = [1.06, 1.18, 1.3];
-    private static readonly double[] StaticInwardScale = [1.22, 1.12, 1.03];
-
-    private readonly double[] _threadAngle = new double[4];
-    private readonly double[] _shimmerPhase = new double[4];
-
-    private LivingCoreLook _from;
-    private LivingCoreLook _to;
-    private double _transitionStart;
-    private bool _transitionDone;
+    private bool _hasPointer;
+    private double _pointerX;
+    private double _pointerY;
+    private double _pointerMovedAt = double.NegativeInfinity;
+    private double _pointerReleaseAt = double.PositiveInfinity;
 
     private double _lastTime;
     private bool _hasTime;
-
-    private double _energy1Angle;
-    private double _energy2Angle;
-    private double _energy1Flow;
-    private double _energy2Flow;
-    private double _starsAngle;
-    private double _cellsAngle;
-    private double _lateralFlow;
-    private double _fragment1Angle;
-    private double _fragment2Angle;
-    private double _orbit1Angle;
-    private double _orbit2Angle;
-
-    private int _glanceIndex;
-    private double _nextGlanceAt;
-    private double _glanceStart = double.NaN;
-    private double _glanceGate;
-    private double _requestGlanceStart = double.NaN;
-    private double _requestGate;
     private double _envelope;
     private bool _hasVoiceLevel;
-
-    // Reactions: the last glance of any kind, a glance toward a message or a
-    // panel, and the message ripple.
-    private double _lastGlanceAt = double.NegativeInfinity;
-    private double _attentionStart = double.NaN;
-    private double _attentionX;
-    private double _attentionY;
-    private double _attentionHold;
-    private double _attentionLean;
-    private double _attentionGate;
-    private double _rippleStart = double.NegativeInfinity;
-
-    // One-shot timelines.
-    private double _wakeStart = double.NaN;
-    private double _successStart = double.NaN;
-    private double _successGate;
-
-    // Typing while Listening.
-    private double _inputLevel;
-    private double _inputAt = double.NegativeInfinity;
-
-    // The pointer: where it is in the zone (eased toward each new target)
-    // and how much the white core follows it (eased in and out).
-    private bool _hasPointer;
-    private double _pointerMovedAt = double.NegativeInfinity;
-    private double _pointerReleaseAt = double.PositiveInfinity;
-    private bool _pointerEngaged;
-    private double _pointerWeightFrom;
-    private double _pointerWeightTo;
-    private double _pointerWeightStart = double.NegativeInfinity;
-    private double _pointerWeightLast;
-    private double _pointerFromX;
-    private double _pointerFromY;
-    private double _pointerToX;
-    private double _pointerToY;
-    private double _pointerMoveStart = double.NegativeInfinity;
-
-    // Where the white core looks this frame, before drift and glances: depth
-    // follows it.
-    private double _gazeX;
-    private double _gazeY;
-    private double _auraLean;
 
     /// <param name="initialState">State to show.</param>
     /// <param name="now">Current time, seconds, from a monotonic clock.</param>
     /// <param name="fromDormant">
-    /// Arrive through the Wake ignition (core first, aura last), the way the
-    /// app opens, instead of appearing fully formed.
+    /// Arrive through the Wake ignition, the way the app opens: 2.6 s of Wake,
+    /// then <paramref name="initialState"/> (or whatever state was set meanwhile).
     /// </param>
-    /// <param name="reducedMotion">Start in reduced motion.</param>
+    /// <param name="reducedMotion">Start in reduced motion (no ignition).</param>
     public LivingCoreMotion(LivingCoreState initialState, double now, bool fromDormant, bool reducedMotion = false)
     {
         State = initialState;
         ReducedMotion = reducedMotion;
-        _to = LivingCoreLooks.For(initialState);
-        _from = _to;
-        _transitionStart = now;
-        _transitionDone = true;
-        _gazeX = _to.Core.X;
-        _gazeY = _to.Core.Y;
-
-        for (var i = 0; i < _threadAngle.Length; i++)
+        if (fromDormant && !reducedMotion)
         {
-            var thread = LivingCoreDesign.Threads[i];
-
-            // CSS negative delays start a loop part-way through.
-            _threadAngle[i] = Direction(thread) * 360.0 * -thread.Delay / thread.Period;
+            _wakeUntil = now + WakeHoldSeconds;
         }
 
-        for (var k = 0; k < _shimmerPhase.Length; k++)
+        // The loops run from the moment the core appears, like a page's.
+        _shown = ShownState(now);
+        var specs = Specs[(int)_shown];
+        for (var i = 0; i < _animations.Length; i++)
         {
-            var clock = LivingCoreDesign.ShimmerClocks[k];
-            _shimmerPhase[k] = Frac(-clock.Delay / clock.Period);
+            var spec = specs[i];
+            if (spec.Keyframes is not null)
+            {
+                _animations[i] = new CssAnimation { Keyframes = spec.Keyframes, Start = now, Duration = spec.Duration, Delay = spec.Delay };
+            }
+
+            _before[i] = _animations[i].Keyframes;
         }
 
-        if (fromDormant)
+        if (_shown == LivingCoreState.Wake)
         {
             _wakeStart = now;
         }
 
-        EnterBehaviours(initialState, now);
+        var look = LivingCoreLooks.For(_shown);
+        for (var v = Value.Ember; v < Value.PoseX; v++)
+        {
+            _values[(int)v] = new CssTransition(Base(look, v, _shown));
+        }
+
+        _pose = PoseFor(_shown, now);
+        _values[(int)Value.PoseX] = new CssTransition(_pose.X);
+        _values[(int)Value.PoseY] = new CssTransition(_pose.Y);
+        _values[(int)Value.CoreScale] = new CssTransition(_pose.Scale);
+        _values[(int)Value.CoreOpacity] = new CssTransition(_pose.Opacity);
+        _values[(int)Value.StarsShiftX] = new CssTransition(StarsDepth * (_pose.X - LivingCoreLooks.ZoneX));
+        _values[(int)Value.StarsShiftY] = new CssTransition(StarsDepth * (_pose.Y - LivingCoreLooks.ZoneY));
+        _values[(int)Value.CellsShiftX] = new CssTransition(CellsDepth * (_pose.X - LivingCoreLooks.ZoneX));
+        _values[(int)Value.CellsShiftY] = new CssTransition(CellsDepth * (_pose.Y - LivingCoreLooks.ZoneY));
+        _values[(int)Value.Lean] = new CssTransition(0.0);
     }
 
-    /// <summary>The state currently shown (or being blended toward).</summary>
+    /// <summary>Every layer the prototype animates, one animation each.</summary>
+    private enum Slot
+    {
+        AuraBreath,
+        Energy1Turn,
+        Energy1Flow,
+        Energy2Turn,
+        Energy2Flow,
+        Halo0,
+        Halo1,
+        Halo2,
+        Thread0,
+        Thread1,
+        Thread2,
+        Thread3,
+        Stars,
+        Twinkle0,
+        Twinkle1,
+        Twinkle2,
+        Twinkle3,
+        Cells,
+        Bob0,
+        Bob1,
+        Bob2,
+        Lateral,
+        Crest,
+        Wander,
+        Pupil,
+        Aura,
+        Threads,
+        HaloGroup,
+        Lens,
+        CellGroup,
+        Body,
+        Rim,
+        Warm,
+        SuccessRing,
+        WarningMark,
+        Park,
+        Attention,
+        Inward0,
+        Inward1,
+        Inward2,
+        Outward0,
+        Outward1,
+        Outward2,
+        VoiceWave,
+        Fragment1,
+        Fragment2,
+        Orbit1,
+        Orbit2,
+        Signal0,
+        Signal1,
+        Signal2,
+        Signal3,
+        Signal4,
+        Signal5,
+        Count,
+    }
+
+    /// <summary>Every resting value with a transition (or an instant switch).</summary>
+    private enum Value
+    {
+        // State values, from LivingCoreLooks.
+        Ember,
+        Glow,
+        BodyOpacity,
+        BodyScale,
+        BodyDrop,
+        LensScaleY,
+        LensOpacity,
+        CrestLift,
+        ThreadsOpacity,
+        AuraOpacity,
+        StarsOpacity,
+        CellsScaleX,
+        CellsScaleY,
+        CellsDrop,
+        CellsOpacity,
+        EnergyOpacity,
+        LateralA,
+        LateralB,
+        InwardRings,
+        OutwardRings,
+        GapRing,
+        Fragments,
+        Crack,
+        Links,
+        Orbits,
+        VoiceWave,
+        SpeakRing,
+        AttentionRing,
+        Warm,
+        SuccessRing,
+        WarningMark,
+        Park,
+        Inward0Scale,
+        Inward1Scale,
+        Inward2Scale,
+        Outward0Scale,
+        Outward1Scale,
+        Outward2Scale,
+        RimDanger,
+        RimSuccess,
+        RimWarning,
+
+        // The white core's pose, its depth and the aura's lean.
+        PoseX,
+        PoseY,
+        CoreScale,
+        CoreOpacity,
+        StarsShiftX,
+        StarsShiftY,
+        CellsShiftX,
+        CellsShiftY,
+        Lean,
+        Count,
+    }
+
+    /// <summary>The state the app asked for. Startup's Wake may still be showing.</summary>
     public LivingCoreState State { get; private set; }
 
-    /// <summary>Honour the system's reduced-motion setting.</summary>
+    /// <summary>Honour the system's reduced-motion setting: no animations, short transitions.</summary>
     public bool ReducedMotion { get; set; }
 
-    /// <summary>How much the white core followed the pointer in the last frame, 0 to 1.</summary>
-    public double PointerWeight => _pointerWeightLast;
+    /// <summary>The state on screen at <paramref name="now"/>: Wake while the startup ignition holds.</summary>
+    public LivingCoreState ShownState(double now) => now < _wakeUntil ? LivingCoreState.Wake : State;
 
-    private double TransitionLength => ReducedMotion ? ReducedTransitionSeconds : CascadeSeconds;
-
-    private double WakeLength => ReducedMotion ? ReducedTransitionSeconds : WakeSeconds;
-
-    /// <summary>
-    /// Eased progress of each cascade group <paramref name="elapsed"/> seconds
-    /// into a state change.
-    /// </summary>
-    public static CascadeProgress GetCascadeProgress(double elapsed, bool reducedMotion)
+    /// <summary>True while any value is still gliding to a new state.</summary>
+    public bool IsTransitioning(double now)
     {
-        if (reducedMotion)
+        for (var i = 0; i < _values.Length; i++)
         {
-            var t = LivingCoreEasings.Settle.Evaluate(Clamp01(elapsed / ReducedTransitionSeconds));
-            return new CascadeProgress(t, t, t, t);
+            if (_values[i].IsRunning(now))
+            {
+                return true;
+            }
         }
 
-        return new CascadeProgress(
-            Stage(elapsed, 0.0, 0.45),
-            Stage(elapsed, 0.2, 0.6),
-            Stage(elapsed, 0.4, 0.8),
-            Stage(elapsed, 0.8, 0.8));
+        return false;
     }
-
-    /// <summary>True while a state change is still blending.</summary>
-    public bool IsTransitioning(double now) => !_transitionDone && (now - _transitionStart) < TransitionLength;
 
     /// <summary>True while the Wake ignition is playing.</summary>
-    public bool IsWaking(double now) => !double.IsNaN(_wakeStart) && (now - _wakeStart) < WakeLength;
+    public bool IsWaking(double now) =>
+        !ReducedMotion && ShownState(now) == LivingCoreState.Wake && now - _wakeStart < WakeSeconds;
 
-    /// <summary>
-    /// Settled in Sleep: only the slow 9.6 s breath moves, so the renderer can
-    /// draw less often.
-    /// </summary>
+    /// <summary>Settled in Sleep: only slow loops move, so the renderer can draw less often.</summary>
     public bool IsResting(double now) =>
-        State == LivingCoreState.Sleep && !IsTransitioning(now) && !IsWaking(now) && !IsReacting(now);
+        ShownState(now) == LivingCoreState.Sleep && !IsTransitioning(now) && !_ripple.IsPlaying(now);
 
     /// <summary>
-    /// Whether the renderer has to keep producing frames. False only under
-    /// reduced motion once a still state has settled, so a still core costs
-    /// nothing. Speaking and Blocked keep their slow change of light;
-    /// Listening changes only with real input; reactions and one-shot
-    /// timelines finish their light.
+    /// Whether the renderer has to keep producing frames: always with motion
+    /// (every state has loops), and under reduced motion only while a
+    /// transition plays.
     /// </summary>
-    public bool NeedsContinuousFrames(double now) =>
-        !ReducedMotion
-        || IsTransitioning(now)
-        || IsWaking(now)
-        || IsReacting(now)
-        || State is LivingCoreState.Speaking or LivingCoreState.Blocked
-        || (State == LivingCoreState.Listening && (_hasVoiceLevel || InputLevelAt(now) > 0.002));
+    public bool NeedsContinuousFrames(double now) => !ReducedMotion || IsTransitioning(now);
 
-    /// <summary>Starts a cascade toward <paramref name="state"/>.</summary>
+    /// <summary>Shows <paramref name="state"/>, as the prototype's class change does.</summary>
     public void SetState(LivingCoreState state, double now)
     {
-        if (state == State)
-        {
-            return;
-        }
-
-        _from = CurrentLook(now);
-        _to = LivingCoreLooks.For(state);
-        _transitionStart = now;
-        _transitionDone = false;
         State = state;
-        EnterBehaviours(state, now);
+        Sync(now);
     }
 
     /// <summary>
-    /// Reports the pointer. The white core turns toward it in Idle only, never
-    /// under reduced motion.
+    /// Reports the pointer. The white core follows it in Idle only, never under
+    /// reduced motion.
     /// </summary>
     /// <param name="x">
     /// Pointer offset from the core's centre, physical left to right, in
@@ -377,7 +371,6 @@ public sealed class LivingCoreMotion
             return;
         }
 
-        // Direction, not distance: beyond the control it is capped by the zone.
         var distance = Math.Sqrt((x * x) + (y * y));
         if (distance > 1.0)
         {
@@ -385,26 +378,8 @@ public sealed class LivingCoreMotion
             y /= distance;
         }
 
-        var targetX = LivingCoreLooks.ZoneX + (x * PointerReach * LivingCoreLooks.ZoneRadiusX);
-        var targetY = LivingCoreLooks.ZoneY + (y * PointerReach * LivingCoreLooks.ZoneRadiusY);
-
-        if (!_pointerEngaged && PointerWeightAt(now) <= 1e-9)
-        {
-            // Not following yet: start from the new target, nothing moves.
-            _pointerFromX = targetX;
-            _pointerFromY = targetY;
-        }
-        else
-        {
-            // Retarget from where it is now, like a CSS transition.
-            var (currentX, currentY) = PointerAt(now);
-            _pointerFromX = currentX;
-            _pointerFromY = currentY;
-        }
-
-        _pointerToX = targetX;
-        _pointerToY = targetY;
-        _pointerMoveStart = now;
+        _pointerX = x * PointerReach;
+        _pointerY = y * PointerReach;
         _hasPointer = true;
         _pointerMovedAt = now;
         _pointerReleaseAt = double.PositiveInfinity;
@@ -417,97 +392,46 @@ public sealed class LivingCoreMotion
     public void ReleasePointer(double at) => _pointerReleaseAt = Math.Min(_pointerReleaseAt, at);
 
     /// <summary>
-    /// Something happened. A new message sends one ripple from the membrane and
-    /// makes the cells shiver once; bursts within two seconds count as one.
-    /// Where the state allows it (Idle, Success) a message or a panel also
-    /// draws one glance toward it, never two glances within two seconds.
+    /// Something happened. A new message sends a ripple from the membrane and
+    /// draws the white core toward it for 1.2 s; a panel draws it for 2.4 s
+    /// and leans the aura its way. Speaking, Listening, Thinking, Sleep and
+    /// Wake keep their pose (the aura still leans). Under reduced motion
+    /// nothing moves.
     /// </summary>
     /// <param name="kind">What happened.</param>
     /// <param name="physicalDirection">Its side on screen: negative left, positive right.</param>
     /// <param name="now">Current time.</param>
     public void React(LivingCoreReactionKind kind, double physicalDirection, double now)
     {
-        var side = physicalDirection < 0.0 ? -1.0 : 1.0;
-
-        if (kind == LivingCoreReactionKind.NewMessage)
-        {
-            if (now - _rippleStart < GlanceSpacing)
-            {
-                return;
-            }
-
-            _rippleStart = now;
-        }
-
-        if (ReducedMotion
-            || !GlanceAllowed(State)
-            || !double.IsNaN(_attentionStart)
-            || !double.IsNaN(_glanceStart)
-            || now - _lastGlanceAt < GlanceSpacing)
+        if (ReducedMotion)
         {
             return;
         }
 
+        var side = physicalDirection < 0.0 ? -1.0 : 1.0;
         if (kind == LivingCoreReactionKind.NewMessage)
         {
-            _attentionX = LivingCoreLooks.ZoneX + (side * MessageGlanceX * LivingCoreLooks.ZoneRadiusX);
-            _attentionY = LivingCoreLooks.ZoneY + (MessageGlanceY * LivingCoreLooks.ZoneRadiusY);
-            _attentionHold = MessageGlanceHold;
-            _attentionLean = 0.0;
+            _messageUntil = now + MessageGlanceSeconds;
+            _messageSide = side;
+            _ripple = new CssAnimation { Keyframes = PrototypeKeyframes.Ripple, Start = now, Duration = RippleSeconds };
         }
         else
         {
-            _attentionX = LivingCoreLooks.ZoneX + (side * PanelGlanceX * LivingCoreLooks.ZoneRadiusX);
-            _attentionY = LivingCoreLooks.ZoneY;
-            _attentionHold = PanelGlanceHold;
-            _attentionLean = side * PanelAuraLean;
+            _panel = PanelGlance * side;
+            _panelUntil = now + PanelGlanceSeconds;
         }
-
-        _attentionStart = now;
-        _lastGlanceAt = now;
     }
 
-    /// <summary>
-    /// The user typed. While Listening, the inward rings and the inner ring
-    /// follow the rhythm of their input.
-    /// </summary>
-    public void NoteInput(double now)
-    {
-        _inputLevel = Math.Min(1.0, InputLevelAt(now) + InputKick);
-        _inputAt = now;
-    }
-
-    /// <summary>The look on screen at <paramref name="now"/>.</summary>
-    public LivingCoreLook CurrentLook(double now)
-    {
-        if (_transitionDone)
-        {
-            return _to;
-        }
-
-        var elapsed = now - _transitionStart;
-        if (elapsed >= TransitionLength)
-        {
-            _transitionDone = true;
-            _from = _to;
-            return _to;
-        }
-
-        return LivingCoreLook.Blend(_from, _to, GetCascadeProgress(elapsed, ReducedMotion));
-    }
-
-    /// <summary>
-    /// Advances to <paramref name="now"/> and writes the frame.
-    /// </summary>
+    /// <summary>Advances to <paramref name="now"/> and writes the frame.</summary>
     /// <param name="now">Current time, seconds, same clock as the constructor.</param>
     /// <param name="voiceLevel">
     /// Level of the voice the state is about, 0 to 1, or NaN when no real
-    /// envelope is connected. Without one, Speaking uses its own designed
-    /// rhythm and Listening follows the user's typing.
+    /// envelope is connected. Without one, Speaking uses the prototype's own
+    /// rhythm.
     /// </param>
     /// <param name="requestDirection">
     /// Physical side of the approval request: negative for left, positive for
-    /// right. Used by the single Blocked glance.
+    /// right. Blocked's glance goes that way.
     /// </param>
     /// <param name="frame">Frame to overwrite.</param>
     public void Advance(double now, double voiceLevel, double requestDirection, LivingCoreFrame frame)
@@ -518,556 +442,513 @@ public sealed class LivingCoreMotion
         _lastTime = now;
         _hasTime = true;
 
-        var look = CurrentLook(now);
-        var reduced = ReducedMotion;
-        var hasVoice = !double.IsNaN(voiceLevel);
-        _hasVoiceLevel = hasVoice;
-        _envelope = hasVoice
-            ? Smooth(_envelope, Math.Clamp(voiceLevel, 0.0, 1.0), dt, EnvelopeTimeConstant)
+        Sync(now);
+
+        _hasVoiceLevel = !double.IsNaN(voiceLevel);
+        _envelope = _hasVoiceLevel
+            ? _envelope + ((Math.Clamp(voiceLevel, 0.0, 1.0) - _envelope) * (dt > 0.0 ? 1.0 - Math.Exp(-dt / EnvelopeTimeConstant) : 0.0))
             : 0.0;
 
-        // Success plays at full strength from its first frame; leaving it
-        // fades the bloom instead of cutting it.
-        var successTarget = State == LivingCoreState.Success ? 1.0 : 0.0;
-        _successGate = reduced || successTarget >= _successGate
-            ? successTarget
-            : Smooth(_successGate, successTarget, dt, SuccessGateTimeConstant);
+        UpdatePose(now);
+        WriteFrame(now, requestDirection, frame);
 
-        if (!reduced)
+        for (var i = 0; i < _before.Length; i++)
         {
-            AdvanceClocks(look, dt);
+            _before[i] = _animations[i].Keyframes;
         }
-
-        var wake = WakeAt(now, reduced);
-
-        WriteCore(look, now, dt, reduced, hasVoice, requestDirection, wake, frame);
-        WriteOutside(look, now, reduced, hasVoice, wake, frame);
-        WriteInside(look, now, reduced, wake, frame);
     }
 
-    private static bool GlanceAllowed(LivingCoreState state) =>
-        state is LivingCoreState.Idle or LivingCoreState.Success;
-
-    private bool IsReacting(double now) =>
-        (now - _rippleStart) < RippleSeconds
-        || (!double.IsNaN(_successStart) && (now - _successStart) < SuccessSeconds)
-        || (_successGate > 0.002 && State != LivingCoreState.Success);
-
-    private double InputLevelAt(double now) =>
-        double.IsNegativeInfinity(_inputAt)
-            ? 0.0
-            : _inputLevel * Math.Exp(-Math.Max(0.0, now - _inputAt) / InputRelease);
-
-    private double PointerWeightAt(double now) =>
-        Mix(_pointerWeightFrom, _pointerWeightTo, LivingCoreEasings.Settle.Evaluate(Clamp01((now - _pointerWeightStart) / PointerLag)));
-
-    private (double X, double Y) PointerAt(double now)
+    private static AnimationSpec[][] BuildSpecs()
     {
-        var t = LivingCoreEasings.Settle.Evaluate(Clamp01((now - _pointerMoveStart) / PointerLag));
-        return (Mix(_pointerFromX, _pointerToX, t), Mix(_pointerFromY, _pointerToY, t));
+        var all = new AnimationSpec[10][];
+        for (var s = 0; s < all.Length; s++)
+        {
+            var state = (LivingCoreState)s;
+            var specs = new AnimationSpec[(int)Slot.Count];
+            for (var i = 0; i < specs.Length; i++)
+            {
+                specs[i] = SpecFor(state, (Slot)i);
+            }
+
+            all[s] = specs;
+        }
+
+        return all;
     }
 
-    private void EnterBehaviours(LivingCoreState state, double now)
+    /// <summary>The prototype's animation on <paramref name="slot"/> in <paramref name="state"/>.</summary>
+    private static AnimationSpec SpecFor(LivingCoreState state, Slot slot)
     {
-        if (state == LivingCoreState.Idle)
+        var wake = state == LivingCoreState.Wake;
+        var listening = state == LivingCoreState.Listening;
+        var thinking = state == LivingCoreState.Thinking;
+        var speaking = state == LivingCoreState.Speaking;
+        var warning = state == LivingCoreState.Warning;
+        var blocked = state == LivingCoreState.Blocked;
+        var stillCells = thinking || warning || blocked;
+
+        return slot switch
         {
-            _nextGlanceAt = now + FirstGlanceDelay;
+            Slot.AuraBreath => new(PrototypeKeyframes.AuraBreath, 8.0),
+            Slot.Energy1Turn => new(PrototypeKeyframes.Turn, 90.0),
+            Slot.Energy1Flow => new(PrototypeKeyframes.EnergyFlow, 6.0),
+            Slot.Energy2Turn => new(PrototypeKeyframes.TurnBack, 140.0),
+            Slot.Energy2Flow => new(PrototypeKeyframes.EnergyFlow, 9.0),
+            Slot.Halo0 => state switch
+            {
+                LivingCoreState.Listening => new(PrototypeKeyframes.Voice, 1.6),
+                LivingCoreState.Warning => new(PrototypeKeyframes.Tighten, 3.2),
+                LivingCoreState.Error => new(PrototypeKeyframes.Stutter, 2.4),
+                _ => new(PrototypeKeyframes.HaloBreath, LivingCoreDesign.HaloPeriod, LivingCoreDesign.HaloDelays[0]),
+            },
+            Slot.Halo1 => new(PrototypeKeyframes.HaloBreath, LivingCoreDesign.HaloPeriod, LivingCoreDesign.HaloDelays[1]),
+            Slot.Halo2 => new(PrototypeKeyframes.HaloBreath, LivingCoreDesign.HaloPeriod, LivingCoreDesign.HaloDelays[2]),
+            Slot.Thread0 or Slot.Thread1 or Slot.Thread2 or Slot.Thread3 => ThreadSpec(state, slot - Slot.Thread0),
+            Slot.Stars => wake
+                ? new(PrototypeKeyframes.WakeBloom, WakeSeconds)
+                : new(PrototypeKeyframes.Turn, thinking ? 60.0 : 240.0),
+            Slot.Twinkle0 or Slot.Twinkle1 or Slot.Twinkle2 or Slot.Twinkle3 => new(
+                PrototypeKeyframes.Twinkle,
+                listening ? 1.6 : LivingCoreDesign.ShimmerClocks[slot - Slot.Twinkle0].Period,
+                LivingCoreDesign.ShimmerClocks[slot - Slot.Twinkle0].Delay),
+            Slot.Cells => new(PrototypeKeyframes.Turn, warning ? 280.0 : blocked ? 600.0 : 140.0),
+            Slot.Bob0 or Slot.Bob1 or Slot.Bob2 => stillCells
+                ? default
+                : new(PrototypeKeyframes.Bob, LivingCoreDesign.BobClocks[slot - Slot.Bob0].Period, LivingCoreDesign.BobClocks[slot - Slot.Bob0].Delay),
+            Slot.Lateral => new(PrototypeKeyframes.LateralFlow, listening ? 1.1 : 3.2),
+            Slot.Crest => warning ? default : new(PrototypeKeyframes.CrestSway, 6.4),
+            Slot.Wander => state switch
+            {
+                LivingCoreState.Idle => new(PrototypeKeyframes.Drift, 9.6),
+                LivingCoreState.Blocked => new(PrototypeKeyframes.RequestGlance, 6.4),
+                _ => default,
+            },
+            Slot.Pupil => speaking ? new(PrototypeKeyframes.SpeakPulse, 1.6) : wake ? new(PrototypeKeyframes.WakePupil, WakeSeconds) : default,
+            Slot.Aura => speaking ? new(PrototypeKeyframes.AuraPulse, 1.6) : wake ? new(PrototypeKeyframes.WakeAura, WakeSeconds) : default,
+            Slot.Threads => speaking ? new(PrototypeKeyframes.ThreadPulse, 1.6) : wake ? new(PrototypeKeyframes.WakeHalo, WakeSeconds) : default,
+            Slot.HaloGroup => wake ? new(PrototypeKeyframes.WakeHalo, WakeSeconds) : default,
+            Slot.Lens => thinking ? new(PrototypeKeyframes.Precession, 4.8) : wake ? new(PrototypeKeyframes.WakeLens, WakeSeconds) : default,
+            Slot.CellGroup => state == LivingCoreState.Success
+                ? new(PrototypeKeyframes.Rise, SuccessSeconds)
+                : wake ? new(PrototypeKeyframes.WakeBloom, WakeSeconds) : default,
+            Slot.Body => state == LivingCoreState.Sleep ? new(PrototypeKeyframes.SleepBreath, 9.6) : default,
+            Slot.Rim => wake ? new(PrototypeKeyframes.WakeRim, WakeSeconds) : default,
+            Slot.Warm => state == LivingCoreState.Success ? new(PrototypeKeyframes.WarmBloom, SuccessSeconds) : default,
+            Slot.SuccessRing => state == LivingCoreState.Success ? new(PrototypeKeyframes.SuccessRing, SuccessSeconds) : default,
+            Slot.WarningMark => warning ? new(PrototypeKeyframes.WarningMark, 3.2) : default,
+            Slot.Park => blocked ? new(PrototypeKeyframes.Park, 3.2) : default,
+            Slot.Attention => listening ? new(PrototypeKeyframes.Attention, 3.2) : default,
+            Slot.Inward0 or Slot.Inward1 or Slot.Inward2 => listening
+                ? new(PrototypeKeyframes.InwardRing, 1.8, RingDelays[slot - Slot.Inward0])
+                : default,
+            Slot.Outward0 or Slot.Outward1 or Slot.Outward2 => speaking
+                ? new(PrototypeKeyframes.OutwardRing, 1.8, RingDelays[slot - Slot.Outward0])
+                : default,
+            Slot.VoiceWave => speaking ? new(PrototypeKeyframes.VoiceWave, 1.6) : default,
+            Slot.Fragment1 => state == LivingCoreState.Error ? new(PrototypeKeyframes.Turn, 36.0) : default,
+            Slot.Fragment2 => state == LivingCoreState.Error ? new(PrototypeKeyframes.TurnBack, 52.0) : default,
+            Slot.Orbit1 => thinking ? new(PrototypeKeyframes.Turn, 9.6) : default,
+            Slot.Orbit2 => thinking ? new(PrototypeKeyframes.TurnBack, 14.4) : default,
+            Slot.Signal0 or Slot.Signal1 or Slot.Signal2 or Slot.Signal3 or Slot.Signal4 or Slot.Signal5 => thinking
+                ? new(PrototypeKeyframes.Signal, LivingCoreDesign.SignalPeriod, LivingCoreDesign.Links[slot - Slot.Signal0].Delay)
+                : default,
+            _ => default,
+        };
+    }
+
+    /// <summary>
+    /// A thread's orbit. Listening and Thinking speed the inner two up (8 and
+    /// 12 s), Thinking the third (16 s) and HAMMOR's fourth with it; Warning
+    /// halves them all.
+    /// </summary>
+    private static AnimationSpec ThreadSpec(LivingCoreState state, int index)
+    {
+        var thread = LivingCoreDesign.Threads[index];
+        var keyframes = thread.Clockwise ? PrototypeKeyframes.Turn : PrototypeKeyframes.TurnBack;
+        var period = thread.Period;
+        if (state is LivingCoreState.Listening or LivingCoreState.Thinking && index < 2)
+        {
+            period = index == 0 ? 8.0 : 12.0;
+        }
+        else if (state == LivingCoreState.Thinking)
+        {
+            period = period * 16.0 / 30.0;
+        }
+        else if (state == LivingCoreState.Warning)
+        {
+            period *= 2.0;
         }
 
-        // Blocked glances once toward the request, then waits. Leaving Blocked
-        // mid-glance lets the gate fade the glance instead of cutting it.
-        if (state == LivingCoreState.Blocked && !ReducedMotion)
+        return new(keyframes, period, thread.Delay);
+    }
+
+    /// <summary>A state's resting value for <paramref name="value"/>.</summary>
+    private static double Base(in LivingCoreLook look, Value value, LivingCoreState state) => value switch
+    {
+        Value.Ember => look.Ember,
+        Value.Glow => look.Glow,
+        Value.BodyOpacity => look.BodyOpacity,
+        Value.BodyScale => look.BodyScale,
+        Value.BodyDrop => look.BodyDrop,
+        Value.LensScaleY => look.LensScaleY,
+        Value.LensOpacity => look.LensOpacity,
+        Value.CrestLift => look.CrestLift,
+        Value.ThreadsOpacity => look.ThreadsOpacity,
+        Value.AuraOpacity => look.AuraOpacity,
+        Value.StarsOpacity => look.StarsOpacity,
+        Value.CellsScaleX => look.CellsScaleX,
+        Value.CellsScaleY => look.CellsScaleY,
+        Value.CellsDrop => look.CellsDrop,
+        Value.CellsOpacity => look.CellsOpacity,
+        Value.EnergyOpacity => look.EnergyOpacity,
+        Value.LateralA => look.LateralAOpacity,
+        Value.LateralB => look.LateralBOpacity,
+        Value.InwardRings => look.InwardRings,
+        Value.OutwardRings => look.OutwardRings,
+        Value.GapRing => look.GapRing,
+        Value.Fragments => look.Fragments,
+        Value.Crack => look.Crack,
+        Value.Links => look.Links,
+        Value.Orbits => look.Orbits,
+        Value.VoiceWave => look.VoiceWave,
+        Value.SpeakRing => look.SpeakRing,
+        Value.AttentionRing => look.AttentionRing,
+        Value.Warm => look.Warm,
+        Value.SuccessRing => look.SuccessRing,
+        Value.WarningMark => look.WarningMark,
+        Value.Park => look.Park,
+        Value.Inward0Scale or Value.Inward1Scale or Value.Inward2Scale =>
+            state == LivingCoreState.Listening ? InwardRest[value - Value.Inward0Scale] : 1.0,
+        Value.Outward0Scale or Value.Outward1Scale or Value.Outward2Scale =>
+            state == LivingCoreState.Speaking ? OutwardRest[value - Value.Outward0Scale] : 1.0,
+        Value.RimDanger => look.RimDanger,
+        Value.RimSuccess => look.RimSuccess,
+        Value.RimWarning => look.RimWarning,
+        _ => 0.0,
+    };
+
+    /// <summary>The prototype's transition on <paramref name="value"/>; zero duration switches at once.</summary>
+    private static (double Duration, CubicBezierEasing Easing) TransitionOf(Value value) => value switch
+    {
+        Value.Ember or Value.BodyOpacity or Value.LensOpacity or Value.ThreadsOpacity or Value.AuraOpacity
+            or Value.StarsOpacity or Value.CellsOpacity => (LightSeconds, LivingCoreEasings.Ease),
+        Value.BodyScale or Value.BodyDrop or Value.LensScaleY or Value.CellsScaleX or Value.CellsScaleY
+            or Value.CellsDrop => (ShapeSeconds, LivingCoreEasings.Settle),
+        Value.InwardRings or Value.OutwardRings or Value.GapRing or Value.Fragments or Value.Crack or Value.Links
+            or Value.Orbits or Value.VoiceWave or Value.SpeakRing or Value.AttentionRing or Value.Warm
+            or Value.SuccessRing or Value.WarningMark or Value.Park => (MarkSeconds, LivingCoreEasings.Ease),
+        _ => (0.0, LivingCoreEasings.Linear),
+    };
+
+    /// <summary>
+    /// The animated layer whose animation can drive <paramref name="value"/>,
+    /// and whether through its transform (otherwise its opacity).
+    /// </summary>
+    private static (Slot Slot, bool Transform) OwnerOf(Value value) => value switch
+    {
+        Value.CoreScale => (Slot.Pupil, true),
+        Value.BodyScale or Value.BodyDrop => (Slot.Body, true),
+        Value.LensScaleY => (Slot.Lens, true),
+        Value.LensOpacity => (Slot.Lens, false),
+        Value.ThreadsOpacity => (Slot.Threads, false),
+        Value.AuraOpacity => (Slot.Aura, false),
+        Value.StarsOpacity => (Slot.Stars, false),
+        Value.CellsScaleX or Value.CellsScaleY or Value.CellsDrop => (Slot.CellGroup, true),
+        Value.CellsOpacity => (Slot.CellGroup, false),
+        Value.AttentionRing => (Slot.Attention, false),
+        Value.Warm => (Slot.Warm, false),
+        Value.SuccessRing => (Slot.SuccessRing, false),
+        Value.WarningMark => (Slot.WarningMark, false),
+        Value.Park => (Slot.Park, false),
+        Value.Inward0Scale or Value.Inward1Scale or Value.Inward2Scale => (Slot.Inward0 + (value - Value.Inward0Scale), true),
+        Value.Outward0Scale or Value.Outward1Scale or Value.Outward2Scale => (Slot.Outward0 + (value - Value.Outward0Scale), true),
+        _ => (Slot.Count, false),
+    };
+
+    private static bool Drives(CssKeyframes? keyframes, bool transform) =>
+        keyframes is not null && (transform ? keyframes.AnimatesTransform : keyframes.AnimatesOpacity);
+
+    /// <summary>Applies the state on screen if it changed, as a class change does.</summary>
+    private void Sync(double now)
+    {
+        var shown = ShownState(now);
+        if (shown == _shown)
         {
-            _requestGlanceStart = now + RequestGlanceDelay;
+            return;
         }
 
-        // Wake ignites once; a wake already playing carries on.
-        if (state == LivingCoreState.Wake && !IsWaking(now))
+        // Start, keep or stop each animation.
+        var specs = Specs[(int)shown];
+        for (var i = 0; i < _animations.Length; i++)
+        {
+            var spec = specs[i];
+            if (spec.Keyframes is null)
+            {
+                _animations[i] = default;
+            }
+            else if (!ReferenceEquals(_animations[i].Keyframes, spec.Keyframes))
+            {
+                _animations[i] = new CssAnimation { Keyframes = spec.Keyframes, Start = now, Duration = spec.Duration, Delay = spec.Delay };
+            }
+            else
+            {
+                _animations[i].Duration = spec.Duration;
+                _animations[i].Delay = spec.Delay;
+            }
+        }
+
+        if (shown == LivingCoreState.Wake)
         {
             _wakeStart = now;
         }
 
-        // Success reaches its peak once; a second success inside it is the same moment.
-        if (state == LivingCoreState.Success
-            && (double.IsNaN(_successStart) || (now - _successStart) >= SuccessSeconds))
+        // Move every resting value: at once where an animation drives it now
+        // or did before, otherwise with its transition.
+        var look = LivingCoreLooks.For(shown);
+        for (var v = Value.Ember; v < Value.PoseX; v++)
         {
-            _successStart = now;
-        }
-    }
-
-    private void AdvanceClocks(in LivingCoreLook look, double dt)
-    {
-        var energy = look.Aura.EnergySpeed * dt;
-        _energy1Angle = (_energy1Angle + ((360.0 / 90.0) * energy)) % 360.0;
-        _energy2Angle = (_energy2Angle - ((360.0 / 140.0) * energy)) % 360.0;
-
-        // Dash flow: 40 units per 6 s and 9 s, kept within one pattern.
-        _energy1Flow = (_energy1Flow - ((40.0 / 6.0) * energy)) % 20.0;
-        _energy2Flow = (_energy2Flow - ((40.0 / 9.0) * energy)) % 32.0;
-
-        AdvanceThread(0, look.Halo.ThreadSpeed1, dt);
-        AdvanceThread(1, look.Halo.ThreadSpeed2, dt);
-        AdvanceThread(2, look.Halo.ThreadSpeed3, dt);
-        AdvanceThread(3, look.Halo.ThreadSpeed4, dt);
-
-        _fragment1Angle = (_fragment1Angle + ((360.0 / 36.0) * dt)) % 360.0;
-        _fragment2Angle = (_fragment2Angle - ((360.0 / 52.0) * dt)) % 360.0;
-
-        _starsAngle = (_starsAngle + ((360.0 / 240.0) * look.Inside.StarDriftSpeed * dt)) % 360.0;
-        _cellsAngle = (_cellsAngle + ((360.0 / 140.0) * look.Inside.CellDriftSpeed * dt)) % 360.0;
-        _orbit1Angle = (_orbit1Angle + ((360.0 / 9.6) * dt)) % 360.0;
-        _orbit2Angle = (_orbit2Angle - ((360.0 / 14.4) * dt)) % 360.0;
-
-        // Lateral lines: 14.4 units per 3.2 s, pattern 3.6.
-        _lateralFlow = (_lateralFlow - ((14.4 / 3.2) * look.Inside.LateralFlowSpeed * dt)) % 3.6;
-
-        for (var k = 0; k < _shimmerPhase.Length; k++)
-        {
-            var period = LivingCoreDesign.ShimmerClocks[k].Period;
-            _shimmerPhase[k] = Frac(_shimmerPhase[k] + (dt * look.Inside.StarShimmerSpeed / period));
-        }
-    }
-
-    private void AdvanceThread(int index, double speed, double dt)
-    {
-        var thread = LivingCoreDesign.Threads[index];
-        _threadAngle[index] = (_threadAngle[index] + (Direction(thread) * (360.0 / thread.Period) * speed * dt)) % 360.0;
-    }
-
-    private void WriteCore(
-        in LivingCoreLook look,
-        double now,
-        double dt,
-        bool reduced,
-        bool hasVoice,
-        double requestDirection,
-        in WakeFactors wake,
-        LivingCoreFrame frame)
-    {
-        var poseX = look.Core.X;
-        var poseY = look.Core.Y;
-
-        // ---- Pointer (Idle only): follows inside its zone, 450 ms behind,
-        // and lets go after 5 s of stillness or when the pointer leaves ----
-        var wantPointer = !reduced
-            && State == LivingCoreState.Idle
-            && _hasPointer
-            && now < _pointerReleaseAt
-            && (now - _pointerMovedAt) < PointerStillness;
-        if (reduced)
-        {
-            _pointerEngaged = false;
-            _pointerWeightFrom = 0.0;
-            _pointerWeightTo = 0.0;
-            _pointerWeightStart = double.NegativeInfinity;
-        }
-        else if (wantPointer != _pointerEngaged)
-        {
-            _pointerWeightFrom = PointerWeightAt(now);
-            _pointerWeightTo = wantPointer ? 1.0 : 0.0;
-            _pointerWeightStart = now;
-            _pointerEngaged = wantPointer;
-        }
-
-        var pointerWeight = PointerWeightAt(now);
-        _pointerWeightLast = pointerWeight;
-
-        var gazeX = poseX;
-        var gazeY = poseY;
-        if (pointerWeight > 0.0)
-        {
-            var (pointerX, pointerY) = PointerAt(now);
-            gazeX = Mix(poseX, pointerX, pointerWeight * look.Core.Drift);
-            gazeY = Mix(poseY, pointerY, pointerWeight * look.Core.Drift);
-        }
-
-        // ---- A glance toward a message or a panel: out, hold, back. Gated so
-        // a state that does not allow it (listening, speaking) fades it ----
-        _attentionGate = Smooth(_attentionGate, GlanceAllowed(State) && !reduced ? 1.0 : 0.0, dt, GateTimeConstant);
-        var lean = 0.0;
-        if (!double.IsNaN(_attentionStart))
-        {
-            var amount = GlanceAmount(now - _attentionStart, _attentionHold);
-            if (amount < 0.0 || reduced)
+            var target = Base(look, v, shown);
+            if (Jumps(v))
             {
-                _attentionStart = double.NaN;
+                _values[(int)v].Snap(target);
             }
             else
             {
-                var weight = amount * _attentionGate;
-                gazeX = Mix(gazeX, _attentionX, weight);
-                gazeY = Mix(gazeY, _attentionY, weight);
-                lean = _attentionLean * weight;
+                var (duration, easing) = Transition(TransitionOf(v));
+                _values[(int)v].Go(target, now, duration, easing);
             }
         }
 
-        _gazeX = gazeX;
-        _gazeY = gazeY;
-        _auraLean = lean;
+        _shown = shown;
+    }
 
-        var x = gazeX;
-        var y = gazeY;
-
-        // ---- Idle micro-drift ----
-        if (!reduced && look.Core.Drift > 0.0)
+    /// <summary>
+    /// Whether <paramref name="value"/> jumps instead of transitioning: an
+    /// animation on its property started, runs or stopped since the last
+    /// frame (the browser never transitions from an animated value).
+    /// </summary>
+    private bool Jumps(Value value)
+    {
+        if (ReducedMotion)
         {
-            var phase = now / 9.6;
-            x += Keyframes(phase, DriftTimes, DriftX, LivingCoreEasings.InOut) * look.Core.Drift;
-            y += Keyframes(phase, DriftTimes, DriftY, LivingCoreEasings.InOut) * look.Core.Drift;
+            return false;
         }
 
-        // ---- Idle glance: out 0.45 s, hold, back 1.2 s. Gated so leaving
-        // Idle fades a glance in progress instead of cutting it. It waits
-        // while the core follows the pointer or another glance is near ----
-        var idle = State == LivingCoreState.Idle && !reduced;
-        _glanceGate = Smooth(_glanceGate, idle ? 1.0 : 0.0, dt, GateTimeConstant);
-        if (reduced)
+        var (slot, transform) = OwnerOf(value);
+        return slot != Slot.Count
+            && (Drives(_before[(int)slot], transform) || Drives(_animations[(int)slot].Keyframes, transform));
+    }
+
+    /// <summary>A transition as given, or the short one of reduced motion; instant stays instant.</summary>
+    private (double Duration, CubicBezierEasing Easing) Transition((double Duration, CubicBezierEasing Easing) normal) =>
+        normal.Duration <= 0.0
+            ? normal
+            : ReducedMotion ? (ReducedTransitionSeconds, LivingCoreEasings.Settle) : normal;
+
+    /// <summary>
+    /// The prototype's pose order: where the white core looks, its size and
+    /// light, for the state on screen and what is happening now.
+    /// </summary>
+    private (double X, double Y, double Scale, double Opacity) PoseFor(LivingCoreState shown, double now)
+    {
+        var look = LivingCoreLooks.For(shown);
+        double nx;
+        double ny;
+        if (IsPoseHeld(shown))
         {
-            _glanceStart = double.NaN;
+            return (look.X, look.Y, look.Scale, look.Opacity);
+        }
+
+        if (now < _messageUntil && !ReducedMotion)
+        {
+            nx = MessageGlanceX * _messageSide;
+            ny = MessageGlanceY;
+        }
+        else if (now < _panelUntil && !ReducedMotion)
+        {
+            nx = _panel;
+            ny = 0.0;
+        }
+        else if (shown != LivingCoreState.Idle)
+        {
+            return (look.X, look.Y, look.Scale, look.Opacity);
+        }
+        else if (FollowsPointer(now))
+        {
+            nx = _pointerX;
+            ny = _pointerY;
         }
         else
         {
-            if (idle
-                && double.IsNaN(_glanceStart)
-                && double.IsNaN(_attentionStart)
-                && now >= _nextGlanceAt
-                && pointerWeight < 0.3
-                && (now - _lastGlanceAt) >= GlanceSpacing)
-            {
-                _glanceStart = now;
-                _lastGlanceAt = now;
-                _nextGlanceAt = now + GlanceInterval[_glanceIndex % GlanceInterval.Length];
-            }
-
-            if (!double.IsNaN(_glanceStart))
-            {
-                var slot = _glanceIndex % GlanceDx.Length;
-                var amount = GlanceAmount(now - _glanceStart, GlanceHold[slot]);
-                if (amount < 0.0)
-                {
-                    _glanceStart = double.NaN;
-                    _glanceIndex++;
-                }
-                else
-                {
-                    var weight = amount * _glanceGate * (1.0 - pointerWeight);
-                    x += GlanceDx[slot] * weight;
-                    y += GlanceDy[slot] * weight;
-                }
-            }
+            return (look.X, look.Y, look.Scale, look.Opacity);
         }
 
-        // ---- Blocked: the single glance toward the request ----
-        var blocked = State == LivingCoreState.Blocked && !reduced;
-        _requestGate = Smooth(_requestGate, blocked ? 1.0 : 0.0, dt, GateTimeConstant);
-        if (reduced)
+        var distance = Math.Sqrt((nx * nx) + (ny * ny));
+        if (distance > 1.0)
         {
-            _requestGlanceStart = double.NaN;
-        }
-        else if (!double.IsNaN(_requestGlanceStart))
-        {
-            var amount = GlanceAmount(now - _requestGlanceStart, RequestGlanceHold);
-            if (amount < 0.0)
-            {
-                _requestGlanceStart = double.NaN;
-            }
-            else
-            {
-                var side = requestDirection < 0.0 ? -1.0 : 1.0;
-                x += RequestGlanceDx * side * amount * _requestGate;
-                y += RequestGlanceDy * amount * _requestGate;
-            }
+            nx /= distance;
+            ny /= distance;
         }
 
-        ClampToZone(ref x, ref y);
-        frame.CoreX = x;
-        frame.CoreY = y;
-
-        // ---- Speaking: pulse with the speech envelope, or the designed rhythm ----
-        var speakWeight = Clamp01(look.Core.SpeakRing);
-        var pulse = 1.0;
-        if (speakWeight > 0.0 && !reduced)
-        {
-            var raw = hasVoice
-                ? 1.0 + (0.176 * _envelope)
-                : Keyframes(now / 1.6, PulseTimes, PulseScale, LivingCoreEasings.Breath);
-            pulse = Mix(1.0, raw, speakWeight);
-        }
-
-        frame.CoreScale = look.Core.Scale * pulse * wake.PupilScale;
-        frame.CoreOpacity = Clamp01(look.Core.Opacity * wake.PupilLight);
-        frame.EmberOpacity = Clamp01(look.Core.Ember) * frame.CoreOpacity;
-
-        var glow = reduced ? 0.5 : Swing(now / 4.8, LivingCoreEasings.InOut);
-        var glowLight = 0.9 + (0.1 * glow);
-        if (speakWeight > 0.0 && reduced)
-        {
-            // Reduced motion: the speaking pulse becomes a slow change of light.
-            glowLight = Mix(glowLight, 0.8 + (0.2 * Swing(now / 2.4, LivingCoreEasings.Breath)), speakWeight);
-        }
-
-        frame.GlowOpacity = Clamp01(look.Core.Opacity * Math.Min(1.0, look.Core.Glow) * glowLight * wake.PupilLight);
-        frame.GlowScale = (1.0 + (0.1 * glow)) * Math.Max(1.0, look.Core.Glow) * look.Core.GlowSize;
-
-        // The attention ring breathes; reduced motion drops breathing and
-        // holds it at full.
-        var attention = reduced ? 1.0 : 0.55 + (0.45 * Swing(now / 3.2, LivingCoreEasings.Breath));
-        frame.AttentionOpacity = Clamp01(look.Core.AttentionRing * attention);
-        frame.SpeakRingOpacity = Clamp01(look.Core.SpeakRing * look.Core.Opacity * wake.PupilLight);
+        // A glance or the pointer looks at full size and light, as in the prototype.
+        return (
+            LivingCoreLooks.ZoneX + (nx * LivingCoreLooks.ZoneRadiusX),
+            LivingCoreLooks.ZoneY + (ny * LivingCoreLooks.ZoneRadiusY),
+            1.0,
+            1.0);
     }
 
-    private void WriteOutside(
-        in LivingCoreLook look,
-        double now,
-        bool reduced,
-        bool hasVoice,
-        in WakeFactors wake,
-        LivingCoreFrame frame)
+    private bool FollowsPointer(double now) =>
+        _hasPointer && !ReducedMotion && now < _pointerReleaseAt && now - _pointerMovedAt < PointerStillness;
+
+    /// <summary>
+    /// Retargets the white core, its depth and the aura's lean when the pose
+    /// changes: every new target starts from the value on screen.
+    /// </summary>
+    private void UpdatePose(double now)
     {
-        // ---- Aura: breathes 4% over 8 s; pulses with speech; leans toward a panel ----
-        var breath = reduced ? 0.5 : Swing(now / 8.0, LivingCoreEasings.Breath);
-        var pulseScale = 1.0;
-        var pulseLight = 1.0;
-        if (look.Aura.AuraPulse > 0.0 && !reduced)
+        var pupilChanged = !ReferenceEquals(_before[(int)Slot.Pupil], _animations[(int)Slot.Pupil].Keyframes);
+        var pose = PoseFor(_shown, now);
+        if (pose != _pose)
         {
-            if (hasVoice)
+            Move(Value.PoseX, pose.X, now, CoreMoveSeconds, LivingCoreEasings.Settle);
+            Move(Value.PoseY, pose.Y, now, CoreMoveSeconds, LivingCoreEasings.Settle);
+            if (Jumps(Value.CoreScale))
             {
-                pulseScale = 1.0 + (0.06 * _envelope);
-                pulseLight = 0.9 + (0.1 * _envelope);
+                _values[(int)Value.CoreScale].Snap(pose.Scale);
             }
             else
             {
-                var phase = now / 1.6;
-                pulseScale = Keyframes(phase, AuraPulseTimes, AuraPulseScale, LivingCoreEasings.Breath);
-                pulseLight = Keyframes(phase, AuraPulseTimes, AuraPulseLight, LivingCoreEasings.Breath);
+                Move(Value.CoreScale, pose.Scale, now, CoreSizeSeconds, LivingCoreEasings.Settle);
             }
+
+            Move(Value.CoreOpacity, pose.Opacity, now, CoreSizeSeconds, LivingCoreEasings.Ease);
+            Move(Value.StarsShiftX, StarsDepth * (pose.X - LivingCoreLooks.ZoneX), now, DepthSeconds, LivingCoreEasings.Settle);
+            Move(Value.StarsShiftY, StarsDepth * (pose.Y - LivingCoreLooks.ZoneY), now, DepthSeconds, LivingCoreEasings.Settle);
+            Move(Value.CellsShiftX, CellsDepth * (pose.X - LivingCoreLooks.ZoneX), now, DepthSeconds, LivingCoreEasings.Settle);
+            Move(Value.CellsShiftY, CellsDepth * (pose.Y - LivingCoreLooks.ZoneY), now, DepthSeconds, LivingCoreEasings.Settle);
+            _pose = pose;
+        }
+        else if (pupilChanged && Jumps(Value.CoreScale))
+        {
+            _values[(int)Value.CoreScale].Snap(pose.Scale);
         }
 
-        frame.AuraScale = 1.0
-            + (look.Aura.AuraBreath * (-0.04 + (0.08 * breath)))
-            + (look.Aura.AuraPulse * (pulseScale - 1.0));
+        // The aura leans toward an opening panel in every state, as in the
+        // prototype, even while the white core holds its pose.
+        var lean = now < _panelUntil && !ReducedMotion ? PanelLean * _panel : 0.0;
+        Move(Value.Lean, lean, now, LeanSeconds, LivingCoreEasings.Settle);
+    }
+
+    private static bool IsPoseHeld(LivingCoreState state) =>
+        state is LivingCoreState.Sleep or LivingCoreState.Wake or LivingCoreState.Speaking
+            or LivingCoreState.Listening or LivingCoreState.Thinking;
+
+    private void Move(Value value, double target, double now, double duration, in CubicBezierEasing easing)
+    {
+        var (d, e) = Transition((duration, easing));
+        _values[(int)value].Go(target, now, d, e);
+    }
+
+    private double V(Value value, double now) => _values[(int)value].At(now);
+
+    private double A(Slot slot, KeyframeChannel channel, double now, double otherwise) =>
+        ReducedMotion ? otherwise : _animations[(int)slot].Get(channel, now, otherwise);
+
+    private bool TryA(Slot slot, KeyframeChannel channel, double now, out double value)
+    {
+        value = 0.0;
+        return !ReducedMotion && _animations[(int)slot].TryGet(channel, now, out value);
+    }
+
+    private void WriteFrame(double now, double requestDirection, LivingCoreFrame frame)
+    {
+        var shown = _shown;
+
+        // ---- White core: pose, size, light; the idle drift or the request glance on top ----
+        var wanderX = A(Slot.Wander, KeyframeChannel.X, now, 0.0);
+        if (ReferenceEquals(_animations[(int)Slot.Wander].Keyframes, PrototypeKeyframes.RequestGlance) && requestDirection < 0.0)
+        {
+            wanderX = -wanderX;
+        }
+
+        frame.CoreX = V(Value.PoseX, now) + wanderX;
+        frame.CoreY = V(Value.PoseY, now) + A(Slot.Wander, KeyframeChannel.Y, now, 0.0);
+
+        var coreScale = A(Slot.Pupil, KeyframeChannel.Scale, now, V(Value.CoreScale, now));
+        if (_hasVoiceLevel && shown == LivingCoreState.Speaking && !ReducedMotion)
+        {
+            // A real speech envelope replaces the designed rhythm (125% to 147%).
+            coreScale = LivingCoreLooks.Speaking.Scale * (1.0 + (0.176 * _envelope));
+        }
+
+        var poseLight = V(Value.CoreOpacity, now);
+        frame.CoreScale = coreScale;
+        frame.CoreOpacity = Clamp01(poseLight * A(Slot.Pupil, KeyframeChannel.Opacity, now, 1.0));
+        frame.EmberOpacity = Clamp01(V(Value.Ember, now)) * frame.CoreOpacity;
+        frame.GlowOpacity = Clamp01(V(Value.Glow, now)) * frame.CoreOpacity;
+        frame.GlowScale = 1.0;
+        frame.AttentionOpacity = Clamp01(A(Slot.Attention, KeyframeChannel.Opacity, now, V(Value.AttentionRing, now)) * poseLight);
+        frame.SpeakRingOpacity = Clamp01(V(Value.SpeakRing, now)) * frame.CoreOpacity;
+
+        // ---- Aura: breathing, the state's light, speech or ignition, the lean ----
+        frame.AuraScale = A(Slot.AuraBreath, KeyframeChannel.Scale, now, 1.0) * A(Slot.Aura, KeyframeChannel.Scale, now, 1.0);
         frame.AuraOpacity = Clamp01(
-            look.Aura.AuraOpacity
-            * Mix(1.0, 0.78 + (0.22 * breath), look.Aura.AuraBreath)
-            * Mix(1.0, pulseLight, look.Aura.AuraPulse)
-            * wake.Aura);
-        frame.AuraLeanX = reduced ? 0.0 : _auraLean;
-
-        // ---- Success: the warm bloom and one clean ring, once ----
-        var successTime = now - _successStart;
-        if (double.IsNaN(_successStart) || _successGate <= 0.0005)
-        {
-            frame.WarmScale = 1.0;
-            frame.WarmOpacity = 0.0;
-            frame.SuccessRingScale = 1.0;
-            frame.SuccessRingOpacity = 0.0;
-        }
-        else
-        {
-            var u = Clamp01(successTime / SuccessSeconds);
-            frame.WarmScale = reduced ? 1.0 : Timeline(u, WarmTimes, WarmScale, LivingCoreEasings.Settle);
-            frame.WarmOpacity = Clamp01(Timeline(u, WarmTimes, WarmLight, LivingCoreEasings.Settle) * _successGate * wake.Aura);
-
-            // Expands 0.95 to 1.5 and dissolves within the first 45%.
-            frame.SuccessRingScale = reduced
-                ? 1.2
-                : u < 0.45 ? Mix(0.95, 1.5, LivingCoreEasings.Strike.Evaluate(u / 0.45)) : 1.5;
-            var ringLight = u < 0.1
-                ? LivingCoreEasings.Strike.Evaluate(u / 0.1)
-                : u < 0.45 ? 1.0 - LivingCoreEasings.Strike.Evaluate((u - 0.1) / 0.35) : 0.0;
-            frame.SuccessRingOpacity = Clamp01(ringLight * _successGate);
-        }
+            A(Slot.AuraBreath, KeyframeChannel.Opacity, now, 1.0)
+            * A(Slot.Aura, KeyframeChannel.Opacity, now, V(Value.AuraOpacity, now)));
+        frame.AuraLeanX = V(Value.Lean, now);
+        frame.WarmScale = A(Slot.Warm, KeyframeChannel.Scale, now, 1.0);
+        frame.WarmOpacity = Clamp01(A(Slot.Warm, KeyframeChannel.Opacity, now, V(Value.Warm, now)));
 
         // ---- Energy lines ----
-        frame.EnergyOpacity = Clamp01(look.Aura.EnergyOpacity);
-        frame.Energy1Angle = _energy1Angle;
-        frame.Energy2Angle = _energy2Angle;
-        frame.Energy1Flow = _energy1Flow;
-        frame.Energy2Flow = _energy2Flow;
+        frame.EnergyOpacity = Clamp01(V(Value.EnergyOpacity, now));
+        frame.Energy1Angle = A(Slot.Energy1Turn, KeyframeChannel.Angle, now, 0.0);
+        frame.Energy2Angle = A(Slot.Energy2Turn, KeyframeChannel.Angle, now, 0.0);
+        frame.Energy1Flow = A(Slot.Energy1Flow, KeyframeChannel.Dash, now, 0.0);
+        frame.Energy2Flow = A(Slot.Energy2Flow, KeyframeChannel.Dash, now, 0.0);
 
-        // ---- Halo rings: ±1.4% over 6.4 s, a third apart ----
-        var input = InputLevelAt(now);
-        var activity = hasVoice ? _envelope : input;
+        // ---- Rings outside the body ----
+        // A real voice level, when one is connected, sets the inward rings' strength.
+        var inwardGain = _hasVoiceLevel && shown == LivingCoreState.Listening && !ReducedMotion ? _envelope : 1.0;
+        var inward = V(Value.InwardRings, now);
+        var outward = V(Value.OutwardRings, now);
+        for (var k = 0; k < 3; k++)
+        {
+            frame.InwardScale[k] = A(Slot.Inward0 + k, KeyframeChannel.Scale, now, V(Value.Inward0Scale + k, now));
+            frame.InwardOpacity[k] = Clamp01(inward * A(Slot.Inward0 + k, KeyframeChannel.Opacity, now, 1.0) * inwardGain);
+            frame.OutwardScale[k] = A(Slot.Outward0 + k, KeyframeChannel.Scale, now, V(Value.Outward0Scale + k, now));
+            frame.OutwardOpacity[k] = Clamp01(outward * A(Slot.Outward0 + k, KeyframeChannel.Opacity, now, 1.0));
+        }
+
+        frame.SuccessRingScale = A(Slot.SuccessRing, KeyframeChannel.Scale, now, 1.0);
+        frame.SuccessRingOpacity = Clamp01(A(Slot.SuccessRing, KeyframeChannel.Opacity, now, V(Value.SuccessRing, now)));
+        frame.GapRingOpacity = Clamp01(V(Value.GapRing, now));
+        frame.WarningMarkOpacity = Clamp01(A(Slot.WarningMark, KeyframeChannel.Opacity, now, V(Value.WarningMark, now)));
+
+        // ---- The body: Sleep's breathing replaces its sunken resting size ----
+        frame.BodyScale = A(Slot.Body, KeyframeChannel.Scale, now, V(Value.BodyScale, now));
+        frame.BodyY = A(Slot.Body, KeyframeChannel.Y, now, V(Value.BodyDrop, now));
+        frame.BodyOpacity = Clamp01(V(Value.BodyOpacity, now));
+
+        // ---- Halo rings, inside the halo group the ignition grows ----
+        var haloScale = A(Slot.HaloGroup, KeyframeChannel.Scale, now, 1.0);
+        var haloLight = A(Slot.HaloGroup, KeyframeChannel.Opacity, now, 1.0);
         for (var i = 0; i < 3; i++)
         {
-            var b = reduced ? 0.5 : Swing((now - LivingCoreDesign.HaloDelays[i]) / LivingCoreDesign.HaloPeriod, LivingCoreEasings.Breath);
-            var scale = 1.0 + (look.Halo.HaloBreath * 0.014 * b);
-            var light = Mix(1.0, 0.75 + (0.25 * b), look.Halo.HaloBreath);
-
-            if (i == 0 && look.Halo.HaloIrregular > 0.0)
-            {
-                double stutterScale;
-                double stutterLight;
-                if (reduced)
-                {
-                    stutterScale = 1.0;
-                    stutterLight = 0.4;
-                }
-                else
-                {
-                    var phase = now / 2.4;
-                    stutterScale = Keyframes(phase, StutterTimes, StutterScale, Linear);
-                    stutterLight = Keyframes(phase, StutterTimes, StutterLight, Linear);
-                }
-
-                scale = Mix(scale, stutterScale, look.Halo.HaloIrregular);
-                light = Mix(light, stutterLight, look.Halo.HaloIrregular);
-            }
-
-            if (i == 0 && look.Halo.HaloTight > 0.0)
-            {
-                // Warning: the halo tightens and holds (97 to 98%).
-                var hold = reduced ? 0.5 : Swing(now / 3.2, LivingCoreEasings.Breath);
-                scale = Mix(scale, 0.97 + (0.01 * hold), look.Halo.HaloTight);
-                light = Mix(light, 0.8 + (0.2 * hold), look.Halo.HaloTight);
-            }
-
-            if (i == 0 && look.Halo.Vox > 0.0 && !reduced)
-            {
-                // Listening: the inner ring moves with the user's input.
-                var strength = look.Halo.Vox * (hasVoice ? _envelope : 0.5 + (0.5 * activity));
-                scale *= 1.0 + ((Keyframes(now / 1.6, VoxTimes, VoxScale, LivingCoreEasings.Breath) - 1.0) * strength);
-            }
-
-            if (i == 0 && hasVoice && !reduced && look.Halo.InwardRings > 0.0)
-            {
-                // The inner ring draws in with the user's voice; reduced
-                // motion keeps it in place.
-                scale -= 0.02 * _envelope * look.Halo.InwardRings;
-            }
-
-            if (i == 1)
-            {
-                // Blocked: the gap ring takes the middle ring's place, so the
-                // gap at the top reads as a gap.
-                light *= 1.0 - look.Halo.GapRingOpacity;
-            }
-
-            frame.HaloScale[i] = scale * look.Halo.HaloScale * wake.HaloScale;
-            frame.HaloOpacity[i] = Clamp01(look.Halo.HaloOpacity * light * wake.HaloLight);
+            frame.HaloScale[i] = haloScale * A(Slot.Halo0 + i, KeyframeChannel.Scale, now, 1.0);
+            frame.HaloOpacity[i] = Clamp01(haloLight * A(Slot.Halo0 + i, KeyframeChannel.Opacity, now, 1.0));
         }
 
-        frame.RimDanger = Clamp01(look.Halo.RimDanger);
-        frame.RimSuccess = Clamp01(look.Halo.RimSuccess);
-        frame.RimWarning = Clamp01(look.Halo.RimWarning);
+        frame.RimDanger = Clamp01(V(Value.RimDanger, now));
+        frame.RimSuccess = Clamp01(V(Value.RimSuccess, now));
+        frame.RimWarning = Clamp01(V(Value.RimWarning, now));
+        frame.RimDrawn = A(Slot.Rim, KeyframeChannel.Dash, now, 1.0);
 
-        // ---- Speaking: rings pulse outward, 1.8 s, staggered 0.6 s ----
-        for (var k = 0; k < 3; k++)
+        // ---- A new message's ripple ----
+        if (!ReducedMotion && _ripple.TryGet(KeyframeChannel.Scale, now, out var rippleScale))
         {
-            if (look.Halo.OutwardRings <= 0.0)
-            {
-                frame.OutwardScale[k] = 1.0;
-                frame.OutwardOpacity[k] = 0.0;
-                continue;
-            }
-
-            double scale;
-            double light;
-            if (reduced)
-            {
-                scale = StaticOutwardScale[k];
-                light = 1.0;
-            }
-            else
-            {
-                var e = LivingCoreEasings.RingOut.Evaluate(Frac((now - (k * 0.6)) / 1.8));
-                scale = 1.0 + (0.4 * e);
-                light = 1.0 - e;
-            }
-
-            var gain = hasVoice ? 0.5 + (0.5 * _envelope) : 1.0;
-            frame.OutwardScale[k] = scale;
-            frame.OutwardOpacity[k] = Clamp01(look.Halo.OutwardRings * light * gain);
-        }
-
-        // ---- Listening: rings draw inward; stronger with the user's input,
-        // and with a real voice they follow only the voice ----
-        var inwardGain = look.Halo.InwardRings * (hasVoice ? _envelope : 0.55 + (0.45 * input));
-        for (var k = 0; k < 3; k++)
-        {
-            if (inwardGain <= 0.001)
-            {
-                frame.InwardScale[k] = 1.0;
-                frame.InwardOpacity[k] = 0.0;
-                continue;
-            }
-
-            double scale;
-            double light;
-            if (reduced)
-            {
-                scale = StaticInwardScale[k];
-                light = 1.0;
-            }
-            else
-            {
-                var p = Frac((now - (k * 0.6)) / 1.8);
-                scale = 1.3 + ((1.02 - 1.3) * LivingCoreEasings.RingIn.Evaluate(p));
-                light = p < 0.35
-                    ? LivingCoreEasings.RingIn.Evaluate(p / 0.35)
-                    : 1.0 - LivingCoreEasings.RingIn.Evaluate((p - 0.35) / 0.65);
-            }
-
-            frame.InwardScale[k] = scale;
-            frame.InwardOpacity[k] = Clamp01(inwardGain * light);
-        }
-
-        frame.GapRingOpacity = Clamp01(look.Halo.GapRingOpacity);
-
-        // ---- Warning: one amber segment pulses every 3.2 s ----
-        frame.WarningMarkOpacity = Clamp01(look.Halo.WarningMark
-            * (reduced ? 0.7 : 0.35 + (0.65 * Swing(now / 3.2, LivingCoreEasings.Breath))));
-
-        // ---- Threads; Success sends the first one round once ----
-        var lap = !reduced && !double.IsNaN(_successStart) && successTime >= 0.0 && successTime < SuccessLapSeconds
-            ? 360.0 * LivingCoreEasings.Settle.Evaluate(successTime / SuccessLapSeconds)
-            : 0.0;
-        for (var i = 0; i < 4; i++)
-        {
-            frame.ThreadAngle[i] = i == 0 ? (_threadAngle[0] + lap) % 360.0 : _threadAngle[i];
-        }
-
-        var threadLight = 1.0;
-        if (look.Halo.ThreadPulse > 0.0 && !reduced)
-        {
-            var pulse = hasVoice
-                ? 0.7 + (0.3 * _envelope)
-                : Keyframes(now / 1.6, ThreadPulseTimes, ThreadPulseLight, LivingCoreEasings.Breath);
-            threadLight = Mix(1.0, pulse, look.Halo.ThreadPulse);
-        }
-
-        frame.ThreadsOpacity = Clamp01(look.Halo.ThreadOpacity * threadLight * wake.HaloLight);
-        frame.ThreadsScale = look.Halo.HaloScale * wake.HaloScale;
-
-        // Blocked: one slow pulse of light at the paused threads (kept under
-        // reduced motion: a slow change of light, never a flash).
-        frame.ParkOpacity = Clamp01(look.Halo.ParkOpacity * (0.45 + (0.55 * Swing(now / 3.2, LivingCoreEasings.Breath))));
-
-        frame.FragmentOpacity = Clamp01(look.Halo.FragmentOpacity);
-        frame.Fragment1Angle = _fragment1Angle;
-        frame.Fragment2Angle = _fragment2Angle;
-
-        // ---- The body: Sleep sinks and shrinks it, breathing over 9.6 s ----
-        var sleepBreath = reduced ? 0.0 : Swing(now / 9.6, LivingCoreEasings.Sink);
-        frame.BodyScale = look.Halo.BodyScale * (1.0 + (look.Halo.BodyBreath * ((0.875 / 0.86) - 1.0) * sleepBreath));
-        frame.BodyY = look.Halo.BodyDrop;
-        frame.BodyOpacity = Clamp01(look.Halo.BodyOpacity);
-    }
-
-    private void WriteInside(in LivingCoreLook look, double now, bool reduced, in WakeFactors wake, LivingCoreFrame frame)
-    {
-        frame.CrackOpacity = Clamp01(look.Inside.CrackOpacity);
-        frame.RimDrawn = wake.Rim;
-
-        // ---- A new message: one soft ripple leaves the membrane ----
-        var rippleTime = now - _rippleStart;
-        if (rippleTime >= 0.0 && rippleTime < RippleSeconds)
-        {
-            var e = LivingCoreEasings.Strike.Evaluate(rippleTime / RippleSeconds);
-            frame.RippleScale = reduced ? 1.15 : 1.0 + (0.35 * e);
-            frame.RippleOpacity = reduced
-                ? 0.5 * Math.Sin(Math.PI * rippleTime / RippleSeconds)
-                : 0.75 * (1.0 - e);
+            frame.RippleScale = rippleScale;
+            frame.RippleOpacity = _ripple.Get(KeyframeChannel.Opacity, now, 0.0);
         }
         else
         {
@@ -1075,256 +956,95 @@ public sealed class LivingCoreMotion
             frame.RippleOpacity = 0.0;
         }
 
-        // Depth: where the white core looks, measured from its zone's centre.
-        var gazeOffsetX = _gazeX - LivingCoreLooks.ZoneX;
-        var gazeOffsetY = _gazeY - LivingCoreLooks.ZoneY;
+        // ---- Threads and their state forms ----
+        for (var i = 0; i < 4; i++)
+        {
+            frame.ThreadAngle[i] = A(Slot.Thread0 + i, KeyframeChannel.Angle, now, 0.0);
+        }
 
-        // ---- Deep stars: drift as a field, shimmer on four clocks ----
-        frame.StarsAngle = _starsAngle;
-        frame.StarsScale = look.Inside.StarScale * wake.InsideScale;
+        frame.ThreadsOpacity = Clamp01(A(Slot.Threads, KeyframeChannel.Opacity, now, V(Value.ThreadsOpacity, now)));
+        frame.ThreadsScale = A(Slot.Threads, KeyframeChannel.Scale, now, 1.0);
+        frame.ParkOpacity = Clamp01(A(Slot.Park, KeyframeChannel.Opacity, now, V(Value.Park, now)));
+        frame.FragmentOpacity = Clamp01(V(Value.Fragments, now));
+        frame.Fragment1Angle = A(Slot.Fragment1, KeyframeChannel.Angle, now, 0.0);
+        frame.Fragment2Angle = A(Slot.Fragment2, KeyframeChannel.Angle, now, 0.0);
+        frame.CrackOpacity = Clamp01(V(Value.Crack, now));
+
+        // ---- Deep stars: turning field, shimmer clocks, depth ----
+        var starsLight = A(Slot.Stars, KeyframeChannel.Opacity, now, V(Value.StarsOpacity, now));
+        frame.StarsAngle = A(Slot.Stars, KeyframeChannel.Angle, now, 0.0);
+        frame.StarsScale = A(Slot.Stars, KeyframeChannel.Scale, now, 1.0);
         for (var k = 0; k < 4; k++)
         {
-            var dip = reduced ? 0.0 : Swing(_shimmerPhase[k], LivingCoreEasings.InOut);
-            var shimmer = 1.0 - (look.Inside.StarShimmerDepth * 0.65 * dip);
-            frame.StarClockOpacity[k] = Clamp01(look.Inside.StarOpacity * shimmer * wake.InsideLight);
+            frame.StarClockOpacity[k] = Clamp01(starsLight * A(Slot.Twinkle0 + k, KeyframeChannel.Opacity, now, 1.0));
         }
 
-        frame.StarsShiftX = StarsDepth * gazeOffsetX;
-        frame.StarsShiftY = StarsDepth * gazeOffsetY;
+        frame.StarsShiftX = V(Value.StarsShiftX, now);
+        frame.StarsShiftY = V(Value.StarsShiftY, now);
 
-        // ---- Floating cells: drift as a school, bob on three clocks; rise
-        // together on Success; settle like sediment in Sleep ----
-        var rise = 0.0;
-        if (!reduced && !double.IsNaN(_successStart) && _successGate > 0.0005)
+        // ---- Floating cells: the school's shape (its animation replaces it while it runs) ----
+        var cellsAnimated = TryA(Slot.CellGroup, KeyframeChannel.Scale, now, out var cellsScale);
+        var cellsRising = TryA(Slot.CellGroup, KeyframeChannel.Y, now, out var cellsRise);
+        if (cellsAnimated || cellsRising)
         {
-            rise = Timeline(Clamp01((now - _successStart) / SuccessSeconds), RiseTimes, RiseY, LivingCoreEasings.Settle) * _successGate;
+            frame.CellsSpread = cellsAnimated ? cellsScale : 1.0;
+            frame.CellsScaleY = cellsAnimated ? cellsScale : 1.0;
+            frame.CellsY = cellsRising ? cellsRise : 0.0;
         }
-
-        frame.CellsSpread = look.Inside.CellSpread * look.Inside.CellNarrow * wake.InsideScale;
-        frame.CellsScaleY = look.Inside.CellSpread * look.Inside.CellSquash * wake.InsideScale;
-        frame.CellsY = look.Inside.CellDrop + rise;
-        frame.CellsOpacity = Clamp01(look.Inside.CellOpacity * wake.InsideLight);
-        frame.CellsAngle = _cellsAngle;
-
-        var shiver = 0.0;
-        if (!reduced && rippleTime >= 0.0 && rippleTime < ShiverSeconds)
+        else
         {
-            var fade = 1.0 - (rippleTime / ShiverSeconds);
-            shiver = ShiverAmplitude * Math.Sin(2.0 * Math.PI * rippleTime / ShiverPeriod) * fade * fade;
+            frame.CellsSpread = V(Value.CellsScaleX, now);
+            frame.CellsScaleY = V(Value.CellsScaleY, now);
+            frame.CellsY = V(Value.CellsDrop, now);
         }
 
-        frame.CellsShiftX = (CellsDepth * gazeOffsetX) + shiver;
-        frame.CellsShiftY = CellsDepth * gazeOffsetY;
-
+        frame.CellsOpacity = Clamp01(A(Slot.CellGroup, KeyframeChannel.Opacity, now, V(Value.CellsOpacity, now)));
+        frame.CellsAngle = A(Slot.Cells, KeyframeChannel.Angle, now, 0.0);
+        frame.CellsShiftX = V(Value.CellsShiftX, now);
+        frame.CellsShiftY = V(Value.CellsShiftY, now);
         for (var j = 0; j < 3; j++)
         {
-            var clock = LivingCoreDesign.BobClocks[j];
-            var up = reduced ? 0.0 : Swing((now - clock.Delay) / clock.Period, LivingCoreEasings.InOut) * look.Inside.CellBob;
-            frame.BobX[j] = LivingCoreDesign.BobX * up;
-            frame.BobY[j] = LivingCoreDesign.BobY * up;
+            frame.BobX[j] = A(Slot.Bob0 + j, KeyframeChannel.X, now, 0.0);
+            frame.BobY[j] = A(Slot.Bob0 + j, KeyframeChannel.Y, now, 0.0);
         }
 
-        // ---- Thinking: links, signals, orbit lanes ----
-        frame.LinkOpacity = Clamp01(look.Inside.LinkOpacity);
+        // ---- Thinking: links with travelling signals, orbit lanes ----
+        frame.LinkOpacity = Clamp01(V(Value.Links, now));
         var links = LivingCoreDesign.Links;
         for (var s = 0; s < links.Length; s++)
         {
             var link = links[s];
-            var length = link.Length;
-            var travel = reduced
-                ? length * 0.5
-                : LivingCoreDesign.SignalTravel * Frac((now - link.Delay) / LivingCoreDesign.SignalPeriod);
-            var visible = travel <= length ? 1.0 : 0.0;
-            var f = Math.Min(travel, length) / length;
+            var travel = -A(Slot.Signal0 + s, KeyframeChannel.Dash, now, 0.0);
+            var f = Math.Min(travel, link.Length) / link.Length;
             frame.SignalX[s] = link.X1 + ((link.X2 - link.X1) * f);
             frame.SignalY[s] = link.Y1 + ((link.Y2 - link.Y1) * f);
-            frame.SignalOpacity[s] = Clamp01(look.Inside.SignalOpacity * visible);
+            frame.SignalOpacity[s] = travel <= link.Length ? frame.LinkOpacity : 0.0;
         }
 
-        frame.OrbitOpacity = Clamp01(look.Inside.OrbitOpacity);
-        frame.Orbit1Angle = _orbit1Angle;
-        frame.Orbit2Angle = _orbit2Angle;
+        frame.OrbitOpacity = Clamp01(V(Value.Orbits, now));
+        frame.Orbit1Angle = A(Slot.Orbit1, KeyframeChannel.Angle, now, 0.0);
+        frame.Orbit2Angle = A(Slot.Orbit2, KeyframeChannel.Angle, now, 0.0);
 
-        // ---- Lens current; Warning narrows the lens and lifts the crest ----
-        frame.LensOpacity = Clamp01(look.Inside.LensOpacity * wake.LensLight);
-        frame.LensAngle = reduced ? 0.0 : look.Inside.LensPrecession * (-5.0 + (10.0 * Swing(now / 4.8, LivingCoreEasings.Breath)));
-        frame.LensScaleX = wake.LensScaleX;
-        frame.LensScaleY = look.Inside.LensNarrow;
-        frame.CrestAngle = reduced ? 0.0 : look.Inside.LensSway * (-1.4 + (2.8 * Swing(now / 6.4, LivingCoreEasings.Breath)));
-        frame.CrestY = look.Inside.CrestLift;
-        frame.LateralAOpacity = Clamp01(look.Inside.LateralA);
-        frame.LateralBOpacity = Clamp01(look.Inside.LateralB);
-        frame.LateralFlow = _lateralFlow;
-        frame.VoiceWaveOpacity = Clamp01(look.Inside.VoiceWave * 0.95);
-        frame.VoiceWaveScaleY = reduced
-            ? 1.0
-            : _hasVoiceLevel
-                ? 0.4 + _envelope
-                : Keyframes(now / 1.6, WaveTimes, WaveScale, LivingCoreEasings.Breath);
+        // ---- Lens: an animation on its transform replaces Warning's narrowing ----
+        var lensTurning = TryA(Slot.Lens, KeyframeChannel.Angle, now, out var lensAngle);
+        var lensSweeping = TryA(Slot.Lens, KeyframeChannel.ScaleX, now, out var lensScaleX);
+        frame.LensOpacity = Clamp01(A(Slot.Lens, KeyframeChannel.Opacity, now, V(Value.LensOpacity, now)));
+        frame.LensAngle = lensTurning ? lensAngle : 0.0;
+        frame.LensScaleX = lensSweeping ? lensScaleX : 1.0;
+        frame.LensScaleY = lensTurning || lensSweeping ? 1.0 : V(Value.LensScaleY, now);
+        frame.CrestAngle = A(Slot.Crest, KeyframeChannel.Angle, now, 0.0);
+        frame.CrestY = V(Value.CrestLift, now);
+        frame.LateralAOpacity = Clamp01(V(Value.LateralA, now));
+        frame.LateralBOpacity = Clamp01(V(Value.LateralB, now));
+        frame.LateralFlow = A(Slot.Lateral, KeyframeChannel.Dash, now, 0.0);
+        frame.VoiceWaveOpacity = Clamp01(V(Value.VoiceWave, now));
+        frame.VoiceWaveScaleY = _hasVoiceLevel && shown == LivingCoreState.Speaking && !ReducedMotion
+            ? 0.4 + _envelope
+            : A(Slot.VoiceWave, KeyframeChannel.ScaleY, now, 1.0);
     }
-
-    /// <summary>
-    /// The Wake ignition at <paramref name="now"/>, as multipliers for each
-    /// layer (state board 10): a point of light swells past full and settles
-    /// (0 to 25%), the rim draws itself around (16 to 50%), the lens sweeps in
-    /// (30 to 60%), cells and stars bloom outward (48 to 80%), halo and
-    /// threads arrive last (68 to 100%) as the aura rises (60 to 100%).
-    /// Reduced motion fades everything in over 0.4 s instead.
-    /// </summary>
-    private WakeFactors WakeAt(double now, bool reduced)
-    {
-        if (double.IsNaN(_wakeStart))
-        {
-            return WakeFactors.None;
-        }
-
-        var t = Math.Max(0.0, now - _wakeStart);
-        if (t >= WakeLength)
-        {
-            _wakeStart = double.NaN;
-            return WakeFactors.None;
-        }
-
-        if (reduced)
-        {
-            var f = LivingCoreEasings.Settle.Evaluate(t / ReducedTransitionSeconds);
-            return new WakeFactors(1.0, f, 1.0, 1.0, f, 1.0, f, 1.0, f, f);
-        }
-
-        var u = t / WakeSeconds;
-        var pupilScale = u < 0.12
-            ? 1.5 * LivingCoreEasings.Strike.Evaluate(u / 0.12)
-            : u < 0.25 ? Mix(1.5, 1.0, LivingCoreEasings.Strike.Evaluate((u - 0.12) / 0.13)) : 1.0;
-        var pupilLight = u < 0.12 ? LivingCoreEasings.Strike.Evaluate(u / 0.12) : 1.0;
-        var rim = Phase(u, 0.16, 0.50, LivingCoreEasings.Settle);
-        var lens = Phase(u, 0.30, 0.60, LivingCoreEasings.Settle);
-        var inside = Phase(u, 0.48, 0.80, LivingCoreEasings.Settle);
-        var halo = Phase(u, 0.68, 1.0, LivingCoreEasings.Settle);
-        var aura = Phase(u, 0.60, 1.0, LivingCoreEasings.Breath);
-
-        return new WakeFactors(
-            pupilScale,
-            pupilLight,
-            rim,
-            Mix(0.6, 1.0, lens),
-            lens,
-            Mix(0.3, 1.0, inside),
-            inside,
-            Mix(0.92, 1.0, halo),
-            halo,
-            aura);
-    }
-
-    /// <summary>
-    /// Glance timeline: eased out, held, eased back. Returns the amount 0 to
-    /// 1, or -1 once the glance is over.
-    /// </summary>
-    private static double GlanceAmount(double elapsed, double hold)
-    {
-        if (elapsed < 0.0)
-        {
-            return 0.0;
-        }
-
-        if (elapsed < GlanceOut)
-        {
-            return LivingCoreEasings.Strike.Evaluate(elapsed / GlanceOut);
-        }
-
-        elapsed -= GlanceOut;
-        if (elapsed < hold)
-        {
-            return 1.0;
-        }
-
-        elapsed -= hold;
-        if (elapsed < GlanceBack)
-        {
-            return 1.0 - LivingCoreEasings.Settle.Evaluate(elapsed / GlanceBack);
-        }
-
-        return -1.0;
-    }
-
-    /// <summary>
-    /// Keeps the white core inside its zone (±16% by ±7%): it never touches
-    /// the lens, whatever combination of pose and glance produced it.
-    /// </summary>
-    private static void ClampToZone(ref double x, ref double y)
-    {
-        var nx = (x - LivingCoreLooks.ZoneX) / LivingCoreLooks.ZoneRadiusX;
-        var ny = (y - LivingCoreLooks.ZoneY) / LivingCoreLooks.ZoneRadiusY;
-        var distance = Math.Sqrt((nx * nx) + (ny * ny));
-        if (distance <= 1.0)
-        {
-            return;
-        }
-
-        x = LivingCoreLooks.ZoneX + (nx / distance * LivingCoreLooks.ZoneRadiusX);
-        y = LivingCoreLooks.ZoneY + (ny / distance * LivingCoreLooks.ZoneRadiusY);
-    }
-
-    private static double Stage(double elapsed, double delay, double duration) =>
-        LivingCoreEasings.Settle.Evaluate(Clamp01((elapsed - delay) / duration));
-
-    /// <summary>Progress through one keyframe window, <paramref name="start"/> to <paramref name="end"/>.</summary>
-    private static double Phase(double u, double start, double end, in CubicBezierEasing easing) =>
-        easing.Evaluate(Clamp01((u - start) / (end - start)));
-
-    private static double Direction(ThreadSpec thread) => thread.Clockwise ? 1.0 : -1.0;
-
-    /// <summary>A two-beat loop: 0 at the start, 1 half way, eased each way.</summary>
-    private static double Swing(double phase, in CubicBezierEasing easing)
-    {
-        var p = Frac(phase);
-        return p < 0.5
-            ? easing.Evaluate(p * 2.0)
-            : 1.0 - easing.Evaluate((p - 0.5) * 2.0);
-    }
-
-    /// <summary>CSS-style keyframes on a loop: the easing applies to each segment.</summary>
-    private static double Keyframes(double phase, double[] times, double[] values, in CubicBezierEasing easing) =>
-        Timeline(Frac(phase), times, values, easing);
-
-    /// <summary>CSS-style keyframes played once: <paramref name="u"/> is 0 to 1.</summary>
-    private static double Timeline(double u, double[] times, double[] values, in CubicBezierEasing easing)
-    {
-        var p = Clamp01(u);
-        for (var i = 1; i < times.Length; i++)
-        {
-            if (p <= times[i])
-            {
-                var span = times[i] - times[i - 1];
-                var t = span <= 0.0 ? 1.0 : (p - times[i - 1]) / span;
-                return Mix(values[i - 1], values[i], easing.Evaluate(t));
-            }
-        }
-
-        return values[^1];
-    }
-
-    private static double Smooth(double current, double target, double dt, double timeConstant) =>
-        dt <= 0.0 ? current : current + ((target - current) * (1.0 - Math.Exp(-dt / timeConstant)));
-
-    private static double Mix(double a, double b, double t) => a + ((b - a) * t);
 
     private static double Clamp01(double value) => Math.Clamp(value, 0.0, 1.0);
 
-    private static double Frac(double value) => value - Math.Floor(value);
-
-    /// <summary>The Wake ignition's multipliers for one frame; all ones when not waking.</summary>
-    private readonly record struct WakeFactors(
-        double PupilScale,
-        double PupilLight,
-        double Rim,
-        double LensScaleX,
-        double LensLight,
-        double InsideScale,
-        double InsideLight,
-        double HaloScale,
-        double HaloLight,
-        double Aura)
-    {
-        public static WakeFactors None { get; } = new(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
-    }
+    /// <summary>One layer's animation in one state.</summary>
+    private readonly record struct AnimationSpec(CssKeyframes? Keyframes, double Duration, double Delay = 0.0);
 }

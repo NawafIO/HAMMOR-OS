@@ -30,8 +30,8 @@ namespace HAMMOR.App.Presence;
 /// animating, and nothing is stored or reported.
 /// </para>
 /// <para>
-/// <b>Reactions.</b> <see cref="Reaction"/> and <see cref="InputSignal"/> carry
-/// events from the app: a new message, a panel opening, the user typing.
+/// <b>Reactions.</b> <see cref="Reaction"/> carries events from the app: a
+/// new message, a panel opening.
 /// </para>
 /// <para>
 /// <b>Reduced motion</b> follows the Windows "Animation effects" setting
@@ -70,12 +70,6 @@ public sealed class LivingCore : FrameworkElement
         typeof(LivingCore),
         new PropertyMetadata(defaultValue: null, OnReactionChanged));
 
-    public static readonly DependencyProperty InputSignalProperty = DependencyProperty.Register(
-        nameof(InputSignal),
-        typeof(long),
-        typeof(LivingCore),
-        new PropertyMetadata(0L, OnInputSignalChanged));
-
     private const double DefaultSize = 240.0;
 
     private readonly LivingCoreScene _scene = new();
@@ -111,7 +105,7 @@ public sealed class LivingCore : FrameworkElement
     /// <summary>
     /// Optional real envelope of the voice the current state is about (HAMMOR's
     /// speech while Speaking, the user's while Listening). Null keeps the
-    /// designed speaking rhythm, and Listening follows <see cref="InputSignal"/>.
+    /// prototype's own rhythm in both.
     /// </summary>
     public ISpeechEnvelope? VoiceEnvelope
     {
@@ -122,7 +116,7 @@ public sealed class LivingCore : FrameworkElement
     /// <summary>
     /// Where approval requests appear, in reading order: negative is the
     /// leading side (the sidebar, where Tasks lives), positive the trailing
-    /// side. The Blocked state glances there once.
+    /// side. The Blocked state glances there, and again every 6.4 s.
     /// </summary>
     public double ApprovalDirection
     {
@@ -138,16 +132,6 @@ public sealed class LivingCore : FrameworkElement
     {
         get => (LivingCoreReaction?)GetValue(ReactionProperty);
         set => SetValue(ReactionProperty, value);
-    }
-
-    /// <summary>
-    /// Increases with each keystroke of the user's input. While Listening, the
-    /// inward rings and the inner ring follow its rhythm.
-    /// </summary>
-    public long InputSignal
-    {
-        get => (long)GetValue(InputSignalProperty);
-        set => SetValue(InputSignalProperty, value);
     }
 
     protected override int VisualChildrenCount => 1;
@@ -221,18 +205,6 @@ public sealed class LivingCore : FrameworkElement
         // Reading order to physical side, as for the approval glance.
         var direction = core.IsMirrored ? -reaction.Direction : reaction.Direction;
         core._motion.React(reaction.Kind, direction, core.Now);
-        core.UpdateRendering();
-    }
-
-    private static void OnInputSignalChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var core = (LivingCore)d;
-        if (core._motion is null)
-        {
-            return;
-        }
-
-        core._motion.NoteInput(core.Now);
         core.UpdateRendering();
     }
 

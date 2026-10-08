@@ -4,8 +4,9 @@ using Xunit;
 namespace HAMMOR.App.Tests.Presence;
 
 /// <summary>
-/// The Living Core's fixed design against the approved canvas: state poses,
-/// the build board's budget, and the motion board's easing tokens.
+/// The Living Core's fixed design against the approved reference: state
+/// poses and resting values, the prototype's keyframes, the build board's
+/// budget, and the easing tokens.
 /// </summary>
 public sealed class LivingCoreDesignTests
 {
@@ -26,106 +27,125 @@ public sealed class LivingCoreDesignTests
     [Fact]
     public void Rest_is_where_the_logo_puts_the_white_core()
     {
-        Assert.Equal(76.0, LivingCoreLooks.Idle.Core.X);
-        Assert.Equal(57.5, LivingCoreLooks.Idle.Core.Y);
-        Assert.Equal(1.0, LivingCoreLooks.Idle.Core.Scale);
+        Assert.Equal(76.0, LivingCoreLooks.Idle.X);
+        Assert.Equal(57.5, LivingCoreLooks.Idle.Y);
+        Assert.Equal(1.0, LivingCoreLooks.Idle.Scale);
+        Assert.Equal(1.0, LivingCoreLooks.Idle.Opacity);
     }
 
     [Fact]
-    public void State_poses_match_the_approved_boards()
+    public void State_poses_match_the_reference()
     {
-        Assert.Equal(1.12, LivingCoreLooks.Listening.Core.Scale);
-        Assert.Equal(LivingCoreLooks.ZoneX, LivingCoreLooks.Listening.Core.X);
-        Assert.Equal(1.0, LivingCoreLooks.Listening.Core.AttentionRing);
+        // The prototype's pose table, as fractions of the zone.
+        Assert.Equal(1.12, LivingCoreLooks.Listening.Scale);
+        Assert.Equal(LivingCoreLooks.ZoneX, LivingCoreLooks.Listening.X);
+        Assert.Equal(LivingCoreLooks.ZoneY, LivingCoreLooks.Listening.Y);
+        Assert.Equal(1.0, LivingCoreLooks.Listening.AttentionRing);
+        Assert.Equal(1.0, LivingCoreLooks.Listening.InwardRings);
 
-        Assert.Equal(0.78, LivingCoreLooks.Thinking.Core.Scale);
-        Assert.Equal(0.55, LivingCoreLooks.Thinking.Core.Opacity);
+        Assert.Equal(LivingCoreLooks.ZoneX - (0.35 * LivingCoreLooks.ZoneRadiusX), LivingCoreLooks.Thinking.X, 12);
+        Assert.Equal(LivingCoreLooks.ZoneY - (0.2 * LivingCoreLooks.ZoneRadiusY), LivingCoreLooks.Thinking.Y, 12);
+        Assert.Equal(0.78, LivingCoreLooks.Thinking.Scale);
+        Assert.Equal(0.55, LivingCoreLooks.Thinking.Opacity);
+        Assert.Equal(1.0, LivingCoreLooks.Thinking.Links);
 
-        Assert.Equal(1.25, LivingCoreLooks.Speaking.Core.Scale);
-        Assert.Equal(LivingCoreLooks.ZoneX, LivingCoreLooks.Speaking.Core.X);
+        Assert.Equal(1.25, LivingCoreLooks.Speaking.Scale);
+        Assert.Equal(LivingCoreLooks.ZoneX, LivingCoreLooks.Speaking.X);
+        Assert.Equal(1.0, LivingCoreLooks.Speaking.OutwardRings);
+        Assert.Equal(0.95, LivingCoreLooks.Speaking.VoiceWave);
 
-        Assert.Equal(0.6, LivingCoreLooks.Error.Core.Opacity);
+        Assert.Equal(LivingCoreLooks.ZoneX + (0.16 * LivingCoreLooks.ZoneRadiusX), LivingCoreLooks.Blocked.X, 12);
+        Assert.Equal(LivingCoreLooks.ZoneY + (0.31 * LivingCoreLooks.ZoneRadiusY), LivingCoreLooks.Blocked.Y, 12);
+        Assert.Equal(0.94, LivingCoreLooks.Blocked.Scale);
+
+        Assert.Equal(LivingCoreLooks.ZoneX + (0.68 * LivingCoreLooks.ZoneRadiusX), LivingCoreLooks.Error.X, 12);
+        Assert.Equal(LivingCoreLooks.ZoneY + (0.06 * LivingCoreLooks.ZoneRadiusY), LivingCoreLooks.Error.Y, 12);
+        Assert.Equal(0.9, LivingCoreLooks.Error.Scale);
+        Assert.Equal(0.6, LivingCoreLooks.Error.Opacity);
     }
 
     [Fact]
     public void Success_lifts_up_and_forward()
     {
         // Prototype "success": translate(0.68, -0.69) of the zone, 108%.
-        Assert.Equal(LivingCoreLooks.ZoneX + (0.68 * LivingCoreLooks.ZoneRadiusX), LivingCoreLooks.Success.Core.X, 12);
-        Assert.Equal(LivingCoreLooks.ZoneY - (0.69 * LivingCoreLooks.ZoneRadiusY), LivingCoreLooks.Success.Core.Y, 12);
-        Assert.Equal(1.08, LivingCoreLooks.Success.Core.Scale);
-        Assert.True(LivingCoreLooks.Success.Core.Glow > LivingCoreLooks.Idle.Core.Glow);
-        Assert.Equal(1.0, LivingCoreLooks.Success.Halo.RimSuccess);
-        Assert.Equal(0.0, LivingCoreLooks.Success.Halo.RimDanger);
+        Assert.Equal(LivingCoreLooks.ZoneX + (0.68 * LivingCoreLooks.ZoneRadiusX), LivingCoreLooks.Success.X, 12);
+        Assert.Equal(LivingCoreLooks.ZoneY - (0.69 * LivingCoreLooks.ZoneRadiusY), LivingCoreLooks.Success.Y, 12);
+        Assert.Equal(1.08, LivingCoreLooks.Success.Scale);
+        Assert.Equal(1.0, LivingCoreLooks.Success.Warm);
+        Assert.Equal(1.0, LivingCoreLooks.Success.SuccessRing);
+        Assert.Equal(1.0, LivingCoreLooks.Success.RimSuccess);
+        Assert.Equal(0.0, LivingCoreLooks.Success.RimDanger);
     }
 
     [Fact]
     public void Warning_holds_back_steady_and_never_reads_as_an_error()
     {
         // Prototype "warning": translate(0.37, -0.125), 92%, lens 80% tall,
-        // crest up 4, threads at half speed, aura at 60%.
+        // crest up 4, aura at 60%.
         var warning = LivingCoreLooks.Warning;
 
-        Assert.Equal(LivingCoreLooks.ZoneX + (0.37 * LivingCoreLooks.ZoneRadiusX), warning.Core.X, 12);
-        Assert.Equal(LivingCoreLooks.ZoneY - (0.125 * LivingCoreLooks.ZoneRadiusY), warning.Core.Y, 12);
-        Assert.Equal(0.92, warning.Core.Scale);
-        Assert.Equal(0.0, warning.Core.Drift);
-        Assert.Equal(0.8, warning.Inside.LensNarrow);
-        Assert.Equal(-4.0, warning.Inside.CrestLift);
-        Assert.Equal(0.0, warning.Inside.LensSway);
-        Assert.Equal(1.0, warning.Halo.WarningMark);
-        Assert.Equal(0.5, warning.Halo.ThreadSpeed1, 12);
-        Assert.Equal(0.5, warning.Halo.ThreadSpeed2, 12);
-        Assert.Equal(0.5, warning.Halo.ThreadSpeed3, 12);
-        Assert.Equal(0.5, warning.Halo.ThreadSpeed4, 12);
-        Assert.Equal(0.6, warning.Aura.AuraOpacity);
+        Assert.Equal(LivingCoreLooks.ZoneX + (0.37 * LivingCoreLooks.ZoneRadiusX), warning.X, 12);
+        Assert.Equal(LivingCoreLooks.ZoneY - (0.125 * LivingCoreLooks.ZoneRadiusY), warning.Y, 12);
+        Assert.Equal(0.92, warning.Scale);
+        Assert.Equal(0.8, warning.LensScaleY);
+        Assert.Equal(-4.0, warning.CrestLift);
+        Assert.Equal(1.0, warning.WarningMark);
+        Assert.Equal(1.0, warning.RimWarning);
+        Assert.Equal(0.6, warning.AuraOpacity);
 
         // "Never aggressive": the error's red rim and crack stay off.
-        Assert.Equal(0.0, warning.Halo.RimDanger);
-        Assert.Equal(0.0, warning.Inside.CrackOpacity);
+        Assert.Equal(0.0, warning.RimDanger);
+        Assert.Equal(0.0, warning.Crack);
     }
 
     [Fact]
     public void Sleep_is_an_ember_in_a_sunken_dimmed_body()
     {
-        // Prototype "sleep": body down 9, 86%, 60% light; threads stop.
+        // Prototype "sleep": body down 9 at 86% and 60% light; threads off;
+        // the cells laid down 38 below at 40% of their height.
         var sleep = LivingCoreLooks.Sleep;
 
-        Assert.Equal(1.0, sleep.Core.Ember);
-        Assert.Equal(0.0, sleep.Core.Glow);
-        Assert.Equal(0.0, sleep.Core.Drift);
-        Assert.Equal(9.0, sleep.Halo.BodyDrop);
-        Assert.Equal(0.86, sleep.Halo.BodyScale);
-        Assert.Equal(0.6, sleep.Halo.BodyOpacity);
-        Assert.Equal(0.0, sleep.Halo.ThreadOpacity);
-        Assert.Equal(0.2, sleep.Aura.AuraOpacity);
-        Assert.Equal(0.15, sleep.Inside.StarOpacity);
+        Assert.Equal(1.0, sleep.Ember);
+        Assert.Equal(0.0, sleep.Glow);
+        Assert.Equal(0.6, sleep.BodyOpacity);
+        Assert.Equal(0.86, sleep.BodyScale);
+        Assert.Equal(9.0, sleep.BodyDrop);
+        Assert.Equal(0.0, sleep.ThreadsOpacity);
+        Assert.Equal(0.2, sleep.AuraOpacity);
+        Assert.Equal(0.15, sleep.StarsOpacity);
+        Assert.Equal(0.4, sleep.CellsScaleY);
+        Assert.Equal(38.0, sleep.CellsDrop);
+        Assert.Equal(0.3, sleep.EnergyOpacity);
     }
 
     [Fact]
     public void Sleep_and_wake_rest_where_the_logo_puts_the_white_core()
     {
-        Assert.Equal(LivingCoreLooks.RestX, LivingCoreLooks.Sleep.Core.X);
-        Assert.Equal(LivingCoreLooks.RestY, LivingCoreLooks.Sleep.Core.Y);
-        Assert.Equal(LivingCoreLooks.RestX, LivingCoreLooks.Wake.Core.X);
-        Assert.Equal(LivingCoreLooks.RestY, LivingCoreLooks.Wake.Core.Y);
-        Assert.Equal(LivingCoreLooks.Idle.Core.Scale, LivingCoreLooks.Wake.Core.Scale);
+        Assert.Equal(LivingCoreLooks.RestX, LivingCoreLooks.Sleep.X);
+        Assert.Equal(LivingCoreLooks.RestY, LivingCoreLooks.Sleep.Y);
+        Assert.Equal(LivingCoreLooks.RestX, LivingCoreLooks.Wake.X);
+        Assert.Equal(LivingCoreLooks.RestY, LivingCoreLooks.Wake.Y);
+        Assert.Equal(LivingCoreLooks.Idle.Scale, LivingCoreLooks.Wake.Scale);
     }
 
     [Theory]
     [MemberData(nameof(States))]
     public void Every_state_has_its_own_look(LivingCoreState state)
     {
-        Assert.Equal(state == LivingCoreState.Idle, LivingCoreLooks.For(state).Equals(LivingCoreLooks.Idle));
+        // Wake settles into Idle; its difference is the ignition.
+        var isIdle = state is LivingCoreState.Idle or LivingCoreState.Wake;
+        Assert.Equal(isIdle, LivingCoreLooks.For(state).Equals(LivingCoreLooks.Idle));
     }
 
     [Fact]
     public void Blocked_waits_without_an_alarm_colour()
     {
         // State board: "No alarm colour: waiting, not failing."
-        Assert.Equal(0.0, LivingCoreLooks.Blocked.Halo.RimDanger);
-        Assert.Equal(0.0, LivingCoreLooks.Blocked.Inside.CrackOpacity);
-        Assert.Equal(1.0, LivingCoreLooks.Blocked.Halo.GapRingOpacity);
+        Assert.Equal(0.0, LivingCoreLooks.Blocked.RimDanger);
+        Assert.Equal(0.0, LivingCoreLooks.Blocked.Crack);
+        Assert.Equal(1.0, LivingCoreLooks.Blocked.GapRing);
+        Assert.Equal(1.0, LivingCoreLooks.Blocked.Park);
+        Assert.Equal(0.0, LivingCoreLooks.Blocked.ThreadsOpacity);
     }
 
     [Theory]
@@ -133,10 +153,26 @@ public sealed class LivingCoreDesignTests
     public void Every_pose_sits_inside_the_white_core_zone(LivingCoreState state)
     {
         var look = LivingCoreLooks.For(state);
-        var nx = (look.Core.X - LivingCoreLooks.ZoneX) / LivingCoreLooks.ZoneRadiusX;
-        var ny = (look.Core.Y - LivingCoreLooks.ZoneY) / LivingCoreLooks.ZoneRadiusY;
+        var nx = (look.X - LivingCoreLooks.ZoneX) / LivingCoreLooks.ZoneRadiusX;
+        var ny = (look.Y - LivingCoreLooks.ZoneY) / LivingCoreLooks.ZoneRadiusY;
 
         Assert.InRange(Math.Sqrt((nx * nx) + (ny * ny)), 0.0, 1.0);
+    }
+
+    [Fact]
+    public void The_reference_keyframes_are_transcribed_exactly()
+    {
+        // Spot checks against the prototype's @keyframes.
+        Assert.Equal(1.47, PrototypeKeyframes.SpeakPulse.Track(KeyframeChannel.Scale)!.Evaluate(0.6, LivingCoreEasings.Linear), 12);
+        Assert.Equal(1.5, PrototypeKeyframes.WakePupil.Track(KeyframeChannel.Scale)!.Evaluate(0.12, LivingCoreEasings.Linear), 12);
+        Assert.Equal(9.0, PrototypeKeyframes.RequestGlance.Track(KeyframeChannel.X)!.Evaluate(0.3, LivingCoreEasings.Linear), 12);
+        Assert.Equal(-3.5, PrototypeKeyframes.Rise.Track(KeyframeChannel.Y)!.Evaluate(0.25, LivingCoreEasings.Linear), 12);
+        Assert.Equal(0.875, PrototypeKeyframes.SleepBreath.Track(KeyframeChannel.Scale)!.Evaluate(0.5, LivingCoreEasings.Linear), 12);
+        Assert.True(PrototypeKeyframes.WakeHalo.Once);
+        Assert.True(PrototypeKeyframes.WakeHalo.FillBoth);
+        Assert.True(PrototypeKeyframes.Ripple.Once);
+        Assert.False(PrototypeKeyframes.Ripple.FillBoth);
+        Assert.False(PrototypeKeyframes.SuccessRing.Once);
     }
 
     [Fact]
@@ -166,6 +202,8 @@ public sealed class LivingCoreDesignTests
     {
         CubicBezierEasing[] tokens =
         [
+            LivingCoreEasings.Linear,
+            LivingCoreEasings.Ease,
             LivingCoreEasings.Breath,
             LivingCoreEasings.Strike,
             LivingCoreEasings.Settle,

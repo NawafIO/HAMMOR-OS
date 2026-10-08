@@ -15,8 +15,12 @@ public readonly struct CubicBezierEasing
     private readonly double _by;
     private readonly double _cy;
 
+    // Control points on the diagonal: the identity (CSS linear), exactly.
+    private readonly bool _linear;
+
     public CubicBezierEasing(double x1, double y1, double x2, double y2)
     {
+        _linear = x1 == y1 && x2 == y2;
         _cx = 3.0 * x1;
         _bx = (3.0 * (x2 - x1)) - _cx;
         _ax = 1.0 - _cx - _bx;
@@ -36,6 +40,11 @@ public readonly struct CubicBezierEasing
         if (x >= 1.0)
         {
             return 1.0;
+        }
+
+        if (_linear)
+        {
+            return x;
         }
 
         var t = SolveCurveX(x);
@@ -96,11 +105,17 @@ public readonly struct CubicBezierEasing
 }
 
 /// <summary>
-/// The approved easing tokens (Motion board) plus the CSS ease-in-out used by
-/// shimmer, bob and drift.
+/// The approved easing tokens (Motion board) plus the CSS timing functions
+/// the prototype uses: ease, ease-in-out and linear.
 /// </summary>
 public static class LivingCoreEasings
 {
+    /// <summary>CSS linear: rotations, flows, the Error stutter.</summary>
+    public static readonly CubicBezierEasing Linear = new(0.0, 0.0, 1.0, 1.0);
+
+    /// <summary>CSS ease (.25, .1, .25, 1): the prototype's fades.</summary>
+    public static readonly CubicBezierEasing Ease = new(0.25, 0.1, 0.25, 1.0);
+
     /// <summary>ease.breath (.37, 0, .63, 1): every loop.</summary>
     public static readonly CubicBezierEasing Breath = new(0.37, 0.0, 0.63, 1.0);
 

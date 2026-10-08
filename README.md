@@ -165,8 +165,9 @@ These are real and visible in the UI rather than hidden:
   Home and the V2 Lens mark: architecture, state mapping, budget, Windows
   checklist.
 - [docs/LIVING-CORE-MOTION.md](docs/LIVING-CORE-MOTION.md) — Step 4: the
-  Living Core's ten states and reactions from the reference prototype, what
-  triggers them in HAMMOR, the frame budget, Windows checklist.
+  Living Core's motion matched to the reference video (the canvas
+  prototype's CSS), what triggers each state in HAMMOR, the frame budget,
+  Windows checklist.
 - [docs/CHAT-PROJECTS-SEARCH.md](docs/CHAT-PROJECTS-SEARCH.md) — Step 3: chat,
   projects and global search, and what HAMMOR's data supports.
 - [docs/SETTINGS.md](docs/SETTINGS.md) — Settings v2: categories, navigation,

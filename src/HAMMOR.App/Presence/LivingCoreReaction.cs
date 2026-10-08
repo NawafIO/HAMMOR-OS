@@ -4,12 +4,15 @@ namespace HAMMOR.App.Presence;
 public enum LivingCoreReactionKind
 {
     /// <summary>
-    /// A reply arrived: one soft ripple leaves the membrane, the cells shiver
-    /// once, and where the state allows it, one glance toward the message.
+    /// A reply arrived: one soft ripple leaves the membrane and, where the
+    /// state allows it, the white core glances toward the message for 1.2 s.
     /// </summary>
     NewMessage = 0,
 
-    /// <summary>A panel opened: one glance toward it, and the aura leans its way.</summary>
+    /// <summary>
+    /// A panel opened: the aura leans its way for 2.4 s and, where the state
+    /// allows it, the white core glances toward it.
+    /// </summary>
     PanelOpened = 1,
 }
 

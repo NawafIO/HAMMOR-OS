@@ -54,8 +54,8 @@ internal static class MotionHarness
     /// <summary>
     /// Frame by frame from <paramref name="from"/> to <paramref name="to"/>
     /// inclusive: <paramref name="before"/> ahead of each Advance (to report
-    /// the pointer, a reaction, a keystroke), <paramref name="after"/> with the
-    /// frame it wrote.
+    /// the pointer or a reaction), <paramref name="after"/> with the frame it
+    /// wrote.
     /// </summary>
     public static void Step(
         LivingCoreMotion motion,
@@ -78,12 +78,13 @@ internal static class MotionHarness
 
     /// <summary>
     /// Where the white core sits in its zone: 0 at the zone centre, 1 on the
-    /// zone's edge.
+    /// zone's edge. A <paramref name="margin"/> (design units) grows the zone
+    /// on every side.
     /// </summary>
-    public static double ZoneRadius(LivingCoreFrame f)
+    public static double ZoneRadius(LivingCoreFrame f, double margin = 0.0)
     {
-        var nx = (f.CoreX - LivingCoreLooks.ZoneX) / LivingCoreLooks.ZoneRadiusX;
-        var ny = (f.CoreY - LivingCoreLooks.ZoneY) / LivingCoreLooks.ZoneRadiusY;
+        var nx = (f.CoreX - LivingCoreLooks.ZoneX) / (LivingCoreLooks.ZoneRadiusX + margin);
+        var ny = (f.CoreY - LivingCoreLooks.ZoneY) / (LivingCoreLooks.ZoneRadiusY + margin);
         return Math.Sqrt((nx * nx) + (ny * ny));
     }
 

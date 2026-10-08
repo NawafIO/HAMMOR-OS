@@ -53,14 +53,14 @@ Guardrails board.
 The P0 build has no camera, microphone, speech-to-text, pointer-follow, Success,
 Warning, Sleep or Wake. It contains no video, GIF, MP4, Lottie or SkiaSharp.
 
-**Step 4** (branch `claude/living-shell-sidebar`) reworks the motion to the
-approved reference prototype, and is described in
-[LIVING-CORE-MOTION.md](LIVING-CORE-MOTION.md). It covers:
+**Step 4** (branch `claude/living-shell-sidebar`) makes the motion match the
+reference video, a recording of the canvas's CSS prototype, and is described
+in [LIVING-CORE-MOTION.md](LIVING-CORE-MOTION.md). It covers:
 
 - all ten states, including Success, Warning, Sleep and Wake;
+- the prototype's animations and transitions, element by element;
 - reactions to new messages and to the navigation pane;
 - pointer follow in Idle, with depth;
-- the collision rules;
 - the frame budget.
 
 Where the two documents differ on states, motion or frame pacing, that one is
@@ -76,8 +76,8 @@ current. There is still no camera, microphone or speech-to-text.
                                                                                           ▼
                                                           LivingCore : FrameworkElement
                                                             │  CompositionTarget.Rendering, only when needed
-                                                            ├─ LivingCoreMotion   pure C#: looks, 1.6 s cascade,
-                                                            │                     clocks, the white core
+                                                            ├─ LivingCoreMotion   pure C#: the reference's animations
+                                                            │                     and transitions, the white core
                                                             │        writes ▼ numbers only
                                                             │     LivingCoreFrame
                                                             └─ LivingCoreScene    frozen DrawingVisuals; applies the
@@ -98,9 +98,10 @@ state into motion.
 | `ISpeechEnvelope.cs` | The seam for a real speech level (none is connected in P0). |
 | `LivingCore.cs` | The control: lifecycle, frame pacing, reduced motion, RTL. |
 | `LivingCoreMotion.cs` | The engine: one instance per control; deterministic for given timestamps. |
-| `LivingCoreLook.cs`, `LivingCoreLooks.cs` | Each state as a set of numbers (core, inside, halo, aura), plus blending. |
+| `LivingCoreLook.cs`, `LivingCoreLooks.cs` | Each state's resting values, from the prototype's CSS. |
+| `LivingCoreKeyframes.cs` | The prototype's keyframes, and how CSS runs animations and transitions. |
 | `LivingCoreDesign.cs` | Geometry and clocks from the approved hero (26 stars, 14 cells, 4 threads, 3 halo rings). |
-| `CubicBezierEasing.cs` | The motion board's easing tokens (breath, strike, settle). |
+| `CubicBezierEasing.cs` | The motion board's easing tokens (breath, strike, settle) and CSS `linear` and `ease`. |
 | `LivingCoreFrame.cs` | Per-frame output, preallocated and overwritten. |
 | `LivingCoreScene.cs` | Builds the layers once, then only moves them. |
 
@@ -110,26 +111,19 @@ state into motion.
   Interaction board's "who moves the core" order: Speaking > Listening >
   Thinking > Blocked > Error > Idle. So speaking while Blocked or in Error
   listens first, and Error and Blocked hold until the user acts.
-- **One writer.** Only `LivingCoreMotion.WriteCore` writes the white core's
-  position and scale. It combines four inputs and then clamps the result to
-  the zone (centre 63, 60.5; ±19 × ±8 design units, as on the Awareness board):
+- **One writer.** Only `LivingCoreMotion` writes the white core's position
+  and scale. Its target is held inside the zone (centre 63, 60.5; ±19 × ±8
+  design units, as on the Awareness board). It is, in the prototype's order:
   - the state pose;
-  - Idle drift;
-  - the Idle glance;
-  - the single Blocked glance toward the request.
-- **Deterministic cascade.** Every state change runs the motion board's 1.6 s
-  cascade, all on ease.settle:
+  - a glance toward a new message or an opening panel;
+  - the pointer, in Idle only.
 
-  | Layer | Window |
-  |---|---|
-  | White core | 0–0.45 s |
-  | Cells and stars | 0.2–0.8 s |
-  | Halo and threads | 0.4–1.2 s |
-  | Aura and energy | 0.8–1.6 s |
-
-  A change in the middle of a cascade starts from the look on screen, so the
-  core never cuts. The same timestamps always give the same frames, and a test
-  checks this.
+  Idle's drift (under a unit) and Blocked's request glance ride on top.
+- **The reference's own timing.** Each layer moves on its own transition from
+  the prototype's CSS, and jumps where the prototype jumps. See
+  [LIVING-CORE-MOTION.md › Transitions and jumps](LIVING-CORE-MOTION.md#transitions-and-jumps).
+  A change in the middle of a change starts from the frame on screen. The same
+  timestamps always give the same frames, and a test checks this.
 - **Adding a state** (Success, Warning, Sleep, Wake) needs no redesign:
   1. Add the enum value.
   2. Add its look in `LivingCoreLooks`.
@@ -188,8 +182,8 @@ around the same `NAudioPlayer`.
   | Halo rings | 3 | 3 |
   | Live blurs | ≤3, aim for none | none |
 
-  Speaking's outward pulses replace the static halo rather than adding to it.
-  Blocked's gap ring takes the middle ring's place.
+  Speaking's outward rings and Blocked's gap ring draw over the halo, as in
+  the reference. They are drawn once and only moved.
 - **No flashing.** The fastest light changes are Speaking's 1.6 s pulse (two
   peaks) and Error's 2.4 s halo stutter (three dips). Both stay under the
   board's limit of three flashes per second.
@@ -200,13 +194,11 @@ around the same `NAudioPlayer`.
   Windows Settings › Accessibility › Visual effects › **Animation effects**
   switch). It reacts to change notifications and re-reads the setting on
   window activation.
-  - Position, shape and light keep their meaning. Drift, orbit, shimmer and
-    breathing stop.
+  - Position, shape and light keep their meaning. Every animation stops, as
+    with the prototype's reduced-motion switch.
   - State changes become a 0.4 s blend.
-  - Idle, Thinking, Error and Listening settle to a still frame and stop
-    rendering. Listening keeps rendering only when a real voice level exists.
-  - Speaking and Blocked keep a slow change of light only: the pulse becomes
-    brightness, not movement.
+  - Every state then settles to a still frame and stops rendering.
+  - Reactions and the pointer are ignored.
 - **RTL.** The mark and the core are never mirrored. In a right-to-left layout
   the drawing is flipped back. The Blocked glance goes toward the leading
   side, where the navigation pane and Tasks are: left in English, right in
@@ -317,10 +309,10 @@ the thread pool and switch EN → AR → EN → AR → EN.
    - When an `ISpeechEnvelope` is bound to `LivingCore.VoiceEnvelope`, core
      scale and ring brightness follow it (tested).
    - Nothing fakes a level.
-3. **Listening is attention while you type.** It is not voice. The voice rings
-   draw only with a real voice level, so they stay off ("voice rings wait for
-   speech-to-text"). A future microphone source sets the same signal; the
-   state machine does not change.
+3. **Listening is attention while you type.** It is not voice. Its inward
+   rings are the reference's, drawing in while you type. A real voice level,
+   from a future microphone source, would set their strength; the state
+   machine does not change.
 4. **The Blocked glance target.** Approvals happen on the Tasks page, not in a
    panel beside the core, so the glance goes toward the navigation pane.
 5. **Startup.** The core arrives through the normal cascade from a dormant
@@ -420,8 +412,7 @@ Page 1 is a presentation board. These differences remain, some by choice:
   - Success and Warning.
   - Sleep and Wake: minimise, restore, 10 minutes idle, 10 fps asleep.
   - Pointer follow with parallax: 450 ms lag, 24 px dead zone.
-  - Panel and new-message glances.
-  - Glance arbitration: no two glances within 2 s.
+  - Panel and new-message glances, in the reference's order.
 - **P2:**
   - Voice-reactive halo: playback level first (connect `ISpeechEnvelope`),
     microphone later.
@@ -496,7 +487,8 @@ provider, and Speaking needs an ElevenLabs key with voice output on.
      flash, no system-colour edge while resizing.
    - The taskbar and Alt+Tab icon is the lens orb, and the title bar shows the
      icon tile.
-   - The core arrives core-first, aura-last, in about 1.6 s.
+   - The core arrives through the Wake ignition, core first and aura last,
+     in about 2.4 s.
 2. **Language, EN → AR → EN, repeatedly.** Switch at least five times each
    way, first with the status bar's quick toggle, then with **Settings →
    Language**, including once while on the Settings page.
@@ -525,25 +517,25 @@ provider, and Speaking needs an ElevenLabs key with voice output on.
 4. **Idle, 5 minutes or more** (empty conversation, hero core).
    - It is quietly alive: stars shimmer on their own clocks and cells bob.
    - Four threads orbit, never in sync.
-   - About every 13–16 s the core glances unhurriedly, holds, and returns to
-     rest.
+   - The white core drifts a little around rest; it does not glance on its
+     own.
    - There is no stutter and nothing pulses in step.
 5. **Thinking.** Send a message.
    - The hero gives way to the transcript and the 112 px header core.
    - The core moves inward, about 78% size and about 55% brightness.
-   - Cells link up with signals travelling, and the lens turns slowly.
-   - The aura holds steady.
+   - Cells link up with signals travelling, and the lens rocks slowly.
+   - The aura keeps breathing.
 6. **Speaking.** With voice on, get a spoken reply.
    - The core centres at 125% and pulses.
-   - The static halo gives way to rings pulsing outward, and a voice line runs
+   - Rings pulse outward over the breathing halo, and a voice line runs
      along the lower membrane.
    - The threads brighten.
    - It returns to Idle about 0.8 s after the audio stops.
 7. **Blocked.** Follow ADR-004 checklist step 9: a task asking for a file
    outside its folder.
-   - The core glances once toward the sidebar.
-   - It then waits low and centred, with the threads gathered at the top and
-     a gap in the ring there.
+   - The core waits low, and every 6.4 s glances toward the sidebar and
+     back.
+   - The threads are gathered at the top, with a gap in the ring there.
    - There is no red. It ends when the task is resumed or cancelled.
 8. **Error.** With the API-key provider, set an invalid key and send. With
    Claude Code, sign out in a terminal (`claude auth logout`) and send.
@@ -555,7 +547,7 @@ provider, and Speaking needs an ElevenLabs key with voice output on.
    - The border turns lens teal and a soft teal light appears beneath it;
      there is no hard glow ring and no dotted focus rectangle.
    - The core goes to Listening: it centres and holds, with a thin attention
-     ring, no glances and no voice rings.
+     ring and rings drawing inward; it does not glance.
    - **Enter** sends; **Shift+Enter** adds a line.
    - It settles about 1.2 s after you click away or clear the text, and ends
      at once on send.
@@ -584,7 +576,7 @@ provider, and Speaking needs an ElevenLabs key with voice output on.
     to the no-core baseline. Restoring resumes without a jump or flash.
 15. **Reduced motion.** Turn Windows **Animation effects** off while HAMMOR
     runs, then repeat steps 4 to 9.
-    - Drift, orbit, shimmer and breathing stop.
+    - Every animation stops.
     - Every state still reads by position, shape and light.
     - Changes blend in about 0.4 s.
     - Turn it back on and motion resumes.
